@@ -130,6 +130,7 @@ async fn serve(
             paths: paths.clone(),
         },
     );
+    app.catalog_revision = catalog_revision;
     match attached {
         Ok(a) => app.set_attached(a.data.session),
         Err(f) => {
@@ -202,6 +203,7 @@ async fn serve(
                     next = rx.try_recv().ok();
                 }
                 dirty = true;
+                app.sync_terminal();
                 if let Some(on) = app.mouse_changed.take() {
                     term::set_mouse(on);
                 }

@@ -16,7 +16,7 @@ Every frame has `"api": 1` and `"type"`. At most 1 MiB per line.
 | `progress` | `message`, optional `current` and `total` together |
 | `status` | `state` (healthy/warn/error/unknown), `message` — reported health, not the run's lifecycle |
 | `view` | `view_id`, `op` (`replace`, or `append` for log views), `data` |
-| `notify` | `title` ≤ 200 bytes, `message` ≤ 2 KiB, both without control characters. An open Mira TUI shows it and asks the terminal for a desktop notification (OSC 9: Ghostty, iTerm2, WezTerm). It is also written to the run log. Do not call `osascript` or `notify-send` yourself |
+| `notify` | `title` ≤ 200 bytes, `message` ≤ 2 KiB, both without control characters. An open Mira TUI shows it and asks the terminal for a desktop notification (OSC 9: Ghostty, iTerm2, WezTerm). It is also written to the run log. Do not call `osascript` or `notify-send` yourself. A program in a PTY (not MPP/1) runs `"$MIRA_BIN" notify --title TITLE MESSAGE` instead |
 | `artifact` | `path`, `mime`, `label`, `ownership` (`managed` = inside `artifact_dir`; `external` = reference only) |
 | `result` | `ok`, `summary`, `data` (may be `null`), and `error` `{code, message, retryable}` exactly when `ok` is false |
 

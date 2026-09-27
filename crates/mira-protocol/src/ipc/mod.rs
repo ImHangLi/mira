@@ -71,6 +71,7 @@ methods! {
     RunStop = "run.stop", RunStopParams => StopAccepted, stream: false;
     RunGet = "run.get", RunGetParams => RunRecord, stream: false;
     RunList = "run.list", RunListParams => RunList, stream: false;
+    RunNotify = "run.notify", RunNotifyParams => Ack, stream: false;
     LogRead = "log.read", LogReadParams => LogPage, stream: false;
     ViewRead = "view.read", ViewReadParams => ViewSnapshot, stream: false;
     ViewPublish = "view.publish", ViewPublishParams => PublishResult, stream: false;

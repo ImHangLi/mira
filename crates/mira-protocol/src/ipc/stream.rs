@@ -36,6 +36,8 @@ pub enum StreamEvent {
     Snapshot(StatusData),
     State {
         state_revision: StateRevision,
+        /// The current catalog revision; a client reads the catalog again when it changes.
+        catalog_revision: CatalogRevision,
         session: Option<SessionInfo>,
         runs: Vec<RunSummary>,
         storage_warnings: Vec<Warning>,

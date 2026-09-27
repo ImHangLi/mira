@@ -2,75 +2,17 @@
   "api": 1,
   "id": "pomodoro",
   "name": "Pomodoro",
-  "description": "Make time for focus and a short break.",
+  "description": "A focus timer with breaks and a daily count, on one screen.",
   "tags": ["focus", "timer", "break"],
-  "entry": {"argv": ["python3", "main.py"]},
   "actions": [
     {
-      "id": "focus",
-      "title": "Start focus",
-      "description": "Start a focus session.",
-      "mode": "task",
-      "run": {"kind": "plugin"},
-      "timeout": {"kind": "none"},
-      "input_schema": {
-        "type": "object",
-        "properties": {
-          "minutes": {
-            "type": "number",
-            "exclusiveMinimum": 0,
-            "maximum": 240,
-            "default": 25,
-            "description": "Session length in minutes; fractions are allowed."
-          },
-          "label": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 60,
-            "pattern": "^[^\\x00-\\x1f\\x7f]+$",
-            "default": "Focus"
-          }
-        },
-        "additionalProperties": false
-      },
+      "id": "timer",
+      "title": "Pomodoro",
+      "description": "Enter opens the timer; Ctrl-] goes back to the tools.",
+      "mode": "process",
+      "terminal": "pty",
+      "run": {"kind": "command", "argv": ["sh", "-c", "exec python3 \"$MIRA_PLUGIN_DIR/main.py\""]},
       "effects": ["writes-state"]
-    },
-    {
-      "id": "break",
-      "title": "Take a break",
-      "description": "Start a five-minute break.",
-      "mode": "task",
-      "run": {"kind": "plugin"},
-      "timeout": {"kind": "none"},
-      "input_schema": {
-        "type": "object",
-        "properties": {
-          "minutes": {
-            "type": "number",
-            "exclusiveMinimum": 0,
-            "maximum": 240,
-            "default": 5,
-            "description": "Session length in minutes; fractions are allowed."
-          },
-          "label": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 60,
-            "pattern": "^[^\\x00-\\x1f\\x7f]+$",
-            "default": "Break"
-          }
-        },
-        "additionalProperties": false
-      },
-      "effects": ["writes-state"]
-    }
-  ],
-  "views": [
-    {
-      "id": "clock",
-      "title": "Countdown",
-      "kind": "text",
-      "persistence": "last"
     }
   ]
 }

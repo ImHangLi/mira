@@ -83,6 +83,10 @@ pub struct App {
     pub notifications: Vec<(String, String)>,
     /// The default plugins this `mira` ships; see [`App::missing_defaults`].
     pub defaults: Vec<crate::cmdbar::DefaultPlugin>,
+    /// The catalog revision this window shows; see `catalog_seen`.
+    pub catalog_revision: Option<mira_protocol::ids::CatalogRevision>,
+    /// A PTY program started with Enter; it gets the keys when its screen opens.
+    pub focus_on_start: Option<ActionRef>,
     status_at: Option<Instant>,
     /// Actions whose description declares a schedule.
     scheduled: std::collections::HashSet<ActionRef>,
@@ -158,6 +162,8 @@ impl App {
             mouse_changed: None,
             notifications: Vec::new(),
             defaults: Vec::new(),
+            catalog_revision: None,
+            focus_on_start: None,
             status_at: None,
             scheduled: Default::default(),
             catalog_error: None,

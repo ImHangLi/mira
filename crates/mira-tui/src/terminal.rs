@@ -41,14 +41,18 @@ pub enum Command {
         cols: u16,
         rows: u16,
     },
-    /// Try to take the input lock again (read-only viewers).
+    /// Take the input lock (to type), or try again after a refusal.
     Retry,
+    /// Give the input lock back and keep showing the screen.
+    Release,
     Detach,
 }
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum Ownership {
     Connecting,
+    /// Only showing the screen; the input lock stays free for others, such as an agent.
+    Viewer,
     /// This TUI holds the input lock.
     Writer,
     /// Someone else holds it, or the program cannot take input; the reason is shown.
@@ -64,6 +68,9 @@ pub enum Msg {
 pub struct Attach {
     pub action_ref: ActionRef,
     pub run_id: RunId,
+    /// Keys go to the program. Otherwise the screen only shows in the main pane and keys
+    /// stay with Mira.
+    pub focused: bool,
     pub ownership: Ownership,
     pub snapshot: Option<Box<TerminalSnapshot>>,
     pub error: Option<String>,
@@ -111,13 +118,48 @@ impl Terminals {
         self.attach.is_some()
     }
 
-    pub fn open(&mut self, action_ref: ActionRef, run_id: RunId, events: Tx) {
+    /// Keys go to the program now.
+    pub fn is_focused(&self) -> bool {
+        self.attach.as_ref().is_some_and(|a| a.focused)
+    }
+
+    /// The run whose screen is shown, if any.
+    pub fn shown_run(&self) -> Option<&RunId> {
+        self.attach.as_ref().map(|a| &a.run_id)
+    }
+
+    /// Sends keys to the shown program.
+    pub fn focus(&mut self) {
+        if let Some(a) = self.attach.as_mut() {
+            a.focused = true;
+            if a.ownership != Ownership::Writer {
+                let _ = a.tx.send(Command::Retry);
+            }
+        }
+    }
+
+    /// Keeps showing the screen, but keys go back to Mira and the input lock is freed.
+    fn unfocus(&mut self) {
+        if let Some(a) = self.attach.as_mut() {
+            a.focused = false;
+            let _ = a.tx.send(Command::Release);
+        }
+    }
+
+    pub fn open(&mut self, action_ref: ActionRef, run_id: RunId, events: Tx, focused: bool) {
         self.detach();
         let (tx, rx) = unbounded_channel();
-        tokio::spawn(worker(self.paths.clone(), run_id.clone(), rx, events));
+        tokio::spawn(worker(
+            self.paths.clone(),
+            run_id.clone(),
+            rx,
+            events,
+            focused,
+        ));
         self.attach = Some(Attach {
             action_ref,
             run_id,
+            focused,
             ownership: Ownership::Connecting,
             snapshot: None,
             error: None,
@@ -174,7 +216,7 @@ impl Terminals {
         let ctrl = k.modifiers.contains(KeyModifiers::CONTROL);
         // Ctrl-] arrives as Ctrl-5 from terminals that send the raw 0x1d byte.
         if ctrl && matches!(k.code, KeyCode::Char(']') | KeyCode::Char('5')) {
-            self.detach();
+            self.unfocus();
             return;
         }
         if self.writer() {
@@ -185,9 +227,9 @@ impl Terminals {
         }
         // Read-only: nothing reaches the program.
         match k.code {
-            KeyCode::Esc | KeyCode::Char('q') => self.detach(),
-            KeyCode::Char('c') if ctrl => self.detach(),
-            KeyCode::Char('a') => {
+            KeyCode::Esc | KeyCode::Char('q') => self.unfocus(),
+            KeyCode::Char('c') if ctrl => self.unfocus(),
+            KeyCode::Char('a') | KeyCode::Enter => {
                 if let Some(a) = self.attach.as_ref() {
                     let _ = a.tx.send(Command::Retry);
                 }
@@ -206,7 +248,7 @@ impl Terminals {
 
     /// The keys of the open view, for the footer and help (one binding table).
     pub fn bindings(&self) -> Option<Vec<Binding>> {
-        let a = self.attach.as_ref()?;
+        let a = self.attach.as_ref().filter(|a| a.focused)?;
         let mut v = Vec::new();
         let exited = a.snapshot.as_ref().is_some_and(|s| s.exited);
         if self.writer() {
@@ -215,12 +257,12 @@ impl Terminals {
                 "go to the program (Esc and Ctrl-C too)",
                 Cmd::Forward,
             ));
-            v.push(bind("Ctrl-]", "back to Mira (releases input)", Cmd::Detach));
+            v.push(bind("Ctrl-]", "back to the tools", Cmd::Detach));
         } else {
             if !exited && matches!(a.ownership, Ownership::ReadOnly(_)) {
                 v.push(bind("a", "take input", Cmd::Attach));
             }
-            v.push(bind("Ctrl-]/Esc/q", "back to Mira", Cmd::Detach));
+            v.push(bind("Ctrl-]/Esc/q", "back to the tools", Cmd::Detach));
         }
         Some(v)
     }
@@ -386,21 +428,20 @@ pub fn draw(f: &mut Frame, term: &mut Terminals, area: Rect, use_color: bool) {
     a.resize_if_needed();
     let exited = a.snapshot.as_ref().is_some_and(|s| s.exited);
     let status = if exited {
-        "program exited (read-only)".to_owned()
+        "the program exited; this is its last screen".to_owned()
     } else {
-        match &a.ownership {
-            Ownership::Connecting => "connecting...".to_owned(),
-            Ownership::Writer => "input: this TUI".to_owned(),
-            Ownership::ReadOnly(why) => format!("read-only: {why}"),
+        match (&a.ownership, a.focused) {
+            (Ownership::Connecting, _) => "connecting...".to_owned(),
+            (Ownership::Viewer, true) => "taking input...".to_owned(),
+            (Ownership::Viewer, false) => "Enter to use it".to_owned(),
+            (Ownership::Writer, true) => {
+                "keys go to the program · Ctrl-] back to the tools".to_owned()
+            }
+            (Ownership::Writer, false) => "Enter to use it".to_owned(),
+            (Ownership::ReadOnly(why), _) => format!("read-only: {why} · Enter retries"),
         }
     };
-    let mut title = format!("terminal {} · {} · {status}", a.action_ref, a.run_id);
-    if let Some(s) = &a.snapshot {
-        title.push_str(&format!(" · {}x{}", s.cols, s.rows));
-        if s.alternate_screen {
-            title.push_str(" · full screen");
-        }
-    }
+    let mut title = format!("{} · {status}", a.action_ref);
     if let Some(e) = &a.error {
         title.push_str(&format!(" · {e}"));
     }
@@ -560,7 +601,15 @@ async fn next_revision(stream: &mut Option<Client>) -> Result<ScreenRevision, ()
     }
 }
 
-async fn worker(paths: WorkspacePaths, run_id: RunId, mut rx: UnboundedReceiver<Command>, tx: Tx) {
+/// Shows one run's screen. It takes the input lock only while the user types (`take`
+/// at start, then `Retry` and `Release`), so an agent can still type into it otherwise.
+async fn worker(
+    paths: WorkspacePaths,
+    run_id: RunId,
+    mut rx: UnboundedReceiver<Command>,
+    tx: Tx,
+    take: bool,
+) {
     let mut control = match connect(&paths, &ipc::options(ConnectionKind::Control)).await {
         Ok(c) => c,
         Err(e) => {
@@ -571,9 +620,14 @@ async fn worker(paths: WorkspacePaths, run_id: RunId, mut rx: UnboundedReceiver<
     let lost = |tx: &Tx, m: String| {
         send(tx, Msg::Failed(format!("host connection lost: {m}")));
     };
-    let mut writer = match acquire(&mut control, &run_id, &tx).await {
-        Ok(w) => w,
-        Err(m) => return lost(&tx, m),
+    let mut writer = if take {
+        match acquire(&mut control, &run_id, &tx).await {
+            Ok(w) => w,
+            Err(m) => return lost(&tx, m),
+        }
+    } else {
+        send(&tx, Msg::Owner(Ownership::Viewer));
+        false
     };
     let mut stream = open_stream(&paths, &run_id).await;
     let mut shown: Option<ScreenRevision> = None;
@@ -631,6 +685,18 @@ async fn worker(paths: WorkspacePaths, run_id: RunId, mut rx: UnboundedReceiver<
                             }
                         }
                     }
+                }
+                Some(Command::Release) => {
+                    if writer {
+                        let params = TerminalRunParams { run_id: run_id.clone() };
+                        match ipc::call::<_, Ack>(&mut control, Method::TerminalRelease, &params).await {
+                            Ok(_) => {}
+                            Err(Failure::Lost(m)) => return lost(&tx, m),
+                            Err(Failure::Reply(_)) => {}
+                        }
+                        writer = false;
+                    }
+                    send(&tx, Msg::Owner(Ownership::Viewer));
                 }
                 Some(Command::Retry) => {
                     if !writer {

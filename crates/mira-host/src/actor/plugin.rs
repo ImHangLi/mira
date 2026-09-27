@@ -177,6 +177,33 @@ impl Actor {
         }
     }
 
+    /// `run.notify`: a running program (for example a timer in a PTY) notifies the user,
+    /// as an MPP/1 `notify` frame does.
+    pub(super) fn run_notify(
+        &mut self,
+        p: mira_protocol::ipc::RunNotifyParams,
+        r: super::Responder,
+    ) {
+        let issues =
+            mira_protocol::mpp::check_notify(&p.title, &p.message, ErrorCode::INVALID_ARGUMENT);
+        if !issues.is_empty() {
+            return r.send(self.fail(issues.to_error_info()));
+        }
+        if !self.runs.contains_key(&p.run_id) {
+            return r.send(self.fail(ErrorInfo::run_not_found(&p.run_id)));
+        }
+        self.host_note(
+            &p.run_id,
+            LogLevel::Info,
+            &format!("notification: {}: {}", p.title, p.message),
+        );
+        self.broadcast_notify(&p.run_id, p.title, p.message);
+        r.send(self.ok(
+            mira_protocol::ipc::Ack { ok: true },
+            mira_protocol::reply::ReplyMeta::default(),
+        ));
+    }
+
     fn plugin_result(&mut self, run_id: &RunId, res: PluginResult) {
         let (ok, summary, data, error) = match res {
             PluginResult::Success { summary, data } => (true, summary, data, None),

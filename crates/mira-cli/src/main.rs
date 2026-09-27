@@ -276,6 +276,15 @@ enum Command {
     },
     /// Load .mira again from disk; keep the old plugins if it is not valid.
     Reload,
+    /// Show a desktop notification from a running program (uses MIRA_RUN_ID).
+    Notify {
+        #[arg(long)]
+        title: String,
+        message: String,
+        /// The run to notify from; defaults to MIRA_RUN_ID.
+        #[arg(long, value_name = "RUN")]
+        run: Option<String>,
+    },
     /// Manage this project's plugins.
     Plugin {
         #[command(subcommand)]
@@ -708,6 +717,11 @@ fn main() -> ExitCode {
             command: SkillsCommand::Export { dir, force },
         }) => commands::skills::export(&ctx, &dir, force),
         Some(Command::Reload) => commands::config::reload(&ctx),
+        Some(Command::Notify {
+            title,
+            message,
+            run,
+        }) => commands::notify::send(&ctx, title, message, run),
         Some(Command::Plugin {
             command: PluginCommand::Add { name },
         }) => match name {

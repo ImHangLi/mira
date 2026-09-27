@@ -57,6 +57,8 @@ pub enum Cmd {
     Remove,
     /// Choose a default plugin to add to the project (`+`).
     AddPlugin,
+    /// Load `.mira` again from disk and refresh the tools, runs, and views (`R`).
+    Refresh,
 }
 
 pub struct Binding {
@@ -213,7 +215,9 @@ impl App {
             }
         }
         if let Some(item) = self.selected_item() {
+            let on_screen = self.attach_target().is_some();
             match self.open_kind(item) {
+                _ if on_screen => v.push(bind("Enter", "use the program", Cmd::Open)),
                 Some(OpenKind::Start) => v.push(bind("Enter", start_word(item), Cmd::Open)),
                 Some(OpenKind::Logs) if self.focus == Focus::List => {
                     v.push(bind("Enter", "logs", Cmd::Open))
@@ -224,8 +228,8 @@ impl App {
                 }
                 _ => {}
             }
-            if self.attach_target().is_some() {
-                v.push(bind("a", "attach terminal", Cmd::Attach));
+            if on_screen {
+                v.push(hidden("a", "use the program", Cmd::Attach));
             }
             match self.toggle_intent(item) {
                 Some(Intent::Stop) => v.push(bind("s", "stop", Cmd::Toggle)),
@@ -387,6 +391,7 @@ impl App {
             v.insert(0, bind("o", format!("open {title}"), Cmd::OpenWritten));
         }
         v.push(bind(":", "command", Cmd::Command));
+        v.push(hidden("R", "refresh (load .mira again)", Cmd::Refresh));
         if !self.missing_defaults().is_empty() {
             v.push(hidden("+", "add a default plugin", Cmd::AddPlugin));
         }

@@ -178,10 +178,32 @@ impl App {
     }
 
     /// The selected item's active PTY run, if it can be attached.
+    /// Shows the screen of the selected interactive program in the main pane, and closes it
+    /// when another tool is selected or the program ends. A program started from here with
+    /// Enter gets the keys at once.
+    pub fn sync_terminal(&mut self) {
+        match self.attach_target() {
+            Some((a, run_id)) => {
+                if self.term.shown_run() != Some(&run_id) {
+                    let focused = self.focus_on_start.as_ref() == Some(&a);
+                    self.focus_on_start = None;
+                    self.term.open(a, run_id, self.io.events.clone(), focused);
+                }
+            }
+            None => {
+                if self.term.is_open() {
+                    self.term.detach();
+                }
+            }
+        }
+    }
+
     pub(super) fn attach_target(&self) -> Option<(ActionRef, RunId)> {
         let item = self.selected_item()?;
         let run = self.active.get(&item.action_ref)?;
-        (self.term.is_pty(&item.action_ref) && run.lifecycle.is_active())
-            .then(|| (item.action_ref.clone(), run.run_id.clone()))
+        // Running, not Starting: the host registers the terminal once the program runs.
+        (self.term.is_pty(&item.action_ref)
+            && matches!(run.lifecycle, mira_protocol::run::Lifecycle::Running))
+        .then(|| (item.action_ref.clone(), run.run_id.clone()))
     }
 }
