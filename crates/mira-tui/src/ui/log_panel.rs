@@ -48,9 +48,6 @@ pub(super) fn log_bar(p: &LogPane, old: Option<&String>) -> String {
             "earlier output no longer available (starts at #{first})"
         ));
     }
-    if let Some(r) = &p.run_id {
-        parts.push(r.to_string());
-    }
     parts.join(" · ")
 }
 

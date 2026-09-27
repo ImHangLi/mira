@@ -18,16 +18,21 @@ use super::log_panel::draw_logs;
 use super::marks::item_mark;
 use super::oneoff::draw_oneoff;
 use super::output_tab::draw_output_tab;
-use super::text::{ago, cleanup_word, ellipsize, enum_word, fit_spans, short_id, wrap};
+use super::text::{ago, cleanup_word, ellipsize, enum_word, fit_spans, wrap};
 use super::view_panel::draw_view;
 use super::widgets::{chip, empty_card, panel, panel_title, tab_bar};
 
 pub(super) fn draw_main(f: &mut Frame, app: &mut App, t: &Theme, area: Rect) {
     // The selected interactive program shows its live screen here.
     if app.term.is_open() {
+        let title = app
+            .term
+            .attach
+            .as_ref()
+            .map_or_else(|| "Program".to_owned(), |a| app.title_of(&a.action_ref));
         let block = panel(
             t,
-            panel_title(t, "Program", app.term.is_focused()),
+            panel_title(t, &display(&title), app.term.is_focused()),
             app.term.is_focused(),
         );
         let inner = block.inner(area);
@@ -92,11 +97,6 @@ pub(super) fn draw_main(f: &mut Frame, app: &mut App, t: &Theme, area: Rect) {
                 ActionMode::Task => "task",
             },
             Tone::Sky,
-        ),
-        Span::raw(" "),
-        Span::styled(
-            format!("◇ {}", a.plugin),
-            t.word(Tone::AccentDeep).add_modifier(Modifier::BOLD),
         ),
     ];
     if !item.enabled {
@@ -189,7 +189,6 @@ fn status_spans(app: &App, t: &Theme, item: &Item) -> Vec<Span<'static>> {
             ago(r.started_at),
             app.clock.hm(r.started_at)
         ));
-        details.push(short_id(&r.run_id.to_string()));
         let health = enum_word(r.reported_health.state);
         if !health.is_empty() && health != "unknown" {
             details.push(format!("health {health}"));
@@ -213,6 +212,7 @@ fn status_spans(app: &App, t: &Theme, item: &Item) -> Vec<Span<'static>> {
                 (Some(0), _) if l.result.as_ref().is_some_and(|r| !r.ok) => {
                     details.push("reported by the plugin".into())
                 }
+                (Some(0), _) => {}
                 (Some(c), _) => details.push(format!("exit {c}")),
                 (None, Some(s)) => details.push(s.to_string()),
                 _ => {}
@@ -221,7 +221,6 @@ fn status_spans(app: &App, t: &Theme, item: &Item) -> Vec<Span<'static>> {
         if let Some(e) = l.ended_at {
             details.insert(0, ago(e));
         }
-        details.push(short_id(&l.run_id.to_string()));
         let mut h = head(word);
         if let Some(c) = l.cleanup.as_ref().and_then(cleanup_word) {
             h.push(Span::styled(

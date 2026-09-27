@@ -87,7 +87,7 @@ def publish(rows, message):
 def main():
     try:
         req = json.loads(sys.stdin.readline())
-        message = "Select a row and press Enter to send SIGTERM."
+        message = "Select a row and press Enter to review the stop action."
         rows = listeners()
         if req["action"] == "kill":
             pid = req["input"]["pid"]

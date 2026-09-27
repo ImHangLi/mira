@@ -34,12 +34,21 @@ Strict JSON: unknown fields, duplicate keys, and `null` for optional fields are 
 | `output_schema` | validates a successful structured result's `data` |
 | `timeout` | tasks default `{"kind":"after","ms":300000}`, processes `{"kind":"none"}`; never `null` |
 | `terminal` | `pipe` (default) or `pty` (command runner only) |
+| `show` | `on_run` (default) or `on_select`; `on_select` requires a `process` with `terminal: "pty"` and valid input defaults |
 | `stop_signal`, `stop_grace_ms` | `term`/`interrupt`, 100–60000 ms (default 5000), then SIGKILL |
 | `cleanup` | `{"kind":"command","argv":[...]}`; runs once after the main process with `MIRA_STOP_REASON` |
 | `schedule` | tasks only: `{"every_ms": ≥1000, "params": {...}, "run_on_start": false}`; off until the user enables it |
 | `effects` | descriptive tags such as `read-files`, `writes-state`, `network` |
 
 The child receives `MIRA_WORKSPACE_ROOT`, `MIRA_PLUGIN_DIR`, `MIRA_STATE_DIR`, `MIRA_CACHE_DIR`, `MIRA_ARTIFACT_DIR`, `MIRA_RUN_ID`, `MIRA_INPUT_FILE` (effective input JSON), `MIRA_CONFIG_FILE`. To call Mira from a plugin, run `"$MIRA_BIN"`: it is the running `mira`, and the host also passes its own `MIRA_DATA_HOME` and `MIRA_RUNTIME_DIR` when they are set, so the call reaches the same host.
+
+### Open a program on selection
+
+Use `"show": "on_select"` for an app page, such as a timer or game, whose initial screen is safe to open without input. The TUI starts it through the host when selected in an active session. It reuses an existing run and leaves the keys with Mira. Enter takes the input lock; F1 returns to tools and releases it. An idle screen is fitted to the pane with a temporary input lock. If another client holds the lock, that client's size stays in use.
+
+The program keeps running when another tool is selected. It stops with the session or an explicit stop. An exit, stop, or failed start is not retried while the same tool remains selected; select it again or start it explicitly to retry. Searching does not start intermediate matches. Opening a page uses the schema's defaults and never opens an input form.
+
+Keep `on_run` for servers, shells, and commands with startup effects that require an explicit start. The host and CLI do not act on `show`; the TUI applies it to its selected page, including after a catalog reload.
 
 ### Argv placeholders
 

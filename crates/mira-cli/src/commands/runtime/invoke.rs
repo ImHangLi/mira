@@ -140,7 +140,7 @@ pub(crate) async fn run_and_wait(
         && is_service(client, action).await
     {
         eprintln!(
-            "error[{}]: {action} is a service. Start it with `mira start {action}`.",
+            "error[{}]: {action} needs a session. Open `mira` or run `mira up --background`, then run `mira start {action}`.",
             e.code
         );
         return ExitCode::from(accepted.exit_code());

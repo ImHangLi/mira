@@ -24,7 +24,7 @@ impl App {
             }
             Event::Input(crossterm::event::Event::Mouse(m)) => self.mouse_event(m),
             Event::Input(_) => {}
-            Event::Terminal(m) => self.term.handle(m),
+            Event::Terminal(id, m) => self.term.handle(id, m),
             Event::Frame(frame) => self.frame(*frame),
             Event::StreamReset => {
                 self.info("event stream reset (this TUI fell behind); state and log tail reloaded");
@@ -51,9 +51,9 @@ impl App {
                 match res {
                     Ok(acc) => {
                         let what = if acc.reused {
-                            format!("{a} is already running ({})", acc.run_id)
+                            format!("{} is already running", self.title_of(&a))
                         } else {
-                            format!("started {a} ({})", acc.run_id)
+                            format!("started {}", self.title_of(&a))
                         };
                         self.info_run(&a, &acc.run_id, what);
                         self.viewing.remove(&a);
@@ -75,7 +75,7 @@ impl App {
                 self.pending.remove(&a);
                 match res {
                     Ok(s) => {
-                        let what = format!("stopping {a} ({})", s.run_id);
+                        let what = format!("stopping {}", self.title_of(&a));
                         self.info_run(&a, &s.run_id, what)
                     }
                     Err(e) => {

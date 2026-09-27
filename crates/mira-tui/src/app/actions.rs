@@ -182,6 +182,7 @@ impl App {
     /// when another tool is selected or the program ends. A program started from here with
     /// Enter gets the keys at once.
     pub fn sync_terminal(&mut self) {
+        self.open_selected_program();
         match self.attach_target() {
             Some((a, run_id)) => {
                 if self.term.shown_run() != Some(&run_id) {
@@ -195,6 +196,32 @@ impl App {
                     self.term.detach();
                 }
             }
+        }
+    }
+
+    fn open_selected_program(&mut self) {
+        if !matches!(self.modal, Modal::None) || !self.is_controller() {
+            return;
+        }
+        let Some(item) = self.selected_item() else {
+            return;
+        };
+        let a = item.action_ref.clone();
+        let key = (a.clone(), item.definition_hash.clone());
+        if self.auto_opened.as_ref() == Some(&key)
+            || !self.can_act(item)
+            || !self.term.opens_on_select(&a)
+            || self.inputs.get(&a).is_none_or(|(hash, input)| {
+                *hash != item.definition_hash
+                    || matches!(input, Inputs::Loading | Inputs::Unknown(_))
+            })
+        {
+            return;
+        }
+        self.auto_opened = Some(key);
+        if !self.active.contains_key(&a) {
+            // The host validates defaults and reuses an existing process if another client won.
+            self.invoke(a, JsonObject::new());
         }
     }
 

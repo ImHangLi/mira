@@ -31,7 +31,7 @@ fn session_spans(app: &App, t: &Theme) -> Vec<Span<'static>> {
                     let mut v = vec![
                         Span::styled("●", t.fg(Tone::Leaf)),
                         Span::styled(
-                            format!(" here · {n} window{}", if n == 1 { "" } else { "s" }),
+                            format!(" {n} window{}", if n == 1 { "" } else { "s" }),
                             t.bold(),
                         ),
                     ];

@@ -446,7 +446,7 @@ pub(super) fn draw_row_actions(f: &mut Frame, app: &App, t: &Theme, area: Rect) 
     let row = app
         .view_panes
         .get(view_ref)
-        .and_then(|p| p.selected_row_id())
+        .and_then(|p| p.row_summary().or_else(|| p.selected_row_id()))
         .unwrap_or_default();
     // The action title, when the catalog has it, and its ref.
     let label = |c: &ActionId| {
@@ -455,10 +455,7 @@ pub(super) fn draw_row_actions(f: &mut Frame, app: &App, t: &Theme, area: Rect) 
             .iter()
             .find(|i| i.action_ref.plugin == view_ref.plugin && i.action_ref.action == *c)
             .map(|i| i.title.clone());
-        match title {
-            Some(title) => format!("{title}  ({}.{c})", view_ref.plugin),
-            None => format!("{}.{c}", view_ref.plugin),
-        }
+        title.unwrap_or_else(|| format!("{}.{c}", view_ref.plugin))
     };
     let w = choices
         .iter()
@@ -470,7 +467,7 @@ pub(super) fn draw_row_actions(f: &mut Frame, app: &App, t: &Theme, area: Rect) 
     let rect = centered(area, w, choices.len() as u16 + 4);
     let w = rect.width.saturating_sub(4) as usize;
     let mut lines = vec![Line::from(vec![
-        Span::styled("Run for row ", t.bold()),
+        Span::styled("For ", t.bold()),
         Span::styled(
             display(&row),
             t.word(Tone::Accent).add_modifier(Modifier::BOLD),

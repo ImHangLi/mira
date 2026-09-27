@@ -42,7 +42,7 @@ pub enum Entry {
 
 /// What stays selected when the list changes.
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub(super) enum Key {
+pub enum Key {
     Item(ItemRef),
     Run(RunId),
 }
@@ -171,6 +171,7 @@ pub enum Modal {
         logs: bool,
         text: String,
         prev_filter: String,
+        prev_selection: Option<Key>,
     },
     Form(Box<Form>),
     /// The `:` command bar.

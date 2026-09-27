@@ -10,6 +10,7 @@ use std::time::{Duration, Instant};
 use crossterm::cursor::{Hide, Show};
 use crossterm::event::{
     DisableBracketedPaste, DisableMouseCapture, EnableBracketedPaste, EnableMouseCapture,
+    KeyboardEnhancementFlags, PopKeyboardEnhancementFlags, PushKeyboardEnhancementFlags,
 };
 use crossterm::execute;
 use crossterm::terminal::{
@@ -31,6 +32,7 @@ pub fn restore() {
             out,
             DisableMouseCapture,
             DisableBracketedPaste,
+            PopKeyboardEnhancementFlags,
             LeaveAlternateScreen,
             Show
         );
@@ -50,7 +52,13 @@ impl TerminalGuard {
         enable_raw_mode()?;
         ACTIVE.store(true, Ordering::SeqCst);
         let mut out = std::io::stdout();
-        if let Err(e) = execute!(out, EnterAlternateScreen, Hide, EnableBracketedPaste) {
+        if let Err(e) = execute!(
+            out,
+            EnterAlternateScreen,
+            Hide,
+            EnableBracketedPaste,
+            PushKeyboardEnhancementFlags(KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES)
+        ) {
             restore();
             return Err(e);
         }

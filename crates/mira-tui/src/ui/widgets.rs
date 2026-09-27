@@ -20,11 +20,12 @@ pub(super) fn panel<'a>(t: &Theme, title: impl Into<Line<'a>>, focus: bool) -> B
         .title(title)
 }
 
+/// The focused panel uses the same accent chip as keys and selected rows.
 pub(super) fn panel_title(t: &Theme, text: &str, focus: bool) -> Line<'static> {
     let st = if focus {
-        t.word(Tone::Accent).add_modifier(Modifier::BOLD)
+        t.chip(Tone::Accent)
     } else {
-        t.bold()
+        t.muted()
     };
     Line::from(Span::styled(format!(" {text} "), st))
 }

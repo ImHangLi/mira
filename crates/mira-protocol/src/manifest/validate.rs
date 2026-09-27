@@ -384,6 +384,28 @@ fn validate_action(
             "pty is only allowed with the command runner",
         ));
     }
+    if a.show == super::ShowPolicy::OnSelect {
+        if a.mode != ActionMode::Process || a.terminal != TerminalMode::Pty {
+            issues.push(Issue::schema(
+                format!("{p}/show"),
+                "on_select requires a process action with terminal pty",
+            ));
+        }
+        if let Some(doc) = &input_schema
+            && let Ok(v) = doc.compile()
+        {
+            let input = Value::Object(doc.effective_input(&super::JsonObject::new()));
+            if !doc
+                .validate(&v, &input, &format!("{p}/input_schema"))
+                .is_empty()
+            {
+                issues.push(Issue::schema(
+                    format!("{p}/show"),
+                    "on_select requires input defaults that can start the program without a form",
+                ));
+            }
+        }
+    }
     let (lo, hi) = STOP_GRACE_RANGE_MS;
     if !(lo..=hi).contains(&a.stop_grace_ms) {
         issues.push(Issue::schema(
@@ -450,6 +472,7 @@ fn validate_action(
         output_schema: output_schema.map(SchemaDocSer),
         timeout: timeout?,
         terminal: a.terminal,
+        show: a.show,
         stop_signal: a.stop_signal,
         stop_grace_ms: a.stop_grace_ms,
         cleanup,

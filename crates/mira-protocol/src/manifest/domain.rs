@@ -125,6 +125,7 @@ pub struct Action {
     pub output_schema: Option<SchemaDocSer>,
     pub timeout: TimeoutPolicy,
     pub terminal: TerminalMode,
+    pub show: super::ShowPolicy,
     pub stop_signal: StopSignal,
     pub stop_grace_ms: u64,
     pub cleanup: Option<Argv>,

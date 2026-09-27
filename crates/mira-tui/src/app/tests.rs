@@ -323,10 +323,16 @@ fn esc_leaves_the_view_focus() {
     add_view(&mut a, "dev.grid", ViewKind::Table);
     key(&mut a, KeyCode::Enter);
     assert!(a.focus == Focus::Logs);
+    // Esc still goes back; the footer shows the one key that works everywhere instead.
     assert!(
         a.bindings()
             .iter()
-            .any(|b| b.footer && b.keys == "Esc" && b.label == "back")
+            .any(|b| b.keys == "Esc" && b.label == "back")
+    );
+    assert!(
+        a.bindings()
+            .iter()
+            .any(|b| b.footer && b.keys == "F1" && b.label == "tools")
     );
     key(&mut a, KeyCode::Esc);
     assert!(a.focus == Focus::List);

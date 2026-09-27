@@ -6,18 +6,25 @@ use crate::clip;
 use crate::cmdbar;
 use crate::form::{Form, Outcome};
 
-use super::{App, Cmd, Modal, Tab};
+use super::{App, Cmd, Focus, Modal, Tab};
 
 impl App {
     pub fn key(&mut self, k: KeyEvent) {
         if k.kind == KeyEventKind::Release {
             return;
         }
+        let ctrl = k.modifiers.contains(KeyModifiers::CONTROL);
+        if k.code == KeyCode::F(1)
+            || (k.code == KeyCode::Esc && k.modifiers.contains(KeyModifiers::SHIFT))
+            || (ctrl && matches!(k.code, KeyCode::Char(']') | KeyCode::Char('5')))
+        {
+            self.return_to_tools();
+            return;
+        }
         if self.term.is_focused() {
             return self.term.key(k);
         }
         let repeat = k.kind == KeyEventKind::Repeat;
-        let ctrl = k.modifiers.contains(KeyModifiers::CONTROL);
         match &self.modal {
             Modal::Search { logs, .. } => {
                 let logs = *logs;
@@ -321,15 +328,29 @@ impl App {
         }
     }
 
+    pub(super) fn return_to_tools(&mut self) {
+        self.term.unfocus();
+        self.focus_on_start = None;
+        self.queued = None;
+        self.cancel_search();
+        self.modal = Modal::None;
+        self.focus = Focus::List;
+        if self.tab == Tab::History {
+            self.tab = Tab::Logs;
+        }
+    }
+
     fn cancel_search(&mut self) {
         if let Modal::Search {
-            logs, prev_filter, ..
+            logs,
+            prev_filter,
+            prev_selection,
+            ..
         } = std::mem::replace(&mut self.modal, Modal::None)
             && !logs
         {
             self.filter = prev_filter;
-            let keep = self.selected_key();
-            self.refilter(keep);
+            self.refilter(prev_selection);
             self.on_select();
         }
     }

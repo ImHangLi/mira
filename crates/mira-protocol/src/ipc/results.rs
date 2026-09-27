@@ -140,6 +140,7 @@ pub struct ActionDescription {
     pub mode: ActionMode,
     pub runner: String,
     pub terminal: TerminalMode,
+    pub show: crate::manifest::ShowPolicy,
     pub timeout: TimeoutWire,
     pub cwd: String,
     /// Names only; values are never described.

@@ -26,6 +26,15 @@ pub enum TerminalMode {
     Pty,
 }
 
+/// When the TUI opens a terminal program's page.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ShowPolicy {
+    #[default]
+    OnRun,
+    OnSelect,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum StopSignal {
@@ -112,6 +121,8 @@ pub struct ActionWire {
     pub timeout: Option<TimeoutWire>,
     #[serde(default)]
     pub terminal: TerminalMode,
+    #[serde(default)]
+    pub show: ShowPolicy,
     #[serde(default)]
     pub stop_signal: StopSignal,
     #[serde(default = "default_stop_grace")]

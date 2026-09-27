@@ -22,6 +22,8 @@ pub enum Cmd {
     Toggle,
     Restart,
     Focus,
+    /// Return to the tools from any pane, modal, or program.
+    Tools,
     Search,
     Quit,
     Keep,
@@ -88,6 +90,37 @@ impl App {
     /// Every key that works now. The footer shows the `footer` ones; the router accepts
     /// only these.
     pub fn bindings(&self) -> Vec<Binding> {
+        let mut v = self.context_bindings();
+        let away = !matches!(self.modal, Modal::None)
+            || self.term.is_focused()
+            || self.focus != Focus::List;
+        if away {
+            // One key back from anywhere; other keys that also go back stay in help only.
+            for b in &mut v {
+                if matches!(b.cmd, Cmd::Focus | Cmd::Escape | Cmd::Detach)
+                    && matches!(b.label.as_str(), "tools" | "back" | "back to the tools")
+                {
+                    b.footer = false;
+                }
+            }
+            v.insert(0, bind("F1", "tools", Cmd::Tools));
+        } else {
+            v.insert(0, hidden("F1", "tools", Cmd::Tools));
+        }
+        // When Enter already opens the logs, Tab says the same thing; keep one in the footer.
+        if v.iter()
+            .any(|b| b.footer && b.cmd == Cmd::Open && b.label == "logs")
+        {
+            for b in &mut v {
+                if b.cmd == Cmd::Focus && b.label == "logs" {
+                    b.footer = false;
+                }
+            }
+        }
+        v
+    }
+
+    fn context_bindings(&self) -> Vec<Binding> {
         if let Some(v) = self.term.bindings() {
             return v;
         }
@@ -264,7 +297,7 @@ impl App {
                 let w = if on { "schedule off" } else { "schedule on" };
                 v.push(bind("t", w, Cmd::Schedule));
             }
-            v.push(bind("x", "remove plugin", Cmd::Remove));
+            v.push(hidden("x", "remove plugin", Cmd::Remove));
         }
         if self.selected_item().is_some() {
             v.push(hidden("[ ]", "previous or next tab", Cmd::NextTab));
@@ -379,6 +412,11 @@ impl App {
     }
 
     fn global_bindings(&self, v: &mut Vec<Binding>) {
+        v.push(hidden(
+            "Shift-Esc",
+            "back to the tools (also Ctrl-])",
+            Cmd::Tools,
+        ));
         if self.focus == Focus::List && !self.filter.is_empty() && self.selected_view().is_some() {
             v.push(bind("Esc", "clear filter", Cmd::Escape));
         }
@@ -453,12 +491,7 @@ impl App {
                         && !p.row_actions.is_empty()
                         && self.control_lost.is_none()
                     {
-                        let w = if p.row_actions.len() == 1 {
-                            format!("run {}", p.row_actions[0])
-                        } else {
-                            "row actions".into()
-                        };
-                        v.push(bind("Enter", w, Cmd::Open));
+                        v.push(bind("Enter", "act on row", Cmd::Open));
                     }
                     if rows > 0 {
                         let (y, big) = match p.kind {
