@@ -61,34 +61,36 @@ if [ -n "$other" ] && [ "$other" != "$dir/mira" ]; then
   echo "Note: another mira is first on PATH: $other"
 fi
 # Put the install directory on PATH for new shells, once, unless MIRA_NO_MODIFY_PATH is set.
-case ":$PATH:" in
-  *":$dir:"*) ;;
-  *)
-    case "$(basename "${SHELL:-}")" in
-      # ~/.zshenv is read by every zsh, including the non-interactive shells agents run.
-      zsh) rc="${ZDOTDIR:-$HOME}/.zshenv"; line="export PATH=\"$dir:\$PATH\"" ;;
-      bash) rc="$HOME/.bash_profile"; line="export PATH=\"$dir:\$PATH\"" ;;
-      fish) rc="$HOME/.config/fish/conf.d/mira.fish"; line="fish_add_path \"$dir\"" ;;
-      *) rc="" ;;
-    esac
-    # The path is written into a shell profile, so it must not contain characters a shell
-    # would interpret there.
-    case "$dir" in
-      *[\"\$\`\\]* | *"
-"*) unsafe=1 ;;
-      *) unsafe="" ;;
-    esac
-    if [ -n "${MIRA_NO_MODIFY_PATH:-}" ] || [ -z "$rc" ] || [ -n "$unsafe" ]; then
-      echo "Add it to PATH:  export PATH=\"$dir:\$PATH\""
-    else
-      if ! grep -qsF "$line" "$rc"; then
-        mkdir -p "$(dirname "$rc")"
-        printf '\n# Added by the Mira installer\n%s\n' "$line" >> "$rc"
-        echo "Added $dir to PATH in $rc."
-      fi
-      echo "Open a new terminal, or run now:  export PATH=\"$dir:\$PATH\""
-    fi
-    ;;
+# Check the shell profile, not this shell's PATH: an app that is already open (an editor, an
+# agent) can still carry an old PATH entry that new terminals do not have.
+case "$(basename "${SHELL:-}")" in
+  # ~/.zshenv is read by every zsh, including the non-interactive shells agents run.
+  zsh) rc="${ZDOTDIR:-$HOME}/.zshenv"; line="export PATH=\"$dir:\$PATH\"" ;;
+  bash) rc="$HOME/.bash_profile"; line="export PATH=\"$dir:\$PATH\"" ;;
+  fish) rc="$HOME/.config/fish/conf.d/mira.fish"; line="fish_add_path \"$dir\"" ;;
+  *) rc="" ;;
 esac
+# The path is written into a shell profile, so it must not contain characters a shell
+# would interpret there.
+case "$dir" in
+  *[\"\$\`\\]* | *"
+"*) unsafe=1 ;;
+  *) unsafe="" ;;
+esac
+if [ -n "${MIRA_NO_MODIFY_PATH:-}" ] || [ -z "$rc" ] || [ -n "$unsafe" ]; then
+  echo "Add it to PATH:  export PATH=\"$dir:\$PATH\""
+else
+  # A line the user wrote with $HOME or ~ instead of the full path counts too.
+  rel="${dir#"$HOME"}"
+  if ! grep -qsF "$dir" "$rc" && ! grep -qsF "\$HOME$rel" "$rc" && ! grep -qsF "~$rel" "$rc"; then
+    mkdir -p "$(dirname "$rc")"
+    printf '\n# Added by the Mira installer\n%s\n' "$line" >> "$rc"
+    echo "Added $dir to PATH in $rc."
+  fi
+  case ":$PATH:" in
+    *":$dir:"*) ;;
+    *) echo "Open a new terminal, or run now:  export PATH=\"$dir:\$PATH\"" ;;
+  esac
+fi
 echo "Next: ask your agent to set up Mira. Agents start here: https://github.com/ImHangLi/mira/blob/main/docs/agents.md"
 echo "Uninstall: rm \"$dir/mira\" \"$marker\", and remove the Mira line from your shell profile (project .mira files and workspace data are kept)."
