@@ -84,7 +84,7 @@ impl App {
                         Ok(words) => {
                             let t = format!("mira {}", words.join(" "));
                             *error = Some(format!("running {t}..."));
-                            cmdbar::run(self.root.clone(), words, self.io.events.clone());
+                            cmdbar::run(self.root.clone(), words, None, self.io.events.clone());
                         }
                         Err(e) => *error = Some(e),
                     },
@@ -113,6 +113,29 @@ impl App {
                         let n = o.lines.len();
                         clip::copy(o.text.clone(), n, self.io.events.clone());
                     }
+                    _ => {}
+                }
+                return;
+            }
+            Modal::Confirm { .. } => {
+                match k.code {
+                    KeyCode::Char('y') | KeyCode::Enter if !repeat => {
+                        if let Modal::Confirm { words, done, .. } =
+                            std::mem::replace(&mut self.modal, Modal::None)
+                        {
+                            self.info(format!("running mira {}...", words.join(" ")));
+                            cmdbar::run(
+                                self.root.clone(),
+                                words,
+                                Some(done),
+                                self.io.events.clone(),
+                            );
+                        }
+                    }
+                    KeyCode::Esc | KeyCode::Char('n') | KeyCode::Char('q') => {
+                        self.modal = Modal::None
+                    }
+                    KeyCode::Char('c') if ctrl => self.modal = Modal::None,
                     _ => {}
                 }
                 return;
@@ -234,6 +257,7 @@ impl App {
             (KeyCode::Char('Y'), _) => Cmd::CopyAll,
             (KeyCode::Char('H'), _) => Cmd::History,
             (KeyCode::Char('o'), _) => Cmd::OpenWritten,
+            (KeyCode::Char('x'), _) => Cmd::Remove,
             (KeyCode::Char(']'), _) => Cmd::NextTab,
             (KeyCode::Char('['), _) => Cmd::PrevTab,
             (KeyCode::Char(c @ '1'..='3'), _) => Cmd::GoTab(c as u8 - b'1'),

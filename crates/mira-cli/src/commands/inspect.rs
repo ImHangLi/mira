@@ -502,6 +502,8 @@ pub fn doctor(ctx: &Ctx) -> ExitCode {
             );
         }
         skills_checks(&mut push);
+        // Connect first: connecting starts the host, which creates the runtime folder.
+        let host = mira_client::connect(&paths, &ConnectOptions::cli()).await;
         match std::fs::symlink_metadata(&paths.runtime_dir) {
             Ok(m)
                 if m.is_dir()
@@ -524,7 +526,7 @@ pub fn doctor(ctx: &Ctx) -> ExitCode {
             ),
             Err(_) => push("runtime_dir", CheckStatus::Ok, "not created yet".into()),
         }
-        match mira_client::connect(&paths, &ConnectOptions::cli()).await {
+        match host {
             Ok(c) => push(
                 "host",
                 CheckStatus::Ok,

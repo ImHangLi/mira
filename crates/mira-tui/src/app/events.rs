@@ -309,7 +309,13 @@ impl App {
                 }
             },
             Event::CommandDone(out) => {
-                if matches!(self.modal, Modal::Command { .. } | Modal::None) {
+                // A command such as `reload` or `plugin remove` may change the catalog.
+                if !out.failed {
+                    let _ = self.io.read.send(Read::Catalog);
+                }
+                if let (false, Some(done)) = (out.failed, &out.done) {
+                    self.info(done.clone());
+                } else if matches!(self.modal, Modal::Command { .. } | Modal::None) {
                     self.modal = Modal::Output(Box::new(out));
                 }
             }

@@ -39,6 +39,7 @@ To show only part of another action's output (errors, one stream), declare a der
 Two ways to write it:
 - **Directly** (simplest, for one plugin): write the plugin folder (in `.mira/plugins/<id>/` or anywhere else), then `mira validate DIR --json` and `mira apply DIR --json`; apply copies an outside folder to `.mira/plugins/<id>/` and adds it to `.mira/workspace.json` when it is new.
 - **As a draft** (safe when others may change the catalog at the same time): copy `workspace.json` and `plugins/` from `.mira` into `.mira/.drafts/<name>/`, edit there, then validate and apply the draft as in step 4. Delete the draft after it is applied. Field reference: [manifest](references/manifest.md). Structured output: [MPP/1 and views](references/protocol.md). Starting points: [command template](templates/command/plugin.json), [structured template](templates/structured/).
+- **Remove a plugin:** `mira plugin remove PLUGIN_ID --json`. It takes the plugin out of `.mira/workspace.json` and keeps its folder. Delete the folder only if the user asks.
 
 Rules that matter:
 - Action IDs and view IDs share one namespace inside a plugin: an action `slowest` and a view `slowest` conflict.

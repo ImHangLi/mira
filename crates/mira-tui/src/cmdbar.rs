@@ -33,6 +33,8 @@ pub const COMMANDS: &[&str] = &[
     "up",
     "down",
     "exec",
+    "reload",
+    "plugin",
 ];
 
 pub struct Output {
@@ -41,6 +43,8 @@ pub struct Output {
     pub text: String,
     pub top: usize,
     pub failed: bool,
+    /// The notice to show instead of this output when the command succeeds.
+    pub done: Option<String>,
 }
 
 /// Splits a command tail into words. Rejects shell syntax outside quotes.
@@ -120,8 +124,9 @@ pub fn hint(prefix: &str) -> String {
     }
 }
 
-/// Runs `mira --project ROOT --json WORDS...` and reports its reply.
-pub fn run(root: String, words: Vec<String>, tx: Tx) {
+/// Runs `mira --project ROOT --json WORDS...` and reports its reply. On success, `done`
+/// replaces the output with a notice.
+pub fn run(root: String, words: Vec<String>, done: Option<String>, tx: Tx) {
     tokio::spawn(async move {
         let title = format!("mira {}", words.join(" "));
         let exe = match std::env::current_exe() {
@@ -175,6 +180,7 @@ pub fn run(root: String, words: Vec<String>, tx: Tx) {
                     text,
                     top: 0,
                     failed: code != 0,
+                    done,
                 }
             }
         };
@@ -190,6 +196,7 @@ impl Output {
             text: message,
             top: 0,
             failed: true,
+            done: None,
         }
     }
 }

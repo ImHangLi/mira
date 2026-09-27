@@ -1,15 +1,17 @@
-//! `apply` and `reload`: accept a validated definition set without restarting running work.
-//! `apply` takes a `.mira` draft or one plugin folder.
+//! `apply`, `reload`, and `plugin remove`: accept a validated definition set without
+//! restarting running work. `apply` takes a `.mira` draft or one plugin folder.
 
 use std::path::Path;
 use std::process::ExitCode;
 
+use mira_client::Client;
 use mira_client::{ConnectOptions, MAINTENANCE_TIMEOUT};
-use mira_protocol::ErrorInfo;
 use mira_protocol::config::{WORKSPACE_FILE, load_plugin_dir};
-use mira_protocol::ids::{AbsolutePath, CatalogRevision, RequestKey};
+use mira_protocol::ids::{AbsolutePath, CatalogRevision, PluginId, RequestKey};
 use mira_protocol::ipc::{ConfigApplied, ConfigApplyParams, Empty, Method};
-use mira_protocol::reply::ReplyContext;
+use mira_protocol::reply::{PublicReply, ReplyContext};
+use mira_protocol::{ErrorCode, ErrorInfo};
+use serde::Serialize;
 
 use super::ctx::{Ctx, block_on};
 use super::plugin_dir::{self, PluginDraft};
@@ -150,16 +152,138 @@ pub fn reload(ctx: &Ctx) -> ExitCode {
             Ok(c) => c,
             Err((c, e)) => return ctx.fail(c, e),
         };
-        match client
-            .call_with_timeout::<_, ConfigApplied>(
-                Method::ConfigReload,
-                &Empty {},
-                MAINTENANCE_TIMEOUT,
-            )
-            .await
-        {
+        match call_reload(&mut client).await {
             Ok(r) => ctx.emit(&r, text),
-            Err(e) => ctx.fail(client.context(), e.to_error_info()),
+            Err(e) => ctx.fail(client.context(), e),
         }
+    })
+}
+
+/// The `config.reload` call that `mira reload` makes.
+async fn call_reload(client: &mut Client) -> Result<PublicReply<ConfigApplied>, ErrorInfo> {
+    client
+        .call_with_timeout::<_, ConfigApplied>(Method::ConfigReload, &Empty {}, MAINTENANCE_TIMEOUT)
+        .await
+        .map_err(|e| e.to_error_info())
+}
+
+/// The reply data of `mira plugin remove`.
+#[derive(Serialize)]
+struct PluginRemoved {
+    /// The removed plugin ID.
+    plugin: PluginId,
+    /// The `workspace.json` entry that was removed.
+    entry: String,
+    /// The plugin folder, which stays on disk.
+    kept_dir: String,
+    /// The result of the reload.
+    reload: ConfigApplied,
+}
+
+/// `mira plugin remove ID`: removes the plugin's entry from `.mira/workspace.json`, keeps
+/// its folder, and reloads. Refuses while the plugin has active runs.
+pub fn remove_plugin(ctx: &Ctx, id: &str) -> ExitCode {
+    block_on(async {
+        let prepared = (|| {
+            let id = id
+                .parse::<PluginId>()
+                .map_err(|e| invalid_argument(e.to_string()))?;
+            let paths = ctx.paths()?;
+            let ws_file = paths.mira_dir.join(WORKSPACE_FILE);
+            if !ws_file.is_file() {
+                return Err(ErrorInfo::not_setup());
+            }
+            let ws_text = std::fs::read_to_string(&ws_file).map_err(|e| {
+                ErrorInfo::new(ErrorCode::INTERNAL, format!("{}: {e}", ws_file.display()))
+            })?;
+            let ws = serde_json::from_str(&ws_text).map_err(|e| {
+                ErrorInfo::new(
+                    ErrorCode::SCHEMA_INVALID,
+                    format!("{}: {e}", ws_file.display()),
+                )
+            })?;
+            let entries = plugin_dir::entries(&ws);
+            let Some(entry) = plugin_dir::find_entry(&paths.mira_dir, &entries, id.as_str()) else {
+                return Err(ErrorInfo::new(
+                    ErrorCode::NOT_FOUND,
+                    format!("no plugin `{id}` in .mira/{WORKSPACE_FILE}"),
+                )
+                .with_next_action(&["mira", "catalog"], "List the tools and their plugins."));
+            };
+            let new_text = plugin_dir::remove_entry(&ws_text, &entry)?;
+            Ok::<_, ErrorInfo>((id, entry, ws_file, ws_text, new_text))
+        })();
+        let (id, entry, ws_file, old_text, new_text) = match prepared {
+            Ok(v) => v,
+            Err(e) => return ctx.fail(ReplyContext::default(), e),
+        };
+        let mut client = match ctx.client(&ConnectOptions::cli()).await {
+            Ok(c) => c,
+            Err((c, e)) => return ctx.fail(c, e),
+        };
+        let status = match client.status().await.map(PublicReply::into_data) {
+            Ok(Ok(s)) => s,
+            Ok(Err(e)) => return ctx.fail(client.context(), e),
+            Err(e) => return ctx.fail(client.context(), e.to_error_info()),
+        };
+        let active: Vec<String> = status
+            .runs
+            .iter()
+            .filter(|r| r.lifecycle.is_active())
+            .filter(|r| r.action_ref.as_ref().is_some_and(|a| a.plugin == id))
+            .map(|r| r.run_id.to_string())
+            .collect();
+        if let Some(first) = active.first() {
+            let mut details = serde_json::Map::new();
+            details.insert("plugin".into(), id.to_string().into());
+            details.insert("active_runs".into(), active.clone().into());
+            let e = ErrorInfo::new(
+                ErrorCode::BUSY,
+                format!(
+                    "plugin `{id}` has {} active run(s): {}; stop them first",
+                    active.len(),
+                    active.join(", ")
+                ),
+            )
+            .with_details(details)
+            .with_next_action(
+                &["mira", "stop", first],
+                "Stop the active run, then remove again.",
+            );
+            return ctx.fail(client.context(), e);
+        }
+        if let Err(e) = std::fs::write(&ws_file, &new_text) {
+            let e = ErrorInfo::new(ErrorCode::INTERNAL, format!("{}: {e}", ws_file.display()));
+            return ctx.fail(client.context(), e);
+        }
+        let reply = match call_reload(&mut client).await {
+            Ok(r) if r.is_ok() => r,
+            res => {
+                // Put the entry back, so a failed reload leaves the project as it was.
+                let _ = std::fs::write(&ws_file, &old_text);
+                return match res {
+                    Ok(r) => ctx.emit(&r, text),
+                    Err(e) => ctx.fail(client.context(), e),
+                };
+            }
+        };
+        let kept_dir = if entry.starts_with('/') {
+            entry.clone()
+        } else {
+            format!(".mira/{entry}")
+        };
+        let reply = reply.map(|reload| PluginRemoved {
+            plugin: id,
+            entry,
+            kept_dir,
+            reload,
+        });
+        ctx.emit(&reply, |r| {
+            format!(
+                "removed plugin `{}` from .mira/{WORKSPACE_FILE}; its files stay in {} \
+                 (catalog revision {})",
+                r.plugin, r.kept_dir, r.reload.catalog_revision
+            )
+        })
     })
 }

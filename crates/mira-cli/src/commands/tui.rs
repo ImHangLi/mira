@@ -45,7 +45,7 @@ pub fn open(ctx: &Ctx) -> ExitCode {
 
 fn setup_screen(root: &str, e: &ErrorInfo) -> String {
     format!(
-        "Mira is not set up in {root}
+        r#"Mira is not set up in {root}
 {message}.
 
 Mira never guesses commands. Ask your coding agent to set up Mira for this repo;
@@ -53,9 +53,23 @@ agents start here:
 
   https://github.com/ImHangLi/mira/blob/main/docs/agents.md
 
-Or write a plugin yourself: add .mira/workspace.json and .mira/plugins/<id>/plugin.json
-(see `mira schema plugin`), run `mira validate .mira` and `mira reload`, then `mira` again.
-",
+Or set it up yourself (guide: https://github.com/ImHangLi/mira/blob/main/docs/guide.md).
+Write these two files, with your own command in "argv":
+
+  .mira/workspace.json
+    {{"api": 1, "name": "My project", "plugins": ["plugins/dev"], "autostart": []}}
+
+  .mira/plugins/dev/plugin.json
+    {{
+      "api": 1, "id": "dev", "name": "Dev", "description": "Project commands.",
+      "actions": [
+        {{"id": "test", "title": "Unit tests", "description": "Run the tests once.",
+         "mode": "task", "run": {{"kind": "command", "argv": ["npm", "test"]}}}}
+      ]
+    }}
+
+Then run `mira validate .mira` and `mira` again.
+"#,
         message = e.message
     )
 }
