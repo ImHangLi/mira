@@ -1,1 +1,1 @@
-{"api": 1, "name": "Example plugins", "plugins": ["plugins/find", "plugins/todos", "plugins/server", "plugins/errors", "plugins/daily"], "autostart": [], "ui": {"mouse": false}, "meta": {}}
+{"api": 1, "name": "Example plugins", "plugins": ["plugins/find", "plugins/todos", "plugins/server", "plugins/errors", "plugins/shell", "plugins/timer", "plugins/disk", "plugins/daily"], "autostart": [], "ui": {"mouse": false}, "meta": {}}

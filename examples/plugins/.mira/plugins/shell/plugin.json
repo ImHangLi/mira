@@ -1,0 +1,7 @@
+{
+  "api": 1, "id": "shell", "name": "Terminal programs", "description": "Interactive command-line programs inside Mira. Press a to type into them.",
+  "actions": [
+    {"id": "top", "title": "Activity (top)", "description": "The live process list, sorted by CPU.", "mode": "process", "run": {"kind": "command", "argv": ["top", "-s", "2", "-o", "cpu"]}, "terminal": "pty"},
+    {"id": "python", "title": "Python shell", "description": "An interactive Python prompt.", "mode": "process", "run": {"kind": "command", "argv": ["python3", "-q"]}, "terminal": "pty"}
+  ]
+}

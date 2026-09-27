@@ -68,3 +68,5 @@ mira view PLUGIN.VIEW --json                          # structured output is rea
 ## 5. Report
 
 Return the refs you created or changed, the shortest invocation (`mira run …`), what you verified, and the limits. Mention that the human sees the same tool in the TUI (`mira`). Do not paste the whole implementation.
+
+To give a plugin to someone else, see [sharing](references/sharing.md).

@@ -28,6 +28,7 @@ bundled! {
         "SKILL.md",
         "references/manifest.md",
         "references/protocol.md",
+        "references/sharing.md",
         "templates/command/plugin.json",
         "templates/command/with_input.py",
         "templates/structured/plugin.json",

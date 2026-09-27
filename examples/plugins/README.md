@@ -6,6 +6,9 @@ Small plugins you can copy into your own `.mira/plugins/` and list in `.mira/wor
 - `todos`: a structured plugin that shows TODO markers as a table. Select a row to run `todos.show`, which shows the lines around that match.
 - `server`: a service that logs one request per second and, now and then, an error.
 - `errors`: a view with no script. `plugin.json` declares a live log view over `server.run` that keeps only the lines with "error", so you and your agent read the same filtered log.
+- `shell`: terminal programs inside Mira: `top`, and a Python prompt. Start one, then press `a` to type into it; `Ctrl-]` goes back to Mira.
+- `timer`: a countdown in the Timer view, with a macOS notification at the end. The TUI shows a form for the seconds and the label.
+- `disk`: a scheduled table of the free space on each volume. The table stays after a restart (`"persistence": "last"`). Turn the schedule on with `t` in the TUI or `mira schedule disk.refresh on`.
 - `daily`: a scheduled task that drafts a short daily update from git and TODO markers. Turn it on with `mira schedule daily.draft on`.
 
 Check them with `mira validate examples/plugins/.mira`.
