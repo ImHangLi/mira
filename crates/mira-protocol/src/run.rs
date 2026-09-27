@@ -69,19 +69,6 @@ impl Lifecycle {
     pub fn is_active(self) -> bool {
         !matches!(self, Self::Finished { .. })
     }
-    /// Whether `self → next` is a legal transition.
-    pub fn can_become(self, next: Lifecycle) -> bool {
-        use Lifecycle::*;
-        matches!(
-            (self, next),
-            (Starting, Running)
-                | (Starting, Stopping { .. })
-                | (Starting, Finished { .. })
-                | (Running, Stopping { .. })
-                | (Running, Finished { .. })
-                | (Stopping { .. }, Finished { .. })
-        )
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
