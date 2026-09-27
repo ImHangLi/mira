@@ -147,6 +147,7 @@ impl Actor {
         let status = self.status_data();
         let ev = StreamEvent::State {
             state_revision: self.state_revision,
+            catalog_revision: self.catalog_revision,
             session: status.session,
             runs: status.runs,
             storage_warnings: status.storage_warnings,

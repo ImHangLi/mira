@@ -3,7 +3,7 @@
 use std::time::Instant;
 
 use mira_protocol::error::ErrorInfo;
-use mira_protocol::ids::{ActionRef, RunId, ViewRef};
+use mira_protocol::ids::{ActionRef, CatalogRevision, RunId, ViewRef};
 use mira_protocol::ipc::*;
 use mira_protocol::run::{Lifecycle, RunRecord, RunSummary};
 
@@ -260,7 +260,9 @@ impl App {
 impl App {
     pub(super) fn frame(&mut self, frame: StreamFrame) {
         match frame.event {
-            StreamEvent::Ready { .. } => {}
+            StreamEvent::Ready {
+                catalog_revision, ..
+            } => self.catalog_seen(catalog_revision),
             StreamEvent::Snapshot(s) => {
                 if self.stream_issue.take().is_some() {
                     self.reload_selected_tail();
@@ -279,8 +281,10 @@ impl App {
                 session,
                 runs,
                 storage_warnings,
+                catalog_revision,
                 ..
             } => {
+                self.catalog_seen(catalog_revision);
                 self.storage_warnings = storage_warnings;
                 self.apply_runs(session, runs);
             }
@@ -467,5 +471,18 @@ impl App {
         let active: Vec<&RunId> = self.active.values().map(|r| &r.run_id).collect();
         self.screens.retain(|r, _| active.contains(&r));
         let _ = self.io.read.send(Read::Screen(run_id));
+    }
+
+    /// Reads the catalog again when the host reports a newer revision: an agent added a
+    /// plugin, or `.mira` changed on disk.
+    fn catalog_seen(&mut self, rev: CatalogRevision) {
+        if self.catalog_revision != Some(rev) {
+            let first = self.catalog_revision.is_none();
+            self.catalog_revision = Some(rev);
+            if !first {
+                self.inputs.clear();
+                let _ = self.io.read.send(Read::Catalog);
+            }
+        }
     }
 }
