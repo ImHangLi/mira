@@ -55,6 +55,8 @@ pub enum Cmd {
     OpenWritten,
     /// Remove the selected item's plugin from the project, after a confirmation (`x`).
     Remove,
+    /// Choose a default plugin to add to the project (`+`).
+    AddPlugin,
 }
 
 pub struct Binding {
@@ -131,6 +133,12 @@ impl App {
                 v.push(bind("j/k", "scroll", Cmd::Down));
                 v.push(bind("y", "copy all", Cmd::Copy));
                 v.push(bind("Esc/q", "close", Cmd::Escape));
+                return v;
+            }
+            Modal::AddPlugin { .. } => {
+                v.push(bind("j/k", "choose", Cmd::Down));
+                v.push(bind("Enter", "add", Cmd::Open));
+                v.push(bind("Esc", "cancel", Cmd::Escape));
                 return v;
             }
             Modal::Confirm { .. } => {
@@ -379,6 +387,9 @@ impl App {
             v.insert(0, bind("o", format!("open {title}"), Cmd::OpenWritten));
         }
         v.push(bind(":", "command", Cmd::Command));
+        if !self.missing_defaults().is_empty() {
+            v.push(hidden("+", "add a default plugin", Cmd::AddPlugin));
+        }
         v.push(hidden(
             "m",
             if self.mouse {

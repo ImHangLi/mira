@@ -32,7 +32,9 @@ use crate::theme::{self, Theme};
 use footer::{draw_footer, status_line};
 use header::draw_header;
 use main_pane::draw_main;
-use overlays::{draw_confirm, draw_form, draw_help, draw_output, draw_row_actions};
+use overlays::{
+    draw_add_plugin, draw_confirm, draw_form, draw_help, draw_output, draw_row_actions,
+};
 use rail::draw_rail;
 use sidebar::draw_sidebar;
 
@@ -124,6 +126,7 @@ fn draw_screen(f: &mut Frame, app: &mut App, t: &Theme) {
         Modal::Output(_) => draw_output(f, app, t, area),
         Modal::RowAction { .. } => draw_row_actions(f, app, t, area),
         Modal::Confirm { .. } => draw_confirm(f, app, t, area),
+        Modal::AddPlugin { .. } => draw_add_plugin(f, app, t, area),
         _ => {}
     }
 }

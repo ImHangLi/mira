@@ -378,6 +378,62 @@ pub(super) fn draw_confirm(f: &mut Frame, app: &App, t: &Theme, area: Rect) {
     );
 }
 
+pub(super) fn draw_add_plugin(f: &mut Frame, app: &App, t: &Theme, area: Rect) {
+    let Modal::AddPlugin { index } = &app.modal else {
+        return;
+    };
+    let list = app.missing_defaults();
+    // Names in one column, so the descriptions line up.
+    let nw = list.iter().map(|p| cells(&p.name)).max().unwrap_or(0);
+    let label = |p: &crate::cmdbar::DefaultPlugin| format!("{:nw$}  {}", p.name, p.description);
+    let w = list
+        .iter()
+        .map(|p| cells(&label(p)) + 4)
+        .chain([50])
+        .max()
+        .unwrap_or(50)
+        .min(area.width.saturating_sub(4) as usize) as u16
+        + 4;
+    let rect = centered(area, w, list.len() as u16 + 6);
+    let w = rect.width.saturating_sub(4) as usize;
+    let mut lines = vec![
+        Line::from(Span::styled(
+            "Mira ships these plugins. Pick one to add:",
+            t.bold(),
+        )),
+        Line::from(""),
+    ];
+    for (i, p) in list.iter().enumerate() {
+        let st = if i == *index {
+            t.selected()
+        } else {
+            Style::default()
+        };
+        let name = format!("  {:nw$}", p.name);
+        let rest = slice_cells(
+            &format!("  {}", p.description),
+            0,
+            w.saturating_sub(cells(&name)),
+        );
+        let pad_w = w.saturating_sub(cells(&name) + cells(&rest));
+        lines.push(Line::from(vec![
+            Span::styled(name, st.add_modifier(Modifier::BOLD)),
+            Span::styled(rest, if i == *index { st } else { t.muted() }),
+            Span::styled(" ".repeat(pad_w), st),
+        ]));
+    }
+    lines.push(Line::from(""));
+    lines.push(Line::from(Span::styled(
+        "  It becomes an ordinary plugin in .mira/plugins/.",
+        t.muted(),
+    )));
+    clear_around(f, rect, area);
+    f.render_widget(
+        Paragraph::new(lines).block(overlay(t, panel_title(t, "Add a default plugin", true))),
+        rect,
+    );
+}
+
 pub(super) fn draw_row_actions(f: &mut Frame, app: &App, t: &Theme, area: Rect) {
     let Modal::RowAction {
         choices,

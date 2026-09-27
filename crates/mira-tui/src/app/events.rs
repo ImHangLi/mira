@@ -308,6 +308,7 @@ impl App {
                     self.screens.remove(&run_id);
                 }
             },
+            Event::Defaults(list) => self.defaults = list,
             Event::CommandDone(out) => {
                 // A command such as `reload` or `plugin remove` may change the catalog.
                 if !out.failed {

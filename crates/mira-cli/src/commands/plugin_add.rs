@@ -30,13 +30,13 @@ bundled! {
 }
 
 #[derive(Serialize)]
-struct Bundled {
-    id: &'static str,
-    name: String,
-    description: String,
+pub struct Bundled {
+    pub id: &'static str,
+    pub name: String,
+    pub description: String,
 }
 
-fn bundled() -> Vec<Bundled> {
+pub fn bundled() -> Vec<Bundled> {
     BUNDLED
         .iter()
         .map(|(id, files)| {

@@ -53,6 +53,9 @@ agents start here:
 
   https://github.com/ImHangLi/mira/blob/main/docs/agents.md
 
+Or start with a plugin that ships with Mira, then run `mira`:
+
+{defaults}
 Or set it up yourself (guide: https://github.com/ImHangLi/mira/blob/main/docs/guide.md).
 Write these two files, with your own command in "argv":
 
@@ -70,6 +73,21 @@ Write these two files, with your own command in "argv":
 
 Then run `mira validate .mira` and `mira` again.
 "#,
-        message = e.message
+        message = e.message,
+        defaults = defaults_list(),
     )
+}
+
+/// `  mira plugin add NAME   Name: description`, one line per default plugin.
+fn defaults_list() -> String {
+    let list = super::plugin_add::bundled();
+    let w = list.iter().map(|p| p.id.len()).max().unwrap_or(0);
+    list.iter()
+        .map(|p| {
+            format!(
+                "  mira plugin add {:w$}   {}: {}\n",
+                p.id, p.name, p.description
+            )
+        })
+        .collect()
 }

@@ -17,6 +17,7 @@ Open a new terminal, go to your project, and run `mira`. Without a `.mira/` fold
 | `s` | Start or stop a service |
 | `a` | Type into a terminal program; `Ctrl-]` goes back to Mira |
 | `x` | Remove the selected plugin from the project (its files stay) |
+| `+` | Add a default plugin (shown at the bottom of the tool list until you have them all) |
 | `/` | Search the tools |
 | `:` | Run a `mira` command, for example `:exec --label "disk usage" -- du -sh .` |
 | `b` | Keep services running after you close the window |
@@ -35,7 +36,7 @@ mira plugin add ports      # who's on 3000? Find and stop the process on a port
 mira plugin add snake      # a game of Snake, for the build that takes too long
 ```
 
-Each one is copied to `.mira/plugins/NAME/` as ordinary files. Read them, change them, or remove them like any other plugin. In a project without `.mira/`, the first `mira plugin add` also creates `.mira/workspace.json`.
+In the TUI, press `+` for the same list. Each one is copied to `.mira/plugins/NAME/` as ordinary files. Read them, change them, or remove them like any other plugin. In a project without `.mira/`, the first `mira plugin add` also creates `.mira/workspace.json`.
 
 ## Your first plugin
 
