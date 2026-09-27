@@ -8,7 +8,9 @@ use mira_protocol::ids::{ActionId, RequestKey, RunId, ViewRef, ViewRevision};
 use mira_protocol::ipc::*;
 use mira_protocol::manifest::ViewSourceWire;
 use mira_protocol::reply::ReplyContext;
-use mira_protocol::view::{Freshness, SourceKind, TreeNode, ViewBody, ViewData, ViewSnapshot};
+use mira_protocol::view::{
+    Freshness, LogLevel, SourceKind, TreeNode, ViewBody, ViewData, ViewSnapshot,
+};
 use serde_json::Value;
 
 use super::ctx::{Ctx, block_on};
@@ -62,14 +64,20 @@ fn data_text(d: &ViewData) -> String {
         ViewData::Log { items } => items
             .iter()
             .map(|i| {
-                format!(
-                    "{} {:<5} {}",
-                    i.recorded_at
-                        .map(crate::human::clock_seconds)
-                        .unwrap_or_default(),
-                    format!("{:?}", i.level).to_lowercase(),
-                    i.text
-                )
+                let at = i
+                    .recorded_at
+                    .map(crate::human::clock_seconds)
+                    .unwrap_or_default();
+                // Info is the normal case: show only the levels that carry meaning.
+                if i.level == LogLevel::Info {
+                    format!("{at} {}", i.text)
+                } else {
+                    format!(
+                        "{at} {:<5} {}",
+                        format!("{:?}", i.level).to_lowercase(),
+                        i.text
+                    )
+                }
             })
             .collect::<Vec<_>>()
             .join("\n"),
