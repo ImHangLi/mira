@@ -139,6 +139,14 @@ impl ErrorInfo {
             next_action: None,
         }
     }
+    /// NOT_SETUP: the workspace has no `.mira/workspace.json`, with the setup steps.
+    pub fn not_setup() -> Self {
+        Self::new(
+            ErrorCode::NOT_SETUP,
+            "this workspace has no .mira/workspace.json yet",
+        )
+        .with_next_action(&["mira", "validate", ".mira"], NOT_SETUP_HINT)
+    }
     /// NOT_FOUND for a catalog item. `kind` is `catalog item`, `action`, or `view`;
     /// `details.item_ref` names the missing item.
     pub fn item_not_found(kind: &str, item_ref: impl fmt::Display) -> Self {
@@ -202,6 +210,10 @@ impl ErrorInfo {
         Ok(())
     }
 }
+
+/// How to set up a workspace that has no `.mira/workspace.json`.
+pub const NOT_SETUP_HINT: &str = "Write .mira/workspace.json and a plugin in .mira/plugins/ \
+     (mira skill, setup reference), validate them, then run `mira reload`.";
 
 /// Cuts a string to at most `max` bytes on a character boundary.
 pub fn truncate_utf8(s: &mut String, max: usize) {

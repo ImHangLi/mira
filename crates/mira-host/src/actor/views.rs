@@ -84,10 +84,6 @@ pub struct ViewStore {
     pub cleaned: HashMap<ViewRef, (u64, i64)>,
 }
 
-fn verr(code: ErrorCode, msg: impl Into<String>) -> ErrorInfo {
-    ErrorInfo::new(code, msg)
-}
-
 /// Stored ViewData JSON, host `recorded_at` on log items included.
 fn decode_stored(json_text: &str) -> Result<ViewData, String> {
     serde_json::from_str(json_text).map_err(|e| e.to_string())
@@ -119,7 +115,7 @@ fn build(
     log_cap: usize,
 ) -> Result<Option<ViewData>, ErrorInfo> {
     if data.kind() != def.kind {
-        return Err(verr(
+        return Err(ErrorInfo::new(
             ErrorCode::SCHEMA_INVALID,
             format!(
                 "view `{}` is a {:?} view; the update carries {:?} data",
@@ -133,7 +129,7 @@ fn build(
     if let Some(exp) = expected
         && current.map(|c| c.revision) != Some(exp)
     {
-        return Err(verr(
+        return Err(ErrorInfo::new(
             ErrorCode::REVISION_CONFLICT,
             match current {
                 Some(c) => format!(
@@ -148,7 +144,7 @@ fn build(
         for ra in &def.row_actions {
             for (param, col) in &ra.bindings {
                 if !columns.iter().any(|c| &c.id == col) {
-                    return Err(verr(
+                    return Err(ErrorInfo::new(
                         ErrorCode::SCHEMA_INVALID,
                         format!(
                             "row action `{}` binds `{param}` to column `{col}`, which this table does not have",
@@ -178,7 +174,7 @@ fn build(
                 match items.iter().find(|e| e.id == item.id) {
                     Some(e) if same_item(e, &item) => {}
                     Some(_) => {
-                        return Err(verr(
+                        return Err(ErrorInfo::new(
                             ErrorCode::ITEM_ID_CONFLICT,
                             format!(
                                 "log item `{}` already exists with different content; the batch was rejected",
@@ -200,7 +196,7 @@ fn build(
             }
             Ok(Some(ViewData::Log { items }))
         }
-        (ViewOp::Append, _) => Err(verr(
+        (ViewOp::Append, _) => Err(ErrorInfo::new(
             ErrorCode::INVALID_FRAME,
             "append is only allowed for log views",
         )),
@@ -392,7 +388,7 @@ impl Actor {
                 let run_id = run_id.clone();
                 return self.protocol_error(
                     &run_id,
-                    verr(ErrorCode::INVALID_FRAME, msg),
+                    ErrorInfo::new(ErrorCode::INVALID_FRAME, msg),
                     Some(view_ref.view),
                 );
             }
@@ -516,7 +512,8 @@ impl Actor {
             };
             if let Some(claim) = upd.publish.as_mut().and_then(|p| p.claim.take()) {
                 let Ok(storage) = self.storage.clone() else {
-                    let e = verr(ErrorCode::STORAGE_UNAVAILABLE, "request keys need storage");
+                    let e =
+                        ErrorInfo::new(ErrorCode::STORAGE_UNAVAILABLE, "request keys need storage");
                     self.fail_update(upd, e);
                     continue;
                 };
@@ -590,7 +587,7 @@ impl Actor {
                             },
                             ReplyMeta::default(),
                         ),
-                        None => self.fail(verr(
+                        None => self.fail(ErrorInfo::new(
                             ErrorCode::OUTCOME_UNKNOWN,
                             "the request key refers to an unreadable earlier publish",
                         )),
@@ -600,7 +597,7 @@ impl Actor {
             }
             Ok(Claim::Conflict) => self.fail_update(
                 upd,
-                verr(
+                ErrorInfo::new(
                     ErrorCode::REQUEST_KEY_CONFLICT,
                     "request key was used with a different view frame",
                 ),
@@ -615,7 +612,10 @@ impl Actor {
             s.view(&upd.view_ref)
                 .map(|(lp, d)| (lp.plugin.id.clone(), d.clone()))
         }) else {
-            return self.fail_update(upd, verr(ErrorCode::NOT_FOUND, "the view is gone"));
+            return self.fail_update(
+                upd,
+                ErrorInfo::new(ErrorCode::NOT_FOUND, "the view is gone"),
+            );
         };
         let prev = self.views.entries.remove(&upd.view_ref);
         let entry = ViewEntry {
@@ -739,7 +739,7 @@ impl Actor {
             }
             responder.send(match &error {
                 None => self.ok(res, ReplyMeta::default()),
-                Some(msg) => self.fail(verr(
+                Some(msg) => self.fail(ErrorInfo::new(
                     ErrorCode::STORAGE_UNAVAILABLE,
                     format!("the view was updated in memory but not committed: {msg}"),
                 )),
@@ -899,7 +899,7 @@ impl Actor {
             Some(c) => {
                 let c = cursor::decode(c, Kind::View, &source, "")?;
                 if c.revision != Some(e.revision.get()) {
-                    return Err(verr(
+                    return Err(ErrorInfo::new(
                         ErrorCode::VIEW_CHANGED,
                         format!(
                             "the view changed to revision {}; restart from the first page",
@@ -1084,7 +1084,7 @@ impl Actor {
             .view(&p.view_ref)
             .ok_or_else(|| ErrorInfo::item_not_found("view", &p.view_ref))?;
         if let Some(src) = &def.source {
-            return Err(verr(
+            return Err(ErrorInfo::new(
                 ErrorCode::INVALID_ARGUMENT,
                 format!(
                     "`{}` is derived from the logs of `{}`; it cannot be published to",
@@ -1101,13 +1101,13 @@ impl Actor {
             .and_then(PluginFrame::validate)
             .map_err(|i| i.to_error_info())?;
         let PluginEvent::View { view_id, op, data } = event else {
-            return Err(verr(
+            return Err(ErrorInfo::new(
                 ErrorCode::INVALID_ARGUMENT,
                 "publish input must be one MPP `view` frame",
             ));
         };
         if view_id != p.view_ref.view {
-            return Err(verr(
+            return Err(ErrorInfo::new(
                 ErrorCode::INVALID_ARGUMENT,
                 format!(
                     "frame.view_id `{view_id}` does not match the local ID of `{}`",
@@ -1116,7 +1116,7 @@ impl Actor {
             ));
         }
         if data.kind() != def.kind {
-            return Err(verr(
+            return Err(ErrorInfo::new(
                 ErrorCode::SCHEMA_INVALID,
                 format!(
                     "view `{}` is a {:?} view; the frame carries {:?} data",
@@ -1128,7 +1128,7 @@ impl Actor {
             ));
         }
         if def.persistence == Persistence::Session && self.session.is_none() {
-            return Err(verr(
+            return Err(ErrorInfo::new(
                 ErrorCode::SESSION_REQUIRED,
                 format!(
                     "`{}` is a session view; publishing it needs an active session",
@@ -1166,13 +1166,13 @@ impl Actor {
                 .iter()
                 .find(|ra| ra.action == p.action)
                 .ok_or_else(|| {
-                    verr(
+                    ErrorInfo::new(
                         ErrorCode::NOT_FOUND,
                         format!("view `{}` has no row action `{}`", p.view_ref, p.action),
                     )
                 })?;
             let changed = |msg: String| {
-                verr(ErrorCode::VIEW_CHANGED, msg).with_next_action(
+                ErrorInfo::new(ErrorCode::VIEW_CHANGED, msg).with_next_action(
                     &["mira", "view", &p.view_ref.to_string()],
                     "Read the current view, then retry with its view_revision.",
                 )

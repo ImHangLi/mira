@@ -5,6 +5,7 @@
 
 use std::borrow::Cow;
 
+use mira_protocol::clock::{self, LocalClock};
 use mira_protocol::ipc::{SessionMode, SessionState};
 use mira_protocol::manifest::{ActionMode, ViewKind};
 use mira_protocol::run::{CleanupState, Lifecycle, LogStream, Outcome, RunRecord, RunResult};
@@ -40,39 +41,8 @@ pub fn sidebar_width(total: u16) -> u16 {
     u16::try_from(w).unwrap_or(48)
 }
 
-/// Relative age: `12s`, `3m`, `2h`, `4d`.
-pub fn rel_age(secs: i64) -> String {
-    let s = secs.max(0);
-    match s {
-        0..60 => format!("{s}s"),
-        60..3600 => format!("{}m", s / 60),
-        3600..86_400 => format!("{}h", s / 3600),
-        _ => format!("{}d", s / 86_400),
-    }
-}
-
-/// Time left: `42s`, `12m`, `1h52m`.
-pub fn left_word(secs: i64) -> String {
-    let s = secs.max(0);
-    match s {
-        0..60 => format!("{s}s"),
-        60..3600 => format!("{}m", s / 60),
-        _ => format!("{}h{:02}m", s / 3600, (s % 3600) / 60),
-    }
-}
-
-/// A future local time like the CLI writes it: `16:07 (in 1h59m)`.
-fn until_word(app: &App, ts: Timestamp) -> String {
-    let left = (ts.unix_ms() - Timestamp::now().unix_ms()) / 1000;
-    format!("{} (in {})", app.clock(ts, false), left_word(left))
-}
-
-fn secs_since(ts: Timestamp) -> i64 {
-    (Timestamp::now().unix_ms() - ts.unix_ms()) / 1000
-}
-
 fn ago(ts: Timestamp) -> String {
-    format!("{} ago", rel_age(secs_since(ts)))
+    format!("{} ago", clock::age(clock::secs_since(ts)))
 }
 
 /// One footer chip: the key cells, the label cells, and whether it must stay.
@@ -309,35 +279,6 @@ fn short_id(id: &str) -> String {
     slice_cells(id, 0, 10)
 }
 
-fn took(ms: i64) -> String {
-    let s = ms / 1000;
-    match ms {
-        ..1000 => format!("{} ms", ms.max(0)),
-        1000..60_000 => format!("{}.{}s", s, (ms % 1000) / 100),
-        60_000..3_600_000 => format!("{}m{:02}s", s / 60, s % 60),
-        _ => format!("{}h{:02}m", s / 3600, (s % 3600) / 60),
-    }
-}
-
-/// Start time: `HH:MM:SS` today, `MM-DD HH:MM` on other days.
-fn started_word(app: &App, ts: Timestamp) -> String {
-    let at = |t: Timestamp| {
-        time::OffsetDateTime::from_unix_timestamp_nanos(i128::from(t.unix_ms()) * 1_000_000)
-            .ok()
-            .map(|d| d.to_offset(app.offset))
-    };
-    match (at(ts), at(Timestamp::now())) {
-        (Some(d), Some(now)) if d.date() != now.date() => format!(
-            "{:02}-{:02} {:02}:{:02}",
-            u8::from(d.month()),
-            d.day(),
-            d.hour(),
-            d.minute()
-        ),
-        _ => app.clock(ts, true),
-    }
-}
-
 /// The run's freshness word (§14.6); runs without provenance read as historical.
 fn freshness_of(rec: &RunRecord) -> &'static str {
     freshness_word(
@@ -345,21 +286,6 @@ fn freshness_of(rec: &RunRecord) -> &'static str {
             .as_ref()
             .map_or(Freshness::Historical, |p| p.freshness),
     )
-}
-
-fn run_word(l: Lifecycle) -> &'static str {
-    match l {
-        Lifecycle::Starting => "starting",
-        Lifecycle::Running => "running",
-        Lifecycle::Stopping { .. } => "stopping",
-        Lifecycle::Finished { outcome } => match outcome {
-            Outcome::Succeeded => "succeeded",
-            Outcome::Failed => "failed",
-            Outcome::Cancelled => "stopped",
-            Outcome::TimedOut => "timed out",
-            Outcome::Interrupted => "interrupted",
-        },
-    }
 }
 
 /// A failed cleanup in a few words: `cleanup failed (exit 4)`, `cleanup timed out`;
@@ -507,7 +433,7 @@ fn session_spans(app: &App, t: &Theme) -> Vec<Span<'static>> {
             Span::styled(" stopping", t.word(Tone::Amber)),
         ],
         Some(s) => {
-            let until = s.expires_at.map(|e| app.clock(e, false));
+            let until = s.expires_at.map(|e| app.clock.hm(e));
             match (s.mode, until) {
                 (SessionMode::Foreground, until) => {
                     let n = s.controller_count;
@@ -703,7 +629,7 @@ fn draw_sidebar(f: &mut Frame, app: &mut App, t: &Theme, area: Rect) {
             sel_row = rows.len();
         }
         let age = entry_time(app, entry)
-            .map(|ts| rel_age(secs_since(ts)))
+            .map(|ts| clock::age(clock::secs_since(ts)))
             .unwrap_or_default();
         // A state word (`stale`, `error`) goes before the age.
         let (flag, flag_st) = match flag {
@@ -1022,7 +948,7 @@ fn draw_oneoff(f: &mut Frame, app: &mut App, t: &Theme, i: usize, area: Rect) {
         f.render_widget(Paragraph::new(details), body);
         return;
     }
-    let offset = app.offset;
+    let clock = app.clock;
     let Some(p) = app.oneoffs[i].pane.as_mut() else {
         f.render_widget(Paragraph::new(tabs_line(t, &labels, 0, "", w)), tabs_area);
         f.render_widget(Paragraph::new(Span::styled("loading…", t.muted())), body);
@@ -1033,7 +959,7 @@ fn draw_oneoff(f: &mut Frame, app: &mut App, t: &Theme, i: usize, area: Rect) {
     p.width = bw.saturating_sub(if bw >= 40 { 11 } else { 2 }).max(1);
     let bar = log_bar(p, None);
     f.render_widget(Paragraph::new(tabs_line(t, &labels, 0, &bar, w)), tabs_area);
-    draw_records(f, p, t, focus, offset, body);
+    draw_records(f, p, t, focus, clock, body);
 }
 
 /// The one-off card's status line: a mark and a word, then details.
@@ -1044,13 +970,13 @@ fn oneoff_status(app: &App, t: &Theme, o: &OneOff) -> Vec<Span<'static>> {
     } else {
         match o.lifecycle {
             Lifecycle::Stopping { reason } => format!("stopping ({})", enum_word(reason)),
-            l => run_word(l).to_owned(),
+            l => l.word().to_owned(),
         }
     };
     let mut details: Vec<String> = Vec::new();
     match o.ended_at {
         Some(e) if !o.lifecycle.is_active() => {
-            word = format!("{word} in {}", took(e.unix_ms() - o.started_at.unix_ms()));
+            word = format!("{word} in {}", clock::span(o.started_at, e));
             details.push(ago(e));
             if let Some(x) = &o.exit {
                 match (x.code, &x.signal) {
@@ -1063,7 +989,7 @@ fn oneoff_status(app: &App, t: &Theme, o: &OneOff) -> Vec<Span<'static>> {
         _ => details.push(format!(
             "started {} ({})",
             ago(o.started_at),
-            app.clock(o.started_at, false)
+            app.clock.hm(o.started_at)
         )),
     }
     details.push(short_id(o.run_id.as_str()));
@@ -1097,24 +1023,24 @@ fn oneoff_details(app: &App, t: &Theme, o: &OneOff, w: usize) -> Vec<Line<'stati
         row("run", id.clone()),
         row(
             "state",
-            format!("{} {}", oneoff_mark(o).glyph, run_word(o.lifecycle)),
+            format!("{} {}", oneoff_mark(o).glyph, o.lifecycle.word()),
         ),
         row(
             "started",
             format!(
                 "{} ({})",
-                started_word(app, o.started_at),
+                app.clock.when_seconds(o.started_at),
                 ago(o.started_at)
             ),
         ),
     ];
     if let Some(e) = o.ended_at {
-        lines.push(row("ended", started_word(app, e)));
-        lines.push(row("took", took(e.unix_ms() - o.started_at.unix_ms())));
+        lines.push(row("ended", app.clock.when_seconds(e)));
+        lines.push(row("took", clock::span(o.started_at, e)));
     } else {
         lines.push(row(
             "running",
-            format!("{} so far", rel_age(secs_since(o.started_at))),
+            format!("{} so far", clock::age(clock::secs_since(o.started_at))),
         ));
     }
     if let Some(x) = &o.exit {
@@ -1160,12 +1086,12 @@ fn status_spans(app: &App, t: &Theme, item: &Item) -> Vec<Span<'static>> {
     } else if let Some(r) = app.active.get(a) {
         let word = match r.lifecycle {
             Lifecycle::Stopping { reason } => format!("stopping ({})", enum_word(reason)),
-            l => run_word(l).to_owned(),
+            l => l.word().to_owned(),
         };
         details.push(format!(
             "started {} ({})",
             ago(r.started_at),
-            app.clock(r.started_at, false)
+            app.clock.hm(r.started_at)
         ));
         details.push(short_id(&r.run_id.to_string()));
         let health = enum_word(r.reported_health.state);
@@ -1174,7 +1100,7 @@ fn status_spans(app: &App, t: &Theme, item: &Item) -> Vec<Span<'static>> {
         }
         head(word)
     } else if let Some(l) = app.last.get(a) {
-        let mut word = run_word(l.lifecycle).to_owned();
+        let mut word = l.lifecycle.word().to_owned();
         if let (Some(s), Some(e)) = (l.started_at, l.ended_at)
             && matches!(
                 l.lifecycle,
@@ -1183,7 +1109,7 @@ fn status_spans(app: &App, t: &Theme, item: &Item) -> Vec<Span<'static>> {
                 }
             )
         {
-            word = format!("{word} in {}", took(e.unix_ms() - s.unix_ms()));
+            word = format!("{word} in {}", clock::span(s, e));
         }
         if let Some(e) = &l.exit {
             match (e.code, &e.signal) {
@@ -1240,7 +1166,7 @@ fn extras_text(app: &App, a: &mira_protocol::ids::ActionRef) -> String {
         };
         let next = sc
             .next_at
-            .map_or(String::new(), |n| format!(", next {}", until_word(app, n)));
+            .map_or(String::new(), |n| format!(", next {}", app.clock.until(n)));
         let missed = if sc.missed_ticks > 0 {
             format!(", {} skipped tick(s)", sc.missed_ticks)
         } else {
@@ -1307,17 +1233,17 @@ fn draw_logs(
     let gutter = if w >= 40 { 11 } else { 2 };
     let text_w = w.saturating_sub(gutter).max(1);
     let focus = app.focus == Focus::Logs;
-    let offset = app.offset;
+    let clock = app.clock;
     let old = app.viewing.get(a).map(|rec| {
         let when = rec
             .ended_at
-            .map_or(String::new(), |e| format!(" at {}", app.clock(e, false)));
+            .map_or(String::new(), |e| format!(" at {}", app.clock.hm(e)));
         (
             rec.run_id.clone(),
             format!(
                 "{} RUN · {}{when}",
                 freshness_of(rec).to_uppercase(),
-                run_word(rec.lifecycle)
+                rec.lifecycle.word()
             ),
         )
     });
@@ -1362,18 +1288,11 @@ fn draw_logs(
         f.render_widget(Paragraph::new(lines), body);
         return;
     }
-    draw_records(f, p, t, focus, offset, body);
+    draw_records(f, p, t, focus, clock, body);
 }
 
 /// The lines of a log panel, or why there are none.
-fn draw_records(
-    f: &mut Frame,
-    p: &LogPane,
-    t: &Theme,
-    focus: bool,
-    offset: time::UtcOffset,
-    body: Rect,
-) {
+fn draw_records(f: &mut Frame, p: &LogPane, t: &Theme, focus: bool, clock: LocalClock, body: Rect) {
     let w = body.width as usize;
     let gutter = if w >= 40 { 11 } else { 2 };
     let text_w = w.saturating_sub(gutter).max(1);
@@ -1414,18 +1333,12 @@ fn draw_records(
         let picked = p.in_selection(idx) && (p.anchor.is_some() || Some(idx) == cursor);
         let mut spans = Vec::with_capacity(4);
         if gutter > 2 {
-            let clock = if row == 0 {
-                let nanos = i128::from(r.recorded_at.unix_ms()) * 1_000_000;
-                time::OffsetDateTime::from_unix_timestamp_nanos(nanos)
-                    .map(|d| {
-                        let d = d.to_offset(offset);
-                        format!("{:02}:{:02}:{:02}", d.hour(), d.minute(), d.second())
-                    })
-                    .unwrap_or_else(|_| "--:--:--".into())
+            let at = if row == 0 {
+                clock.hms(r.recorded_at)
             } else {
                 "        ".into()
             };
-            spans.push(Span::styled(clock, t.muted()));
+            spans.push(Span::styled(at, t.muted()));
             spans.push(Span::raw(" "));
         }
         // A thin amber bar marks stderr; host lines get a dim dot.
@@ -1465,7 +1378,7 @@ fn draw_history(f: &mut Frame, app: &App, t: &Theme, area: Rect) {
         .and_then(|p| p.run_id.as_ref());
     // The outcome column grows to fit a failed cleanup next to the outcome.
     let outcome_of = |rec: &RunRecord| {
-        let mut outcome = run_word(rec.lifecycle).to_owned();
+        let mut outcome = rec.lifecycle.word().to_owned();
         if let Some(c) = rec.exit.as_ref().and_then(|e| e.code)
             && c != 0
         {
@@ -1512,8 +1425,8 @@ fn draw_history(f: &mut Frame, app: &App, t: &Theme, area: Rect) {
                 let m = life_mark(rec.lifecycle);
                 let (outcome, cleanup) = outcome_of(rec);
                 let dur = match rec.ended_at {
-                    Some(e) => took(e.unix_ms() - rec.started_at.unix_ms()),
-                    None => format!("{} so far", rel_age(secs_since(rec.started_at))),
+                    Some(e) => clock::span(rec.started_at, e),
+                    None => format!("{} so far", clock::age(clock::secs_since(rec.started_at))),
                 };
                 let mut state = if rec.lifecycle.is_active() {
                     "current".to_owned()
@@ -1537,7 +1450,7 @@ fn draw_history(f: &mut Frame, app: &App, t: &Theme, area: Rect) {
                 let mut used = cells(&outcome);
                 let mut spans = vec![
                     Span::styled(format!("{} ", m.glyph), glyph_st),
-                    Span::styled(pad(&started_word(app, rec.started_at), 14), base),
+                    Span::styled(pad(&app.clock.when_seconds(rec.started_at), 14), base),
                     Span::styled(outcome, base),
                 ];
                 if let Some(c) = cleanup {
@@ -1675,16 +1588,7 @@ fn draw_view(f: &mut Frame, app: &mut App, t: &Theme, area: Rect) {
     let inner = block.inner(area);
     f.render_widget(block, area);
     let w = inner.width as usize;
-    let offset = app.offset;
-    let clock = |ts: Timestamp| {
-        let nanos = i128::from(ts.unix_ms()) * 1_000_000;
-        time::OffsetDateTime::from_unix_timestamp_nanos(nanos)
-            .map(|d| {
-                let d = d.to_offset(offset);
-                format!("{:02}:{:02}", d.hour(), d.minute())
-            })
-            .unwrap_or_else(|_| "--:--".into())
-    };
+    let hm = |ts: Timestamp| app.clock.hm(ts);
     let sel = t.selected();
     let Some(p) = app.view_panes.get_mut(&r) else {
         f.render_widget(Paragraph::new(Span::styled("loading…", t.muted())), inner);
@@ -1747,7 +1651,7 @@ fn draw_view(f: &mut Frame, app: &mut App, t: &Theme, area: Rect) {
                     _ => {
                         let ended = m
                             .recorded_at
-                            .map_or(String::new(), |a| format!(" {}", clock(a)));
+                            .map_or(String::new(), |a| format!(" {}", hm(a)));
                         vec![
                             Span::styled(format!("○ from {src} (ended{ended})"), t.bold()),
                             Span::styled(lines, t.muted()),
@@ -1762,7 +1666,7 @@ fn draw_view(f: &mut Frame, app: &mut App, t: &Theme, area: Rect) {
                     (None, None) => String::new(),
                 };
                 let at = m.recorded_at.map_or(String::new(), |a| {
-                    format!(" · recorded {} ({})", ago(a), clock(a))
+                    format!(" · recorded {} ({})", ago(a), hm(a))
                 });
                 let why = match (&m.freshness, &m.freshness_reason) {
                     (Freshness::Current, _) | (_, None) => String::new(),
@@ -1786,7 +1690,7 @@ fn draw_view(f: &mut Frame, app: &mut App, t: &Theme, area: Rect) {
                     (Freshness::Historical, None, Some(a)) if m.source_kind.is_some() => (
                         format!("published {}", ago(a)),
                         String::new(),
-                        format!(" · {}", clock(a)),
+                        format!(" · {}", hm(a)),
                         String::new(),
                     ),
                     _ => (freshness_word(m.freshness).to_owned(), why, at, src),
@@ -1949,7 +1853,7 @@ fn draw_rail(f: &mut Frame, app: &App, t: &Theme, area: Rect) {
                 for rec in r.iter().take(inner.height as usize) {
                     let m = life_mark(rec.lifecycle);
                     let dur = match rec.ended_at {
-                        Some(e) => took(e.unix_ms() - rec.started_at.unix_ms()),
+                        Some(e) => clock::span(rec.started_at, e),
                         None => "running".into(),
                     };
                     let when = ago(rec.ended_at.unwrap_or(rec.started_at));
@@ -1999,7 +1903,7 @@ fn draw_rail(f: &mut Frame, app: &App, t: &Theme, area: Rect) {
                 Style::default(),
             ));
             let exp = match s.expires_at {
-                Some(e) => until_word(app, e),
+                Some(e) => app.clock.until(e),
                 None if s.background_lease => "at `mira down`".into(),
                 None => "last window closes".into(),
             };
@@ -2527,9 +2431,7 @@ fn draw_row_actions(f: &mut Frame, app: &App, t: &Theme, area: Rect) {
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        ChipSize, cleanup_word, ellipsize, fit_chips, left_word, rel_age, sidebar_width, wrap,
-    };
+    use super::{ChipSize, cleanup_word, ellipsize, fit_chips, sidebar_width, wrap};
     use mira_protocol::error::{ErrorCode, ErrorInfo};
     use mira_protocol::run::CleanupState;
     use mira_protocol::time::Timestamp;
@@ -2592,17 +2494,6 @@ mod tests {
         assert_eq!(sidebar_width(120), 36);
         assert_eq!(sidebar_width(200), 48);
         assert_eq!(sidebar_width(u16::MAX), 48);
-    }
-
-    #[test]
-    fn ages_are_short() {
-        assert_eq!(rel_age(-5), "0s");
-        assert_eq!(rel_age(12), "12s");
-        assert_eq!(rel_age(185), "3m");
-        assert_eq!(rel_age(7300), "2h");
-        assert_eq!(rel_age(3 * 86_400 + 5), "3d");
-        assert_eq!(left_word(42), "42s");
-        assert_eq!(left_word(6720), "1h52m");
     }
 
     fn chip(keys: usize, label: usize, pinned: bool) -> ChipSize {

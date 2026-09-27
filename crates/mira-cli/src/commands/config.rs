@@ -5,11 +5,11 @@ use std::path::Path;
 use std::process::ExitCode;
 
 use mira_client::{ConnectOptions, MAINTENANCE_TIMEOUT};
+use mira_protocol::ErrorInfo;
 use mira_protocol::config::{WORKSPACE_FILE, load_plugin_dir};
 use mira_protocol::ids::{AbsolutePath, CatalogRevision, RequestKey};
 use mira_protocol::ipc::{ConfigApplied, ConfigApplyParams, Empty, Method};
 use mira_protocol::reply::ReplyContext;
-use mira_protocol::{ErrorCode, ErrorInfo};
 
 use super::ctx::{Ctx, block_on};
 use super::plugin_dir::{self, PluginDraft};
@@ -107,15 +107,7 @@ fn apply_plugin(
                 .map_err(|e| invalid_argument(e.to_string()))?;
             let paths = ctx.paths()?;
             if !paths.mira_dir.join(WORKSPACE_FILE).is_file() {
-                return Err(ErrorInfo::new(
-                    ErrorCode::NOT_SETUP,
-                    "this project has no .mira/workspace.json",
-                )
-                .with_next_action(
-                    &["mira", "validate", ".mira"],
-                    "Write .mira/workspace.json and a plugin in .mira/plugins/ (mira skill, \
-                     setup reference), validate them, then run `mira reload`.",
-                ));
+                return Err(ErrorInfo::not_setup());
             }
             Ok::<_, ErrorInfo>((plugin, expected, paths, parse_key(request_key)?))
         })();

@@ -14,7 +14,6 @@ mod reads;
 mod retention;
 mod runs;
 mod schedule;
-mod search;
 mod session;
 mod streams;
 mod terminal;
@@ -24,6 +23,7 @@ use std::collections::{BTreeSet, HashMap, VecDeque};
 use std::sync::Arc;
 use std::time::Duration;
 
+use mira_protocol::catalog;
 use mira_protocol::config::{self, ConfigSet};
 use mira_protocol::error::{ErrorCode, ErrorInfo, Issues};
 use mira_protocol::ids::*;
@@ -646,15 +646,7 @@ impl Actor {
     pub(crate) fn accepted(&self) -> Result<Arc<ConfigSet>, ErrorInfo> {
         match &self.config {
             ConfigState::Accepted { set, .. } => Ok(set.clone()),
-            ConfigState::NotSetup => Err(ErrorInfo::new(
-                ErrorCode::NOT_SETUP,
-                "this workspace has no .mira/workspace.json yet",
-            )
-            .with_next_action(
-                &["mira", "validate", ".mira"],
-                "Write .mira/workspace.json and a plugin in .mira/plugins/ (mira skill, setup \
-                 reference), validate them, then run `mira reload`.",
-            )),
+            ConfigState::NotSetup => Err(ErrorInfo::not_setup()),
             ConfigState::Invalid(i) => Err(i.to_error_info()),
         }
     }
@@ -664,13 +656,7 @@ impl Actor {
             Ok(s) => s,
             Err(e) => return self.fail(e),
         };
-        let words: Vec<String> = p
-            .query
-            .as_deref()
-            .unwrap_or_default()
-            .split_whitespace()
-            .map(str::to_lowercase)
-            .collect();
+        let words = catalog::query_words(p.query.as_deref().unwrap_or_default());
         let source = self.paths.id.to_string();
         let filter = cursor::filter_hash(&serde_json::json!({ "query": words }));
         let revision = self.catalog_revision;
@@ -714,7 +700,7 @@ impl Actor {
             .limit
             .map_or(DEFAULT_CATALOG_LIMIT, |l| (l as usize).clamp(1, MAX_LIMIT));
         let budget = budget::budget(p.max_bytes);
-        let items: Vec<CatalogItem> = search::search(set.catalog(), &words);
+        let items = search(set.catalog(), &words);
         let start = offset.min(items.len());
         let candidates = &items[start..(start + limit).min(items.len())];
         let next = |taken: usize| {
@@ -892,4 +878,25 @@ pub(crate) fn reply_ok<T: Serialize>(ctx: ReplyContext, data: T, meta: ReplyMeta
 pub(crate) fn reply_fail(ctx: ReplyContext, error: ErrorInfo) -> Handled {
     serde_json::to_value(PublicReply::<Value>::failure(ctx, error))
         .map_err(|e| RpcError::new(RpcError::INTERNAL_ERROR, e.to_string()))
+}
+
+/// Filters and ranks catalog items for the lowercase query `words`. An empty query keeps
+/// all items; a stable sort keeps catalog order among equal ranks.
+fn search(items: Vec<CatalogItem>, words: &[String]) -> Vec<CatalogItem> {
+    let mut ranked: Vec<(catalog::Rank, CatalogItem)> = items
+        .into_iter()
+        .filter_map(|item| {
+            let item_ref = item.item_ref.to_string();
+            let entry = catalog::Entry {
+                item_ref: &item_ref,
+                id: item.item_ref.item.as_str(),
+                title: &item.title,
+                tags: &item.tags,
+                description: &item.description,
+            };
+            catalog::rank(words, &entry).map(|r| (r, item))
+        })
+        .collect();
+    ranked.sort_by_key(|(r, _)| *r);
+    ranked.into_iter().map(|(_, item)| item).collect()
 }

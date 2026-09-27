@@ -66,7 +66,7 @@ fn data_text(d: &ViewData) -> String {
             .map(|i| {
                 let at = i
                     .recorded_at
-                    .map(crate::human::clock_seconds)
+                    .map(|t| crate::human::clock().hms(t))
                     .unwrap_or_default();
                 // Info is the normal case: show only the levels that carry meaning.
                 if i.level == LogLevel::Info {
@@ -96,7 +96,7 @@ fn data_text(d: &ViewData) -> String {
 fn source_text(s: &ViewSnapshot) -> String {
     let at = s
         .recorded_at
-        .map(|t| format!(", {}", crate::human::clock(t)))
+        .map(|t| format!(", {}", crate::human::clock().when(t)))
         .unwrap_or_default();
     if s.freshness == Freshness::Stale {
         let why = s
@@ -138,7 +138,7 @@ fn derived_head(s: &ViewSnapshot, src: &ViewSourceWire) -> String {
     } else {
         let ended = s
             .recorded_at
-            .map(|t| format!(" {}", crate::human::clock(t)))
+            .map(|t| format!(" {}", crate::human::clock().when(t)))
             .unwrap_or_default();
         format!("○ from {} (ended{ended}) · {lines}", src.logs)
     }

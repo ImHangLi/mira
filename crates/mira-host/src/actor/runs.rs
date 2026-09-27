@@ -94,10 +94,6 @@ struct Prepared {
     mpp: Option<MppRun>,
 }
 
-fn err(code: ErrorCode, msg: impl Into<String>) -> ErrorInfo {
-    ErrorInfo::new(code, msg)
-}
-
 fn source_of(kind: ClientKind) -> RunSource {
     match kind {
         ClientKind::Tui => RunSource::Tui,
@@ -106,39 +102,13 @@ fn source_of(kind: ClientKind) -> RunSource {
     }
 }
 
-/// Reads HEAD and branch statically from `.git`; recorded as context only.
+/// HEAD and branch of the workspace, read statically from `.git`; recorded as context only.
 fn git_context(root: &Path) -> Option<GitContext> {
-    let dot = root.join(".git");
-    let gitdir = if dot.is_file() {
-        let text = std::fs::read_to_string(&dot).ok()?;
-        let rel = text.strip_prefix("gitdir:")?.trim();
-        let p = PathBuf::from(rel);
-        if p.is_absolute() { p } else { root.join(p) }
-    } else if dot.is_dir() {
-        dot
-    } else {
-        return None;
-    };
-    let head = std::fs::read_to_string(gitdir.join("HEAD")).ok()?;
-    let head = head.trim();
-    match head.strip_prefix("ref: ") {
-        Some(r) => {
-            let branch = r.strip_prefix("refs/heads/").map(str::to_owned);
-            let common = std::fs::read_to_string(gitdir.join("commondir"))
-                .ok()
-                .map(|c| gitdir.join(c.trim()))
-                .unwrap_or(gitdir.clone());
-            let sha = std::fs::read_to_string(gitdir.join(r))
-                .or_else(|_| std::fs::read_to_string(common.join(r)))
-                .ok()
-                .map(|s| s.trim().to_owned());
-            Some(GitContext { head: sha, branch })
-        }
-        None => Some(GitContext {
-            head: Some(head.to_owned()),
-            branch: None,
-        }),
-    }
+    let head = mira_protocol::workspace::git_head(root)?;
+    Some(GitContext {
+        branch: head.branch().map(str::to_owned),
+        head: head.commit,
+    })
 }
 
 fn outcome_for(stop: Option<StopReason>, exit: &Option<ExitInfo>, spawn_failed: bool) -> Outcome {
@@ -194,7 +164,7 @@ impl Actor {
                 .input_schema
                 .0
                 .compile()
-                .map_err(|e| err(ErrorCode::SCHEMA_INVALID, e))?,
+                .map_err(|e| ErrorInfo::new(ErrorCode::SCHEMA_INVALID, e))?,
         );
         self.validators
             .insert(action.definition_hash.clone(), v.clone());
@@ -238,7 +208,7 @@ impl Actor {
             .ok_or_else(|| ErrorInfo::item_not_found("action", &p.action_ref))?;
         self.check_blocked(&lp.plugin.id)?;
         if !lp.plugin.enabled {
-            return Err(err(
+            return Err(ErrorInfo::new(
                 ErrorCode::INVALID_ARGUMENT,
                 format!("plugin `{}` is disabled", lp.plugin.id),
             ));
@@ -247,7 +217,7 @@ impl Actor {
             Runner::Command { argv } => (argv.as_slice().to_vec(), None, None),
             Runner::Plugin => {
                 let entry = lp.plugin.entry.as_ref().ok_or_else(|| {
-                    err(
+                    ErrorInfo::new(
                         ErrorCode::EXECUTION_FAILED,
                         format!("plugin `{}` declares no entry to run", lp.plugin.id),
                     )
@@ -320,7 +290,7 @@ impl Actor {
     pub(super) fn exec(&mut self, client: &ClientId, p: ActionExecParams, r: Responder) {
         let prepared = (|| {
             if p.label.is_empty() || p.label.len() > mira_protocol::limits::MAX_NAME_BYTES {
-                return Err(err(
+                return Err(ErrorInfo::new(
                     ErrorCode::INVALID_ARGUMENT,
                     "--label must be 1-128 bytes",
                 ));
@@ -330,7 +300,7 @@ impl Actor {
                 .ok_or_else(|| issues.to_error_info())?;
             let storage = self.storage.as_ref().map_err(|e| e.to_error_info())?;
             let definition_hash = canonical_digest(&json!({"exec": argv.as_slice()}))
-                .map_err(|e| err(ErrorCode::INTERNAL, e))?;
+                .map_err(|e| ErrorInfo::new(ErrorCode::INTERNAL, e))?;
             let fingerprint = storage.fingerprint(&json!({"exec": argv.as_slice()}));
             Ok(Prepared {
                 source: None,
@@ -382,7 +352,7 @@ impl Actor {
                 && existing.fingerprint == prep.fingerprint;
             let answer = match prep.mode {
                 ActionMode::Process if same => Ok(existing.record.run_id.clone()),
-                ActionMode::Process => Err(err(
+                ActionMode::Process => Err(ErrorInfo::new(
                     ErrorCode::ALREADY_RUNNING_DIFFERENT_INPUT,
                     format!("`{action_ref}` already runs with a different input or definition"),
                 )
@@ -392,11 +362,11 @@ impl Actor {
                 )),
                 ActionMode::Task => match (&prep.request_key, &existing.request_key) {
                     (Some(k), Some(e)) if k == e && same => Ok(existing.record.run_id.clone()),
-                    (Some(k), Some(e)) if k == e => Err(err(
+                    (Some(k), Some(e)) if k == e => Err(ErrorInfo::new(
                         ErrorCode::REQUEST_KEY_CONFLICT,
                         "request key reused with different input",
                     )),
-                    _ => Err(err(
+                    _ => Err(ErrorInfo::new(
                         ErrorCode::BUSY,
                         format!(
                             "`{action_ref}` is already running as {}",
@@ -426,7 +396,7 @@ impl Actor {
         if self.session.as_ref().is_some_and(|s| s.stopping) {
             return self.fail_opt(
                 r,
-                err(
+                ErrorInfo::new(
                     ErrorCode::BUSY,
                     "the session is stopping; retry when it has stopped",
                 )
@@ -437,7 +407,7 @@ impl Actor {
         if self.session.is_none() && !waiting_task {
             return self.fail_opt(
                 r,
-                err(
+                ErrorInfo::new(
                     ErrorCode::SESSION_REQUIRED,
                     "no active session owns long-running or non-waiting work",
                 )
@@ -464,13 +434,13 @@ impl Actor {
         let Some(session_id) = self.session.as_ref().map(|s| s.id.clone()) else {
             return self.fail_opt(
                 r,
-                err(ErrorCode::INTERNAL, "session missing after creation"),
+                ErrorInfo::new(ErrorCode::INTERNAL, "session missing after creation"),
             );
         };
         let Ok(storage) = self.storage.clone() else {
             return self.fail_opt(
                 r,
-                err(
+                ErrorInfo::new(
                     ErrorCode::STORAGE_UNAVAILABLE,
                     "run history storage is unavailable; nothing was started",
                 ),
@@ -556,11 +526,11 @@ impl Actor {
                         Claim::New => {}
                         Claim::Same { reference } => {
                             let reference = RunId::parse(reference)
-                                .map_err(|e| err(ErrorCode::INTERNAL, e.to_string()))?;
+                                .map_err(|e| ErrorInfo::new(ErrorCode::INTERNAL, e.to_string()))?;
                             return Ok(Reservation::Same { reference });
                         }
                         Claim::Conflict => {
-                            return Err(err(
+                            return Err(ErrorInfo::new(
                                 ErrorCode::REQUEST_KEY_CONFLICT,
                                 "request key was used with a different input or definition",
                             ));
@@ -662,7 +632,7 @@ impl Actor {
                         ),
                         None => reply_fail(
                             ctx,
-                            err(
+                            ErrorInfo::new(
                                 ErrorCode::OUTCOME_UNKNOWN,
                                 format!(
                                     "request key maps to {reference}, whose record is no longer available"
@@ -746,21 +716,21 @@ impl Actor {
                     .mode(0o700)
                     .create(d)
                     .map_err(|e| {
-                        err(
+                        ErrorInfo::new(
                             ErrorCode::STORAGE_UNAVAILABLE,
                             format!("cannot create {}: {e}", d.display()),
                         )
                     })?;
             }
             write_private_json(&input_file, &Value::Object(launch.input.clone())).map_err(|e| {
-                err(
+                ErrorInfo::new(
                     ErrorCode::STORAGE_UNAVAILABLE,
                     format!("cannot write input file: {e}"),
                 )
             })?;
             write_private_json(&config_file, &Value::Object(launch.config.clone())).map_err(
                 |e| {
-                    err(
+                    ErrorInfo::new(
                         ErrorCode::STORAGE_UNAVAILABLE,
                         format!("cannot write config file: {e}"),
                     )
@@ -787,7 +757,7 @@ impl Actor {
                 (Some((action, mode)), Some((_, dir))) => {
                     let abs = |p: &Path| {
                         AbsolutePath::from_path(p).map_err(|e| {
-                            err(
+                            ErrorInfo::new(
                                 ErrorCode::EXECUTION_FAILED,
                                 format!("path {} is not usable: {e}", p.display()),
                             )
@@ -810,7 +780,7 @@ impl Actor {
                         },
                     };
                     let mut line = serde_json::to_vec(&invocation)
-                        .map_err(|e| err(ErrorCode::INTERNAL, e.to_string()))?;
+                        .map_err(|e| ErrorInfo::new(ErrorCode::INTERNAL, e.to_string()))?;
                     line.push(b'\n');
                     Some(Protocol {
                         invocation_line: line,
@@ -1080,7 +1050,7 @@ impl Actor {
             RunTarget::Action { action_ref } => match self.by_action.get(action_ref) {
                 Some(id) => id.clone(),
                 None => {
-                    return r.send(self.fail(err(
+                    return r.send(self.fail(ErrorInfo::new(
                         ErrorCode::NOT_FOUND,
                         format!("`{action_ref}` has no active run"),
                     )));
@@ -1173,7 +1143,7 @@ impl Actor {
             Ok(Some(c)) => match (c.pos.t, c.pos.id.map(RunId::parse)) {
                 (Some(t), Some(Ok(id))) => Some((Timestamp::from_unix_ms(t), id)),
                 _ => {
-                    return r.send(self.fail(err(
+                    return r.send(self.fail(ErrorInfo::new(
                         ErrorCode::INVALID_ARGUMENT,
                         "invalid cursor: no run position",
                     )));
@@ -1186,7 +1156,7 @@ impl Actor {
         let set = self.accepted().ok();
         let payloads = self.payloads.clone();
         let Ok(storage) = self.storage.clone() else {
-            return r.send(self.fail(err(
+            return r.send(self.fail(ErrorInfo::new(
                 ErrorCode::STORAGE_UNAVAILABLE,
                 "run history is unavailable",
             )));
@@ -1327,7 +1297,7 @@ impl Actor {
             let Some(run_id) = run_id else {
                 return r.send(reply_fail(
                     ctx,
-                    err(ErrorCode::NOT_FOUND, "no run found for this target"),
+                    ErrorInfo::new(ErrorCode::NOT_FOUND, "no run found for this target"),
                 ));
             };
             // Logs removed by retention must not read as an empty success.
@@ -1339,7 +1309,7 @@ impl Actor {
             {
                 return r.send(reply_fail(
                                 ctx,
-                                err(
+                                ErrorInfo::new(
                                     ErrorCode::PAYLOAD_GONE,
                                     format!("the logs of {run_id} were removed by retention; the run summary is kept"),
                                 ),
@@ -1352,7 +1322,7 @@ impl Actor {
             });
             let reply = tokio::task::spawn_blocking(move || {
                 let Ok(mut log) = log.lock() else {
-                    return reply_fail(ctx, err(ErrorCode::INTERNAL, "log unavailable"));
+                    return reply_fail(ctx, ErrorInfo::new(ErrorCode::INTERNAL, "log unavailable"));
                 };
                 reads::log_page(
                     &mut log,

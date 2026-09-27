@@ -156,7 +156,7 @@ fn run_summary(r: &RunRecord) -> String {
         .as_ref()
         .map_or_else(|| format!("exec \"{}\"", r.label), ToString::to_string);
     let mut outcome = match r.lifecycle {
-        Lifecycle::Finished { outcome } => outcome_text(outcome).to_owned(),
+        Lifecycle::Finished { outcome } => outcome.word().to_owned(),
         other => lifecycle_text(&other),
     };
     if let Some(e) = &r.exit {
@@ -174,7 +174,7 @@ fn run_summary(r: &RunRecord) -> String {
     let mut s = format!(
         "{}  {target}\n  {outcome}\n  started {}, {took} {}",
         r.run_id,
-        human::clock_seconds(r.started_at),
+        human::clock().hms(r.started_at),
         human::run_duration(r)
     );
     match &r.cleanup {
@@ -203,16 +203,6 @@ fn run_summary(r: &RunRecord) -> String {
         human::short_run(&r.run_id)
     ));
     s
-}
-
-fn outcome_text(o: Outcome) -> &'static str {
-    match o {
-        Outcome::Succeeded => "succeeded",
-        Outcome::Failed => "failed",
-        Outcome::Cancelled => "cancelled",
-        Outcome::TimedOut => "timed out",
-        Outcome::Interrupted => "interrupted",
-    }
 }
 
 /// Log lines shown under a failed `run --text`.

@@ -1,72 +1,24 @@
-//! Small text helpers for human output: local clock times, durations, and intervals.
+//! Small text helpers for human output: intervals, sessions, and cleanup failures.
 //! JSON output never uses these.
 
 use std::sync::OnceLock;
 
 use mira_protocol::Timestamp;
+use mira_protocol::clock::{self, LocalClock};
 use mira_protocol::ids::RunId;
 use mira_protocol::ipc::{SessionInfo, SessionMode, SessionState};
 use mira_protocol::run::{CleanupState, RunRecord};
-use time::{OffsetDateTime, UtcOffset};
 
-static OFFSET: OnceLock<UtcOffset> = OnceLock::new();
+static CLOCK: OnceLock<LocalClock> = OnceLock::new();
 
 /// Reads the local UTC offset. Call it while the process is still single-threaded.
 pub fn init_local_offset() {
-    let _ = OFFSET.set(UtcOffset::current_local_offset().unwrap_or(UtcOffset::UTC));
+    let _ = CLOCK.set(LocalClock::detect());
 }
 
-fn local(t: Timestamp) -> Option<OffsetDateTime> {
-    let offset = OFFSET.get().copied().unwrap_or(UtcOffset::UTC);
-    OffsetDateTime::from_unix_timestamp_nanos(i128::from(t.unix_ms()) * 1_000_000)
-        .ok()
-        .map(|dt| dt.to_offset(offset))
-}
-
-/// `14:07` for today, `Sep 26 14:07` for another day.
-pub fn clock(t: Timestamp) -> String {
-    let (Some(dt), Some(now)) = (local(t), local(Timestamp::now())) else {
-        return t.to_string();
-    };
-    let hm = format!("{:02}:{:02}", dt.hour(), dt.minute());
-    if dt.date() == now.date() {
-        hm
-    } else {
-        let month = &dt.month().to_string()[..3];
-        format!("{month} {} {hm}", dt.day())
-    }
-}
-
-/// `14:07:05` (local time).
-pub fn clock_seconds(t: Timestamp) -> String {
-    match local(t) {
-        Some(dt) => format!("{:02}:{:02}:{:02}", dt.hour(), dt.minute(), dt.second()),
-        None => t.to_string(),
-    }
-}
-
-/// A compact duration: `450ms`, `3.2s`, `42s`, `5m10s`, `1h59m`, `24h`.
-pub fn duration(ms: u64) -> String {
-    if ms < 1000 {
-        return format!("{ms}ms");
-    }
-    if ms < 10_000 {
-        let tenths = ms / 100;
-        return if tenths.is_multiple_of(10) {
-            format!("{}s", tenths / 10)
-        } else {
-            format!("{}.{}s", tenths / 10, tenths % 10)
-        };
-    }
-    let s = ms / 1000;
-    let (h, m, sec) = (s / 3600, (s % 3600) / 60, s % 60);
-    match (h, m, sec) {
-        (0, 0, s) => format!("{s}s"),
-        (0, m, 0) => format!("{m}m"),
-        (0, m, s) => format!("{m}m{s}s"),
-        (h, 0, _) => format!("{h}h"),
-        (h, m, _) => format!("{h}h{m}m"),
-    }
+/// The local clock read by [`init_local_offset`].
+pub fn clock() -> LocalClock {
+    CLOCK.get().copied().unwrap_or(LocalClock::UTC)
 }
 
 /// A schedule interval: `every 2s`, `every 5m`, `every 24h`, `every 1h30m`.
@@ -111,16 +63,7 @@ pub fn session_line(s: Option<&SessionInfo>) -> String {
     }
     match (s.mode, s.expires_at) {
         (SessionMode::Background, Some(t)) => {
-            let left = t
-                .unix_ms()
-                .saturating_sub(Timestamp::now().unix_ms())
-                .max(0) as u64;
-            let left = if left < 60_000 {
-                "under 1m".to_owned()
-            } else {
-                duration(left.div_ceil(60_000) * 60_000)
-            };
-            format!("session: background, stops at {} (in {left})", clock(t))
+            format!("session: background, stops at {}", clock().until(t))
         }
         (SessionMode::Background, None) => "session: background, no time limit".into(),
         (SessionMode::Foreground, _) => format!(
@@ -148,8 +91,7 @@ pub fn cleanup_failure(c: &CleanupState) -> Option<String> {
 
 /// How long a run took (or has been running).
 pub fn run_duration(r: &RunRecord) -> String {
-    let end = r.ended_at.unwrap_or_else(Timestamp::now);
-    duration(end.unix_ms().saturating_sub(r.started_at.unix_ms()).max(0) as u64)
+    clock::span(r.started_at, r.ended_at.unwrap_or_else(Timestamp::now))
 }
 
 #[cfg(test)]
@@ -164,17 +106,6 @@ mod tests {
         assert_eq!(interval(5_400_000), "every 1h30m");
         assert_eq!(interval(90_000), "every 1m30s");
         assert_eq!(interval(1500), "every 1500ms");
-    }
-
-    #[test]
-    fn durations_are_compact() {
-        assert_eq!(duration(450), "450ms");
-        assert_eq!(duration(3200), "3.2s");
-        assert_eq!(duration(3000), "3s");
-        assert_eq!(duration(42_000), "42s");
-        assert_eq!(duration(310_000), "5m10s");
-        assert_eq!(duration(7_140_000), "1h59m");
-        assert_eq!(duration(86_400_000), "24h");
     }
 
     #[test]

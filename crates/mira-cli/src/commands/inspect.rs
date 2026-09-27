@@ -32,10 +32,9 @@ pub fn words<T: Serialize>(v: &T) -> String {
 
 pub fn lifecycle_text(l: &Lifecycle) -> String {
     match l {
-        Lifecycle::Starting => "starting".into(),
-        Lifecycle::Running => "running".into(),
         Lifecycle::Stopping { reason } => format!("stopping ({})", words(reason)),
-        Lifecycle::Finished { outcome } => format!("finished: {}", words(outcome)),
+        Lifecycle::Finished { .. } => format!("finished: {}", l.word()),
+        other => other.word().into(),
     }
 }
 
@@ -499,9 +498,10 @@ pub fn doctor(ctx: &Ctx) -> ExitCode {
             push(
                 "config",
                 CheckStatus::Warn,
-                "not set up: .mira/workspace.json is missing; write a plugin in .mira/plugins/ \
-                 (mira skill, setup reference), then `mira validate .mira` and `mira reload`"
-                    .into(),
+                format!(
+                    "not set up: .mira/workspace.json is missing. {}",
+                    mira_protocol::error::NOT_SETUP_HINT
+                ),
             );
         }
         skills_checks(&mut push);

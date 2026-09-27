@@ -33,6 +33,19 @@ pub enum Outcome {
     Interrupted,
 }
 
+impl Outcome {
+    /// The outcome in plain words for human output: `succeeded`, `stopped`, `timed out`.
+    pub fn word(self) -> &'static str {
+        match self {
+            Self::Succeeded => "succeeded",
+            Self::Failed => "failed",
+            Self::Cancelled => "stopped",
+            Self::TimedOut => "timed out",
+            Self::Interrupted => "interrupted",
+        }
+    }
+}
+
 /// `starting → running → stopping → finished`; a failed start may go straight to finished.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "state", rename_all = "snake_case", deny_unknown_fields)]
@@ -44,6 +57,15 @@ pub enum Lifecycle {
 }
 
 impl Lifecycle {
+    /// The state in plain words for human output; a finished run shows its outcome.
+    pub fn word(self) -> &'static str {
+        match self {
+            Self::Starting => "starting",
+            Self::Running => "running",
+            Self::Stopping { .. } => "stopping",
+            Self::Finished { outcome } => outcome.word(),
+        }
+    }
     pub fn is_active(self) -> bool {
         !matches!(self, Self::Finished { .. })
     }
@@ -243,4 +265,19 @@ pub struct LogRecord {
     pub truncated: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub fields: Option<Map<String, Value>>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn run_states_read_as_plain_words() {
+        assert_eq!(Lifecycle::Running.word(), "running");
+        let stopped = Lifecycle::Finished {
+            outcome: Outcome::Cancelled,
+        };
+        assert_eq!(stopped.word(), "stopped");
+        assert_eq!(Outcome::TimedOut.word(), "timed out");
+    }
 }
