@@ -1,4 +1,4 @@
-//! MPP/1 stdout handling (§7.3, §7.5, §7.6): bounded LF framing, per-frame validation, and
+//! MPP/1 stdout handling: bounded LF framing, per-frame validation, and
 //! frame order rules. Process spawn, stop, and cleanup stay in [`crate::runner`]; this module
 //! only turns plugin stdout bytes into validated events or one protocol error.
 
@@ -13,7 +13,7 @@ use mira_protocol::view::LogLevel;
 use serde_json::{Map, Value};
 use tokio::time::Instant;
 
-/// A buffered partial frame with no new bytes for this long is a truncated frame (§7.3).
+/// A buffered partial frame with no new bytes for this long is a truncated frame.
 pub const PARTIAL_FRAME_IDLE: Duration = Duration::from_secs(15);
 
 /// What the runner needs to speak MPP/1 with one child.

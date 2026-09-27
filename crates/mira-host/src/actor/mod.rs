@@ -1,4 +1,4 @@
-//! The workspace actor: the only writer of workspace state (§3.1, §9.4).
+//! The workspace actor: the only writer of workspace state.
 //!
 //! Requests arrive as messages; storage commits and runner facts come back as messages.
 //! The actor never awaits a child process, a file scan, or a storage commit inline.
@@ -617,7 +617,7 @@ impl Actor {
         });
         let mut storage_warnings = self.storage_warnings.clone();
         for r in self.runs.values() {
-            // Never wait for a log a flooding runner holds: status must stay fast (§9.3). A
+            // Never wait for a log a flooding runner holds: status must stay fast. A
             // busy log is checked again on the next status or state event.
             if let Ok(log) = r.log.try_lock()
                 && let Some(e) = &log.write_error
@@ -660,7 +660,7 @@ impl Actor {
         let source = self.paths.id.to_string();
         let filter = cursor::filter_hash(&serde_json::json!({ "query": words }));
         let revision = self.catalog_revision;
-        // A cached catalog is valid only for the same workspace, query, and revision (§17.1).
+        // A cached catalog is valid only for the same workspace, query, and revision.
         let same_workspace = p.if_workspace.as_ref().is_none_or(|w| w == &self.paths.id);
         if p.cursor.is_none() && same_workspace && p.if_revision == Some(revision) {
             let meta = ReplyMeta {

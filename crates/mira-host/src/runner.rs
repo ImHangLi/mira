@@ -1,4 +1,4 @@
-//! Pipe command runner (§5.4, §7.1, §11.4): one supervised process group per run.
+//! Pipe command runner: one supervised process group per run.
 //!
 //! The runner only reports OS facts (spawn, exit, signals, cleanup). The actor decides the
 //! run outcome. stdout/stderr are drained continuously into the run log; for MPP/1 plugins

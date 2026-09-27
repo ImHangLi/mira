@@ -1,4 +1,4 @@
-//! Bounded history reads (§11.1–11.2, §14.6): run provenance, run records that stay small,
+//! Bounded history reads: run provenance, run records that stay small,
 //! and log pages in both cursor directions.
 
 use mira_protocol::config::ConfigSet;

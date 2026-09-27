@@ -1,4 +1,4 @@
-//! MIPC/1 (§9, §10.4, §11.6): JSON-RPC 2.0 single-object profile over a Unix socket.
+//! MIPC/1: JSON-RPC 2.0 single-object profile over a Unix socket.
 //!
 //! Method names, request DTOs, result DTOs, and their schemas are registered once in
 //! [`methods!`]. Successful application answers are `PublicReply<Result>`; transport and
@@ -263,7 +263,7 @@ pub struct CatalogListParams {
     #[schemars(with = "CatalogRevision")]
     pub if_revision: Option<CatalogRevision>,
     /// With `if_revision`: the workspace the cached catalog came from. A different workspace
-    /// never gets `not_modified`, even at an equal revision number (§17.1).
+    /// never gets `not_modified`, even at an equal revision number.
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -324,7 +324,7 @@ pub struct ActionInvokeParams {
     )]
     #[schemars(with = "RequestKey")]
     pub request_key: Option<RequestKey>,
-    /// Lets a waiting CLI run a task without an existing session (§5.2).
+    /// Lets a waiting CLI run a task without an existing session.
     #[serde(default)]
     pub foreground: bool,
 }
@@ -521,7 +521,7 @@ pub struct TerminalRunParams {
     pub run_id: RunId,
 }
 
-/// `terminal.snapshot`: one consistent read of the virtual screen (§13.2).
+/// `terminal.snapshot`: one consistent read of the virtual screen.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct TerminalSnapshotParams {
@@ -786,8 +786,8 @@ pub struct StatusData {
     pub session: Option<SessionInfo>,
     pub runs: Vec<RunSummary>,
     pub storage_warnings: Vec<Warning>,
-    /// On-disk configuration problems (invalid-on-disk, incomplete apply). Spec gap filler:
-    /// §10.4 assigns disk configuration warnings to `status`.
+    /// On-disk configuration problems (invalid on disk, incomplete apply); `status` is where
+    /// disk configuration warnings are reported.
     pub config_warnings: Vec<Warning>,
     /// Interval schedules with a persisted switch, and their state in this session.
     #[serde(default)]
@@ -1122,7 +1122,7 @@ pub struct ArtifactListData {
     pub artifacts: Vec<ArtifactInfo>,
 }
 
-/// A bounded UTF-8 chunk of an artifact or payload (§11.1). For payloads, `sha256` is the
+/// A bounded UTF-8 chunk of an artifact or payload. For payloads, `sha256` is the
 /// digest of the whole selected value (after `pointer`), so reassembled chunks can be checked.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -1137,7 +1137,7 @@ pub struct ChunkData {
 }
 
 // ---------------------------------------------------------------------------
-// Stream frames (§11.6)
+// Stream frames
 // ---------------------------------------------------------------------------
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]

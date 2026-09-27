@@ -1,4 +1,4 @@
-//! The plugin JSON Schema profile (§6.6): Draft 2020-12, local `#` references only,
+//! The plugin JSON Schema profile: Draft 2020-12, local `#` references only,
 //! ≤256 KiB, structure depth ≤32, object roots. No network or file resolution.
 
 use serde_json::{Map, Value};

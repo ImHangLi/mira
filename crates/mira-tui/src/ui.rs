@@ -1,4 +1,4 @@
-//! Rendering (§12.1): a header, the tool sidebar, the main pane (a card, tabs, and the tab
+//! Rendering: a header, the tool sidebar, the main pane (a card, tabs, and the tab
 //! content), a right rail on wide terminals, a notice line only when there is a notice, and
 //! the key footer. Only visible rows are built. State is never shown by color alone: every
 //! state has a glyph and a word (see [`crate::theme::Mark`]).
@@ -279,7 +279,7 @@ fn short_id(id: &str) -> String {
     slice_cells(id, 0, 10)
 }
 
-/// The run's freshness word (§14.6); runs without provenance read as historical.
+/// The run's freshness word; runs without provenance read as historical.
 fn freshness_of(rec: &RunRecord) -> &'static str {
     freshness_word(
         rec.provenance

@@ -1,4 +1,4 @@
-//! Per-workspace file locations (§14.1). `mira paths` is the public way to discover them.
+//! Per-workspace file locations. `mira paths` is the public way to discover them.
 //!
 //! Development overrides: `MIRA_DATA_HOME` replaces `~/Library/{Application Support,Logs,Caches}`
 //! with `<dir>/{state,logs,cache}`; `MIRA_RUNTIME_DIR` replaces `/tmp/mira-<uid>`.

@@ -1,4 +1,4 @@
-//! Input forms built from an action's `input_schema` (§6.6, §8.3).
+//! Input forms built from an action's `input_schema`.
 //!
 //! Top-level string, number, integer, boolean, and enum properties get simple fields; every
 //! other property (object, array, unions) gets a JSON field with a live syntax check. Empty

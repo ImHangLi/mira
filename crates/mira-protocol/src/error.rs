@@ -1,4 +1,4 @@
-//! Public error codes, `ErrorInfo`, validation issues, and CLI exit codes (§10.3).
+//! Public error codes, `ErrorInfo`, validation issues, and CLI exit codes.
 
 use std::borrow::Cow;
 use std::fmt;

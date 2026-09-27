@@ -1,4 +1,4 @@
-//! Typed views, publishes, row actions, and artifacts (§8, §10.2). The CLI renders the same
+//! Typed views, publishes, row actions, and artifacts. The CLI renders the same
 //! ViewData the host stores; it never re-runs a plugin to read a view.
 
 use std::process::ExitCode;

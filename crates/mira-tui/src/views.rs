@@ -1,4 +1,4 @@
-//! Typed plugin views (§8.1–8.3, §12.4): one panel state per view built from the host's
+//! Typed plugin views: one panel state per view built from the host's
 //! `ViewSnapshot` data. Only visible rows are rendered; the selection follows stable IDs
 //! (row, item, or node ID) across updates; copies use the full values, never the cut cells.
 

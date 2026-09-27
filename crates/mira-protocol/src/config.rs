@@ -1,4 +1,4 @@
-//! Loading a `.mira`-shaped directory into one validated configuration set (§6, §16.3).
+//! Loading a `.mira`-shaped directory into one validated configuration set.
 //!
 //! Synchronous std IO only. Nothing here executes plugin or project code.
 

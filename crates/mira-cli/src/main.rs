@@ -368,7 +368,7 @@ enum ArtifactsCommand {
     },
 }
 
-/// `mira input RUN --text TEXT` (§10.2) spells its text option like the global `--text`
+/// `mira input RUN --text TEXT` spells its text option like the global `--text`
 /// output flag. After the `input` subcommand, `--text` means the input text.
 fn rewrite_input_text(args: Vec<String>) -> Vec<String> {
     // With `--key`, or as the last argument, `--text` is the output-mode flag.

@@ -1,4 +1,4 @@
-//! Run lifecycle (§5.3–5.4, §6.4, §7.1–7.2, §11.5, §15.3): validate → reserve durably →
+//! Run lifecycle: validate → reserve durably →
 //! spawn → observe → stop → finalize and commit. The actor owns every transition.
 
 use std::collections::BTreeMap;
@@ -928,7 +928,7 @@ impl Actor {
         let mut outcome = outcome_for(run.requested_stop, &exit, spawn_failed);
         let mut stop_reason = run.requested_stop;
         let mut verdict_note = None;
-        // Plugin tasks: stop/timeout and spawn failures keep precedence (§7.6).
+        // Plugin tasks: stop/timeout and spawn failures keep precedence.
         if run.requested_stop.is_none()
             && !spawn_failed
             && let Some(v) = run
@@ -1020,7 +1020,7 @@ impl Actor {
         self.state_changed();
     }
 
-    /// Moves one run to `stopping`; other runs and actions are unaffected (§5.4).
+    /// Moves one run to `stopping`; other runs and actions are unaffected.
     pub(crate) fn stop_run(&mut self, run_id: &RunId, reason: StopReason) -> Option<Lifecycle> {
         let run = self.runs.get_mut(run_id)?;
         if !run.record.lifecycle.is_active()

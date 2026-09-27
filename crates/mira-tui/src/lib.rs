@@ -1,4 +1,4 @@
-//! The human TUI (§12): a projection of host state over the shared typed client.
+//! The human TUI: a projection of host state over the shared typed client.
 //!
 //! The TUI never writes run state, never spawns project commands, and never blocks on IPC.
 //! It joins the workspace session as a controller; closing it (q, Ctrl-C, SIGHUP) restores

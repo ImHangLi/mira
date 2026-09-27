@@ -1,4 +1,4 @@
-//! The view store (§8.1–8.3, §11.2, §14.6, §15.3): one typed ViewData per view, updated
+//! The view store: one typed ViewData per view, updated
 //! atomically in host receive order with strictly increasing revisions from persisted blocks.
 //!
 //! Every update (plugin frame or explicit publish) goes through one FIFO queue. The queue
@@ -275,7 +275,7 @@ impl Actor {
                 match storage.load_view(view_ref.clone()).await {
                     Ok(Some(sv)) => match decode_stored(&sv.data_json) {
                         Ok(data) => {
-                            // Data restored after a host restart is stale (§8.2, §14.6): it
+                            // Data restored after a host restart is stale: it
                             // shows what was recorded then, not what is true now.
                             let at = sv.recorded_at;
                             let stale = Some(match &sv.source_run_id {
@@ -657,7 +657,7 @@ impl Actor {
                 ReplyMeta::default(),
             )),
             Persistence::Last => {
-                // Success only after the commit (§15.3).
+                // Success only after the commit.
                 self.views
                     .commit_waiters
                     .push((upd.view_ref.clone(), rev, p.responder, res));
@@ -787,7 +787,7 @@ impl Actor {
         }
     }
 
-    /// `session` views end with the session (§14.3).
+    /// `session` views end with the session.
     pub(crate) fn clear_session_views(&mut self) {
         self.views
             .entries
@@ -1153,7 +1153,7 @@ impl Actor {
         Ok((op, data, claim))
     }
 
-    /// A table row action (§6.5): binds input from the row at `expected_view_revision`, then
+    /// A table row action: binds input from the row at `expected_view_revision`, then
     /// invokes the action on the same path as `action.invoke`. Any drift is VIEW_CHANGED.
     pub(super) fn view_action(&mut self, client: &ClientId, p: ViewActionParams, r: Responder) {
         let prepared = (|| {

@@ -1,4 +1,4 @@
-//! Workspace selection (§4.1). Reads only directory entries; never executes anything.
+//! Workspace selection. Reads only directory entries; never executes anything.
 
 use std::path::{Path, PathBuf};
 
@@ -190,7 +190,7 @@ pub fn git_head(root: &Path) -> Option<GitHead> {
     })
 }
 
-/// Selects the workspace for `project` (explicit) or `cwd` using the fixed §4.1 order.
+/// Selects the workspace for `project` (explicit) or `cwd` using the fixed selection order.
 pub fn select(project: Option<&Path>, cwd: &Path) -> Result<Selected, SelectError> {
     if let Some(p) = project {
         let root = canonical(p)?;

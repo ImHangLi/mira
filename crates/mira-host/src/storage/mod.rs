@@ -1,4 +1,4 @@
-//! Workspace ledger (§14.2, §15): one SQLite connection owned by one dedicated thread.
+//! Workspace ledger: one SQLite connection owned by one dedicated thread.
 //!
 //! The actor talks to it only through [`Storage`], a cloneable handle that sends typed jobs
 //! over a bounded channel and awaits their results. No other code opens the database.
@@ -12,7 +12,7 @@ use mira_protocol::view::SourceKind;
 
 /// Current schema version written by this binary.
 pub const SCHEMA_VERSION: u32 = 1;
-/// View revisions are reserved in blocks of this size (§15.3).
+/// View revisions are reserved in blocks of this size.
 pub const VIEW_REVISION_BLOCK: u64 = 1024;
 
 #[derive(Debug, Clone, PartialEq, thiserror::Error)]
@@ -50,7 +50,7 @@ impl StorageError {
     }
 }
 
-/// Idempotency scope for a request key (§11.5): per action, per view, or per operation kind.
+/// Idempotency scope for a request key: per action, per view, or per operation kind.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum KeyScope {
     Action(ActionRef),
@@ -110,7 +110,7 @@ pub struct StoredView {
     pub data_json: String,
 }
 
-/// Retention limits the ledger applies (§14.3); days are 24-hour periods.
+/// Retention limits the ledger applies; days are 24-hour periods.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GcPolicy {
     pub history_days: u64,

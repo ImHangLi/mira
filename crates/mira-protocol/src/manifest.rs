@@ -1,4 +1,4 @@
-//! Workspace, plugin, and local manifests (§6). Wire DTOs are strict (`deny_unknown_fields`);
+//! Workspace, plugin, and local manifests. Wire DTOs are strict (`deny_unknown_fields`);
 //! domain types are only produced by the validators in this module.
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -341,7 +341,7 @@ pub struct UiWire {
 
 macro_rules! storage_policy {
     ($($field:ident: $default:expr, $min:expr, $max:expr;)*) => {
-        /// Retention overrides (§14.3). Every field is an optional positive integer.
+        /// Retention overrides. Every field is an optional positive integer.
         #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]
         #[serde(deny_unknown_fields)]
         pub struct StoragePolicyWire {
@@ -571,7 +571,7 @@ pub struct Action {
     pub schedule: Option<Schedule>,
     pub effects: Vec<String>,
     pub meta: JsonObject,
-    /// JCS hash of the normalized definition, env, and plugin config (§4.3).
+    /// JCS hash of the normalized definition, env, and plugin config.
     #[serde(skip)]
     pub definition_hash: Digest,
 }

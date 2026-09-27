@@ -1,4 +1,4 @@
-//! Distinct validated ID, revision, and path types (§4.2, §4.3).
+//! Distinct validated ID, revision, and path types.
 //!
 //! Every type deserializes through its validating constructor, so an unvalidated string
 //! can never become a domain ID.
@@ -277,7 +277,7 @@ impl Digest {
 }
 string_newtype_common!(Digest, "^sha256:[0-9a-f]{64}$");
 
-/// Opaque 1–128 byte idempotency key supplied by a user or agent (§11.5).
+/// Opaque 1–128 byte idempotency key supplied by a user or agent.
 #[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct RequestKey(String);
 impl RequestKey {

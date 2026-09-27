@@ -1,4 +1,4 @@
-//! The workspace work session (§5.1, §5.2): controllers keep it alive; a background lease
+//! The workspace work session: controllers keep it alive; a background lease
 //! keeps it alive without controllers until its deadline; observers never do.
 
 use std::collections::HashSet;
@@ -253,7 +253,7 @@ impl Actor {
             return;
         }
         // Wall clock, not monotonic time: macOS monotonic time pauses during sleep, and the
-        // lease is an absolute deadline that must be checked after wake (§5.2).
+        // lease is an absolute deadline that must be checked after wake.
         if let Some(Some((_, wall))) = s.lease
             && Timestamp::now() >= wall
         {

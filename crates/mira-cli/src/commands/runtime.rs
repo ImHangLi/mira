@@ -1,4 +1,4 @@
-//! Run control commands (§5.2, §10.2): the CLI waits; the host never blocks on a task.
+//! Run control commands: the CLI waits; the host never blocks on a task.
 
 use std::io::{Read, Write};
 use std::path::Path;

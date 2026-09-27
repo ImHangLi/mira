@@ -1,4 +1,4 @@
-//! Child environment composition (§7.2): client env → env_files → action env → MIRA_*.
+//! Child environment composition: client env → env_files → action env → MIRA_*.
 //! The caller's `MIRA_*` names are stripped; the host adds its own, including the few a
 //! plugin needs to call `mira` against the same host.
 

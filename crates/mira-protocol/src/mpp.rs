@@ -1,4 +1,4 @@
-//! MPP/1 plugin protocol (§7): invocation, output frames, and bounded LF framing.
+//! MPP/1 plugin protocol: invocation, output frames, and bounded LF framing.
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};

@@ -1,4 +1,4 @@
-//! Strict JSON decoding (§6.1, §7.3): no BOM, no duplicate keys, bounded depth, and
+//! Strict JSON decoding: no BOM, no duplicate keys, bounded depth, and
 //! integers limited to ±(2^53-1). `NaN`/`Infinity` are already invalid JSON.
 
 use std::fmt;

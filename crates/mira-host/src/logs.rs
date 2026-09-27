@@ -1,4 +1,4 @@
-//! Canonical run logs (§14.4): `000001.jsonl` segments, ≤8 KiB records split on UTF-8
+//! Canonical run logs: `000001.jsonl` segments, ≤8 KiB records split on UTF-8
 //! boundaries, buffered writes flushed every 250 ms or 64 KiB, and a per-run byte cap that
 //! rotates out the oldest segments even while the run is active.
 

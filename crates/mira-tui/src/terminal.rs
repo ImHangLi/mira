@@ -1,4 +1,4 @@
-//! PTY attach (§13): show a managed program's virtual screen and, while this TUI holds the
+//! PTY attach: show a managed program's virtual screen and, while this TUI holds the
 //! input lock, forward keys and paste to it.
 //!
 //! One attach opens its own control connection (the input lock belongs to it, so closing it

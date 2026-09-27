@@ -1,4 +1,4 @@
-//! Stream subscriptions (§9.3, §11.3, §11.6). Each subscriber has a bounded queue; a slow
+//! Stream subscriptions. Each subscriber has a bounded queue; a slow
 //! subscriber is reset (RESET_REQUIRED) without affecting control connections or the session.
 
 use std::collections::BTreeSet;
@@ -256,7 +256,7 @@ impl Actor {
         );
     }
 
-    /// Live log records were not delivered (§11.3): the gap names the count and a `log.read`
+    /// Live log records were not delivered: the gap names the count and a `log.read`
     /// cursor over exactly the missed range.
     pub(crate) fn broadcast_log_gap(
         &mut self,

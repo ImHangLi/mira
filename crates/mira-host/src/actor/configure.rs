@@ -1,4 +1,4 @@
-//! Configuration transactions (§6, §16.3–16.4): validate → apply with catalog CAS → accept
+//! Configuration transactions: validate → apply with catalog CAS → accept
 //! one immutable set. Disk writes are per-file temp+rename; several files are never claimed
 //! to be one atomic transaction.
 
@@ -22,7 +22,7 @@ use super::{Actor, ConfigState, Msg, Responder};
 use crate::diag;
 use crate::storage::{Claim, KeyClaim, KeyScope, Storage};
 
-/// File notifications are coalesced this long before re-validating (§16.3).
+/// File notifications are coalesced this long before re-validating.
 const WATCH_DEBOUNCE: Duration = Duration::from_millis(150);
 
 pub enum ConfigJob {

@@ -1,4 +1,4 @@
-//! Presentation state and the single key router (§12.3). The host owns every fact; this
+//! Presentation state and the single key router. The host owns every fact; this
 //! state is a projection of `state`/`log` events plus replies, and every action goes through
 //! the typed client. Footer and key handling read the same [`App::bindings`] set.
 
@@ -423,7 +423,7 @@ pub struct App {
     pub recent: HashMap<ActionRef, Vec<RunRecord>>,
     /// The run state each `recent` entry was requested for; a change reads it again.
     recent_key: HashMap<ActionRef, (Option<RunId>, u8, bool)>,
-    /// The PTY attach view (§13).
+    /// The PTY attach view.
     pub term: Terminals,
     /// The last non-empty screen line of active PTY runs whose log is still empty.
     pub screens: HashMap<RunId, String>,
@@ -2242,7 +2242,7 @@ impl App {
                 .is_some_and(|s| Some(&s.id) == self.attached_to.as_ref())
     }
 
-    /// What closing this window does to the runs (§5.1).
+    /// What closing this window does to the runs.
     pub fn close_effect(&self) -> Close {
         let Some(s) = &self.session else {
             return Close::NoSession;

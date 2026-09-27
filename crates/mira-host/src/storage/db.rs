@@ -22,9 +22,9 @@ use super::{
     StoredView, VIEW_REVISION_BLOCK,
 };
 
-/// Request-key reservations are honored for this long (§11.5).
+/// Request-key reservations are honored for this long.
 const REQUEST_KEY_TTL_MS: i64 = 24 * 60 * 60 * 1000;
-/// The oldest SQLite release with the 2026 WAL-reset fix (§15.1).
+/// The oldest SQLite release with the 2026 WAL-reset fix.
 const MIN_SQLITE: (u32, u32, u32) = (3, 51, 3);
 const DEFAULT_RUN_LIMIT: usize = 50;
 const MAX_RUN_LIMIT: usize = 1000;
@@ -300,7 +300,7 @@ impl Db {
 
     fn apply_pragmas(&mut self, fresh: bool) -> Result<()> {
         if fresh {
-            // Must precede the first table (§15.1).
+            // Must precede the first table.
             self.set_pragma("auto_vacuum", "INCREMENTAL", 2)?;
         } else if self.pragma_i64("auto_vacuum")? != 2 {
             self.warnings.push(warning(
@@ -380,7 +380,7 @@ impl Db {
         }
     }
 
-    /// Marks runs left active by a previous host as finished/interrupted (§15.4).
+    /// Marks runs left active by a previous host as finished/interrupted.
     fn interrupt_active_runs(&mut self) -> Result<Vec<RunId>> {
         let rows: Vec<(String, String)> = {
             let mut stmt = self
@@ -512,7 +512,7 @@ impl Db {
                 Claim::New
             }
             Some((fp, stored_ref, created_at)) => {
-                // An active run keeps its reservation past 24 h (§11.5).
+                // An active run keeps its reservation past 24 h.
                 let still_active: bool = tx
                     .query_row(
                         "SELECT EXISTS (SELECT 1 FROM runs
@@ -655,7 +655,7 @@ impl Db {
         Ok(out)
     }
 
-    /// Selects finished runs, views, and request keys beyond retention (§14.3, §14.5).
+    /// Selects finished runs, views, and request keys beyond retention.
     /// Active runs are excluded; request keys referring to active runs are kept.
     pub(super) fn gc_select(
         &self,

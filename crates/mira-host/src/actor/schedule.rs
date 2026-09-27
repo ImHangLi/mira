@@ -1,4 +1,4 @@
-//! Deterministic interval schedules (§5.2, §6.4): explicit on/off, only inside the current
+//! Deterministic interval schedules: explicit on/off, only inside the current
 //! session, never overlapping, and no catch-up of ticks missed while busy or asleep.
 
 use std::collections::HashMap;

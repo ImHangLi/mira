@@ -1,4 +1,4 @@
-//! `mira schedule ACTION on|off`: persist an interval schedule switch (§10.2).
+//! `mira schedule ACTION on|off`: persist an interval schedule switch.
 
 use std::process::ExitCode;
 

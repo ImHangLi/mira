@@ -1,4 +1,4 @@
-//! Shared PTY terminals (§13): snapshot, input lock, input, and resize.
+//! Shared PTY terminals: snapshot, input lock, input, and resize.
 //!
 //! At most one writer per run. `terminal.acquire` binds the lock to the calling connection
 //! until `terminal.release` or disconnect. Without a held lock, one `terminal.input` call

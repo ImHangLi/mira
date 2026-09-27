@@ -1,4 +1,4 @@
-//! Run lifecycle, run records, and canonical log records (§5.3, §14.2, §14.4).
+//! Run lifecycle, run records, and canonical log records.
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -196,13 +196,13 @@ pub struct RunRecord {
     pub git: Option<GitContext>,
     /// Set when the reported state could not be confirmed (e.g. after a host crash).
     pub note: Option<String>,
-    /// How far this record can be trusted now (§14.6). Computed by the host on every read and
+    /// How far this record can be trusted now. Computed by the host on every read and
     /// never stored; absent only in stored records.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub provenance: Option<RunProvenance>,
 }
 
-/// Read-time provenance of a run (§14.6): a success only proves that one execution, and a
+/// Read-time provenance of a run: a success only proves that one execution, and a
 /// changed definition makes an old result stale evidence.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -217,7 +217,7 @@ pub struct RunProvenance {
     pub current_definition_hash: Option<Digest>,
 }
 
-/// The run summary carried in status and state events (§11.6).
+/// The run summary carried in status and state events.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct RunSummary {

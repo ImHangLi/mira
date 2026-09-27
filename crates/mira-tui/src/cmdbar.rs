@@ -1,4 +1,4 @@
-//! The `:` command bar (§10.1, §12.3): runs one public `mira` command for infrastructure work
+//! The `:` command bar: runs one public `mira` command for infrastructure work
 //! (status, doctor, paths, validate, schedule, ...) through the same CLI parser agents use.
 //! It is not a shell: no `;`, `&`, `|`, redirects, `$`, or backticks; quotes only group words.
 

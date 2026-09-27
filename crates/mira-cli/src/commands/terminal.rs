@@ -1,4 +1,4 @@
-//! `mira terminal` and `mira input` (§10.2, §13): agents read and type into a shared PTY.
+//! `mira terminal` and `mira input`: agents read and type into a shared PTY.
 //!
 //! Typical agent loop: `mira up --background`, `mira run ACTION --no-wait` for a PTY action,
 //! then `mira terminal RUN` to read the screen and `mira input RUN --text ...` /

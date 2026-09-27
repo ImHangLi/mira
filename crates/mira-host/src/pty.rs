@@ -1,4 +1,4 @@
-//! PTY command runner (§6.4, §11.4, §13): one child per run in its own session with the PTY
+//! PTY command runner: one child per run in its own session with the PTY
 //! as controlling terminal, a vt100 screen model, and serialized input.
 //!
 //! Bytes from the child never reach a client. A reader thread moves raw chunks to a parser

@@ -9,7 +9,7 @@
     },
     "StoragePolicyWire": {
       "additionalProperties": false,
-      "description": "Retention overrides (§14.3). Every field is an optional positive integer.",
+      "description": "Retention overrides. Every field is an optional positive integer.",
       "properties": {
         "artifact_bytes_per_workspace": {
           "format": "uint64",

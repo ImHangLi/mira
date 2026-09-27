@@ -1,4 +1,4 @@
-//! Socket ownership and connection handling (§9).
+//! Socket ownership and connection handling.
 
 use std::fs::{File, OpenOptions};
 use std::io::Write;

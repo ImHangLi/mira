@@ -1,4 +1,4 @@
-//! Output rules (§10.2): with `--json` (default when stdout is not a TTY) stdout holds exactly
+//! Output rules: with `--json` (default when stdout is not a TTY) stdout holds exactly
 //! one JSON object plus LF. Text output is a rendering of the same typed data.
 
 use std::io::{IsTerminal, Write};
