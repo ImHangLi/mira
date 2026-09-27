@@ -59,13 +59,12 @@ impl Actor {
                 match storage.load_view(view_ref.clone()).await {
                     Ok(Some(sv)) => match decode_stored(&sv.data_json) {
                         Ok(data) => {
-                            // Data restored after a host restart is stale: it
-                            // shows what was recorded then, not what is true now.
+                            // Restored data from a publish or a successful run is
+                            // historical, as it was before the restart. It is stale
+                            // only when its run did not succeed or its end is unknown.
                             let at = sv.recorded_at;
-                            let stale = Some(match &sv.source_run_id {
-                                None => format!(
-                                    "restored after a host restart; published at {at} and not updated since"
-                                ),
+                            let stale = match &sv.source_run_id {
+                                None => None,
                                 Some(id) => match storage.get_run(id.clone()).await {
                                     Ok(Some(rec))
                                         if rec.lifecycle
@@ -73,18 +72,16 @@ impl Actor {
                                                 outcome: Outcome::Succeeded,
                                             } =>
                                     {
-                                        format!(
-                                            "restored after a host restart; recorded at {at} by run {id}, which succeeded then; not re-checked since"
-                                        )
+                                        None
                                     }
-                                    Ok(Some(_)) => format!(
-                                        "restored after a host restart; recorded at {at} by run {id}, which did not succeed"
-                                    ),
-                                    _ => format!(
-                                        "restored after a host restart; recorded at {at} by run {id}, whose end is unknown"
-                                    ),
+                                    Ok(Some(_)) => Some(format!(
+                                        "recorded at {at} by run {id}, which did not succeed"
+                                    )),
+                                    _ => Some(format!(
+                                        "recorded at {at} by run {id}, whose end is unknown"
+                                    )),
                                 },
-                            });
+                            };
                             self.views.entries.insert(
                                 view_ref,
                                 ViewEntry {

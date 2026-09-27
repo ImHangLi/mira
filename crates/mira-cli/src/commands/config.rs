@@ -17,13 +17,9 @@ use crate::output::invalid_argument;
 
 fn text(a: &ConfigApplied) -> String {
     format!(
-        "catalog revision {}{}; plugins: {}",
+        "applied; tools {} (catalog revision {}); plugins: {}",
+        if a.changed { "changed" } else { "unchanged" },
         a.catalog_revision,
-        if a.changed {
-            " (changed)"
-        } else {
-            " (no change)"
-        },
         a.plugins
             .iter()
             .map(ToString::to_string)
