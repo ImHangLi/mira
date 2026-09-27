@@ -9,8 +9,8 @@ import time
 from collections import deque
 from pathlib import Path
 
-# The board fits the window when a game starts: 16x10 to 40x20 cells, two columns each.
-MIN_BOARD, MAX_BOARD = (16, 10), (40, 20)
+# The board fits the window when a game starts: 12x6 to 40x20 cells, two columns each.
+MIN_BOARD, MAX_BOARD = (12, 6), (40, 20)
 CHROME = 8  # rows around the board: title, borders, and the three lines below
 
 
@@ -114,9 +114,10 @@ def draw(screen, game, best, warning, colors):
     screen.erase()
     height, width = screen.getmaxyx()
     need_w, need_h = game.width * 2 + 2, game.height + CHROME
-    if width < need_w or height < need_h:
+    # The last column cannot be drawn (see put), so the board needs one spare column.
+    if width <= need_w or height < need_h:
         put(screen, 0, 0, "Make the window bigger")
-        put(screen, 1, 0, f"Needs {need_w} x {need_h}.")
+        put(screen, 1, 0, f"Needs {need_w + 1} x {need_h}.")
         put(screen, 2, 0, "Game paused.")
         put(screen, 4, 0, "q: quit")
         put(screen, 5, 0, "Ctrl-]: back to Mira")
