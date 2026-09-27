@@ -245,22 +245,7 @@ impl PluginFrame {
                 PluginEvent::View { view_id, op, data }
             }
             Self::Notify { title, message, .. } => {
-                // Clients pass both to the terminal, so no control characters get through.
-                for (pointer, text, max) in [
-                    ("/title", &title, MAX_NOTIFY_TITLE_BYTES),
-                    ("/message", &message, MAX_MESSAGE_BYTES),
-                ] {
-                    if text.trim().is_empty()
-                        || text.len() > max
-                        || text.chars().any(char::is_control)
-                    {
-                        issues.push(Issue::new(
-                            ErrorCode::INVALID_FRAME,
-                            pointer,
-                            format!("must be non-empty text of at most {max} bytes without control characters"),
-                        ));
-                    }
-                }
+                issues.extend(check_notify(&title, &message, ErrorCode::INVALID_FRAME));
                 PluginEvent::Notify { title, message }
             }
             Self::Artifact {
@@ -331,6 +316,25 @@ impl PluginFrame {
         };
         issues.into_result(ev)
     }
+}
+
+/// The rules for a desktop notification, from an MPP/1 `notify` frame or `run.notify`.
+/// Clients pass both texts to the terminal, so no control characters get through.
+pub fn check_notify(title: &str, message: &str, code: ErrorCode) -> Issues {
+    let mut issues = Issues::default();
+    for (pointer, text, max) in [
+        ("/title", title, MAX_NOTIFY_TITLE_BYTES),
+        ("/message", message, MAX_MESSAGE_BYTES),
+    ] {
+        if text.trim().is_empty() || text.len() > max || text.chars().any(char::is_control) {
+            issues.push(Issue::new(
+                code.clone(),
+                pointer,
+                format!("must be non-empty text of at most {max} bytes without control characters"),
+            ));
+        }
+    }
+    issues
 }
 
 /// Parses one frame line (without its LF) into a validated event.

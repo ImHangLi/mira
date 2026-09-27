@@ -2,6 +2,7 @@ pub mod config;
 pub mod contract;
 pub mod ctx;
 pub mod inspect;
+pub mod notify;
 pub mod payload;
 pub mod plugin_add;
 pub mod plugin_dir;

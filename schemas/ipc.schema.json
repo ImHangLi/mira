@@ -1833,6 +1833,27 @@
       },
       "type": "object"
     },
+    "RunNotifyParams": {
+      "additionalProperties": false,
+      "description": "A desktop notification from a running program, such as a timer in a PTY.",
+      "properties": {
+        "message": {
+          "type": "string"
+        },
+        "run_id": {
+          "$ref": "#/$defs/RunId"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "run_id",
+        "title",
+        "message"
+      ],
+      "type": "object"
+    },
     "RunProvenance": {
       "additionalProperties": false,
       "description": "Read-time provenance of a run: a success only proves that one execution, and a\nchanged definition makes an old result stale evidence.",
@@ -2641,6 +2662,10 @@
           "properties": {
             "data": {
               "properties": {
+                "catalog_revision": {
+                  "$ref": "#/$defs/CatalogRevision",
+                  "description": "The current catalog revision; a client reads the catalog again when it changes."
+                },
                 "runs": {
                   "items": {
                     "$ref": "#/$defs/RunSummary"
@@ -2669,6 +2694,7 @@
               },
               "required": [
                 "state_revision",
+                "catalog_revision",
                 "runs",
                 "storage_warnings"
               ],
@@ -4026,6 +4052,14 @@
       },
       "result": {
         "$ref": "#/$defs/RunList"
+      }
+    },
+    "run.notify": {
+      "params": {
+        "$ref": "#/$defs/RunNotifyParams"
+      },
+      "result": {
+        "$ref": "#/$defs/Ack"
       }
     },
     "run.stop": {

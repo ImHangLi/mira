@@ -562,6 +562,7 @@ impl Actor {
             Method::StorageGc => self.storage_gc(parse!(p), Some(r)),
             Method::StorageClear => self.storage_clear(parse!(p), r),
             Method::ScheduleSet => self.schedule_set(client, parse!(p), r),
+            Method::RunNotify => self.run_notify(parse!(p), r),
             Method::PayloadRead => self.payload_read(parse!(p), r),
             Method::ConfigApply => self.config_apply(parse!(p), r),
             Method::ConfigReload => {

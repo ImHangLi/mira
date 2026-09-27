@@ -457,6 +457,15 @@ pub struct TerminalInputParams {
     pub reply_now: bool,
 }
 
+/// A desktop notification from a running program, such as a timer in a PTY.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct RunNotifyParams {
+    pub run_id: RunId,
+    pub title: String,
+    pub message: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct TerminalResizeParams {
