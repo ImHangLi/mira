@@ -18,6 +18,8 @@ Every command prints exactly one JSON reply with `--json` (the default without a
 
 ## Run work
 
+Run project commands through Mira, so the human sees them in the TUI: a tool when one exists, otherwise `mira exec`. Quick reads such as `git status` or reading a file do not need Mira.
+
 | Need | Command |
 |---|---|
 | One-off task, wait for the result | `mira run PLUGIN.ACTION [--input FILE]` |
