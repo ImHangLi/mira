@@ -445,7 +445,7 @@ pub async fn read_worker(
                     limit: Some(200),
                     max_bytes: Some(MAX_REPLY_BUDGET_BYTES as u32),
                 };
-                let res = call::<_, RunList>(&mut client, Method::RunListM, &params)
+                let res = call::<_, RunList>(&mut client, Method::RunList, &params)
                     .await
                     .map(|a| a.data);
                 if let Err(f) = &res {
@@ -461,7 +461,7 @@ pub async fn read_worker(
                     limit: Some(HISTORY_LIMIT),
                     max_bytes: Some(MAX_REPLY_BUDGET_BYTES as u32),
                 };
-                let res = call::<_, RunList>(&mut client, Method::RunListM, &params)
+                let res = call::<_, RunList>(&mut client, Method::RunList, &params)
                     .await
                     .map(|a| a.data);
                 if let Err(f) = &res {
@@ -499,7 +499,7 @@ pub async fn read_worker(
                     max_bytes: Some(TAIL_BYTES),
                 };
                 let res =
-                    call::<_, TerminalSnapshot>(&mut client, Method::TerminalSnapshotM, &params)
+                    call::<_, TerminalSnapshot>(&mut client, Method::TerminalSnapshot, &params)
                         .await;
                 if let Err(f) = &res {
                     note(f);
@@ -518,7 +518,7 @@ pub async fn read_worker(
             }
             Read::Catalog => {
                 let res =
-                    call::<_, CatalogList>(&mut client, Method::CatalogListM, &catalog_params())
+                    call::<_, CatalogList>(&mut client, Method::CatalogList, &catalog_params())
                         .await
                         .map(|a| {
                             seen = a.catalog_revision;

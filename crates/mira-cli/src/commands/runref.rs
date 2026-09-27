@@ -57,7 +57,7 @@ async fn list(
 ) -> Result<PublicReply<RunList>, ErrorInfo> {
     client
         .call(
-            Method::RunListM,
+            Method::RunList,
             &RunListParams {
                 action_ref,
                 outcome: None,

@@ -843,7 +843,7 @@ pub fn runs(
             limit,
             max_bytes,
         };
-        match client.call::<_, RunList>(Method::RunListM, &p).await {
+        match client.call::<_, RunList>(Method::RunList, &p).await {
             Ok(r) => ctx.emit(&r, |l| {
                 if l.runs.is_empty() {
                     "no runs".into()

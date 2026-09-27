@@ -1258,13 +1258,13 @@ methods! {
     SessionKeep = "session.keep", SessionKeepParams => SessionData, stream: false;
     SessionStop = "session.stop", Empty => SessionStopData, stream: false;
     WorkspaceStatus = "workspace.status", Empty => StatusData, stream: false;
-    CatalogListM = "catalog.list", CatalogListParams => CatalogList, stream: false;
+    CatalogList = "catalog.list", CatalogListParams => CatalogList, stream: false;
     ItemDescribe = "item.describe", ItemDescribeParams => ItemDescription, stream: false;
     ActionInvoke = "action.invoke", ActionInvokeParams => InvokeAccepted, stream: false;
     ActionExec = "action.exec", ActionExecParams => InvokeAccepted, stream: false;
     RunStop = "run.stop", RunStopParams => StopAccepted, stream: false;
     RunGet = "run.get", RunGetParams => RunRecord, stream: false;
-    RunListM = "run.list", RunListParams => RunList, stream: false;
+    RunList = "run.list", RunListParams => RunList, stream: false;
     LogRead = "log.read", LogReadParams => LogPage, stream: false;
     ViewRead = "view.read", ViewReadParams => ViewSnapshot, stream: false;
     ViewPublish = "view.publish", ViewPublishParams => PublishResult, stream: false;
@@ -1272,10 +1272,10 @@ methods! {
     ConfigApply = "config.apply", ConfigApplyParams => ConfigApplied, stream: false;
     ConfigReload = "config.reload", Empty => ConfigApplied, stream: false;
     ScheduleSet = "schedule.set", ScheduleSetParams => ScheduleData, stream: false;
-    TerminalSnapshotM = "terminal.snapshot", TerminalSnapshotParams => TerminalSnapshot, stream: false;
+    TerminalSnapshot = "terminal.snapshot", TerminalSnapshotParams => TerminalSnapshot, stream: false;
     TerminalAcquire = "terminal.acquire", TerminalRunParams => Ack, stream: false;
     TerminalRelease = "terminal.release", TerminalRunParams => Ack, stream: false;
-    TerminalInputM = "terminal.input", TerminalInputParams => TerminalSnapshot, stream: false;
+    TerminalInput = "terminal.input", TerminalInputParams => TerminalSnapshot, stream: false;
     TerminalResize = "terminal.resize", TerminalResizeParams => Ack, stream: false;
     StreamSubscribe = "stream.subscribe", StreamSubscribeParams => Subscribed, stream: true;
     StorageStatus = "storage.status", StorageStatusParams => StorageStatusData, stream: false;

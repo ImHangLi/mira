@@ -534,7 +534,7 @@ impl Actor {
                 let _: Empty = parse!(p);
                 r.send(self.ok(self.status_data(), ReplyMeta::default()))
             }
-            Method::CatalogListM => {
+            Method::CatalogList => {
                 let res = self.catalog(parse!(p));
                 r.send(res)
             }
@@ -553,7 +553,7 @@ impl Actor {
             Method::ActionExec => self.exec(client, parse!(p), r),
             Method::RunStop => self.run_stop(parse!(p), r),
             Method::RunGet => self.run_get(parse!(p), r),
-            Method::RunListM => self.run_list(parse!(p), r),
+            Method::RunList => self.run_list(parse!(p), r),
             Method::LogRead => self.log_read(parse!(p), r),
             Method::ViewRead => self.view_read(parse!(p), r),
             Method::ViewPublish => self.view_publish(parse!(p), r),
@@ -570,10 +570,10 @@ impl Actor {
                 let _: Empty = parse!(p);
                 self.config_reload(Some(r))
             }
-            Method::TerminalSnapshotM => self.terminal_snapshot(parse!(p), r),
+            Method::TerminalSnapshot => self.terminal_snapshot(parse!(p), r),
             Method::TerminalAcquire => self.terminal_acquire(client, parse!(p), r),
             Method::TerminalRelease => self.terminal_release(client, parse!(p), r),
-            Method::TerminalInputM => self.terminal_input(client, parse!(p), r),
+            Method::TerminalInput => self.terminal_input(client, parse!(p), r),
             Method::TerminalResize => self.terminal_resize(client, parse!(p), r),
             Method::StreamSubscribe => self.subscribe(client, parse!(p), r),
             other => r.send(Err(RpcError::new(
