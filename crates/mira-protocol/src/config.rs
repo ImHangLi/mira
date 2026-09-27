@@ -2,7 +2,6 @@
 //!
 //! Synchronous std IO only. Nothing here executes plugin or project code.
 
-use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
 use serde_json::Value;
@@ -317,10 +316,6 @@ impl ConfigSet {
             }
         }
         out
-    }
-
-    pub fn plugin_ids(&self) -> BTreeSet<PluginId> {
-        self.plugins.iter().map(|p| p.plugin.id.clone()).collect()
     }
 }
 

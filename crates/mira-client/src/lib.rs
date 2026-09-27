@@ -8,7 +8,6 @@ use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use mira_protocol::ids::AbsolutePath;
 use mira_protocol::ipc::*;
 use mira_protocol::limits::MAX_IPC_FRAME_BYTES;
 use mira_protocol::mpp::LineDecoder;
@@ -358,9 +357,4 @@ impl Connection {
             }
         }
     }
-}
-
-/// Converts a canonical root into its workspace paths.
-pub fn paths_for(root: &AbsolutePath) -> WorkspacePaths {
-    WorkspacePaths::new(root.clone())
 }

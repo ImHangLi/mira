@@ -148,10 +148,7 @@ pub fn catalog(ctx: &Ctx, args: CatalogArgs) -> ExitCode {
             limit,
             max_bytes,
         };
-        match client
-            .call::<_, CatalogList>(Method::CatalogListM, &p)
-            .await
-        {
+        match client.call::<_, CatalogList>(Method::CatalogList, &p).await {
             Ok(reply) => {
                 let not_modified = reply.meta().not_modified;
                 let more = match (&reply.meta().next_cursor, ctx.mode) {
@@ -218,7 +215,7 @@ async fn count_rest(
             max_bytes: Some(256 * 1024),
         };
         match client
-            .call::<_, CatalogList>(Method::CatalogListM, &page)
+            .call::<_, CatalogList>(Method::CatalogList, &page)
             .await
         {
             Ok(r) if r.is_ok() => {

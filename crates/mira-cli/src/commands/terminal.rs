@@ -71,7 +71,7 @@ pub fn terminal(ctx: &Ctx, run: &str, max_bytes: Option<u32>) -> ExitCode {
             max_bytes,
         };
         let reply: PublicReply<TerminalSnapshot> =
-            match client.call(Method::TerminalSnapshotM, &p).await {
+            match client.call(Method::TerminalSnapshot, &p).await {
                 Ok(r) => r,
                 Err(e) => return ctx.fail(client.context(), e.to_error_info()),
             };
@@ -118,7 +118,7 @@ pub fn input(
             reply_now: false,
         };
         let reply: PublicReply<TerminalSnapshot> =
-            match client.call(Method::TerminalInputM, &p).await {
+            match client.call(Method::TerminalInput, &p).await {
                 Ok(r) => r,
                 Err(e) => return ctx.fail(client.context(), e.to_error_info()),
             };

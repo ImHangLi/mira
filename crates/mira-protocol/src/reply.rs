@@ -176,9 +176,6 @@ impl<T> PublicReply<T> {
     pub fn meta(&self) -> &ReplyMeta {
         &self.meta
     }
-    pub fn meta_mut(&mut self) -> &mut ReplyMeta {
-        &mut self.meta
-    }
     pub fn context(&self) -> ReplyContext {
         ReplyContext {
             workspace: self.workspace.clone(),

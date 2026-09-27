@@ -79,7 +79,7 @@ async fn serve(
         .map_err(|e| e.to_error_info())?;
     let (catalog, catalog_revision) = match ipc::call::<_, CatalogList>(
         &mut control,
-        Method::CatalogListM,
+        Method::CatalogList,
         &ipc::catalog_params(),
     )
     .await

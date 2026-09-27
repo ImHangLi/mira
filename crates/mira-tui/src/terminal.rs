@@ -497,7 +497,7 @@ async fn fetch(client: &mut Client, run_id: &RunId) -> Result<TerminalSnapshot, 
             max_bytes: u32::try_from(MAX_REPLY_BUDGET_BYTES).ok(),
         };
         let first =
-            ipc::call::<_, TerminalSnapshot>(client, Method::TerminalSnapshotM, &params).await?;
+            ipc::call::<_, TerminalSnapshot>(client, Method::TerminalSnapshot, &params).await?;
         let mut snap = first.data;
         let mut truncated = first.meta.truncated;
         while truncated && !snap.lines.is_empty() {
@@ -508,8 +508,8 @@ async fn fetch(client: &mut Client, run_id: &RunId) -> Result<TerminalSnapshot, 
                 break;
             }
             params.row_start = Some(next);
-            let page = ipc::call::<_, TerminalSnapshot>(client, Method::TerminalSnapshotM, &params)
-                .await?;
+            let page =
+                ipc::call::<_, TerminalSnapshot>(client, Method::TerminalSnapshot, &params).await?;
             if page.data.screen_revision != snap.screen_revision {
                 if tries < PAGE_TRIES {
                     continue 'again;
@@ -606,7 +606,7 @@ async fn worker(paths: WorkspacePaths, run_id: RunId, mut rx: UnboundedReceiver<
                         expected_screen_revision: None,
                         reply_now: true,
                     };
-                    match ipc::call::<_, TerminalSnapshot>(&mut control, Method::TerminalInputM, &params).await {
+                    match ipc::call::<_, TerminalSnapshot>(&mut control, Method::TerminalInput, &params).await {
                         Ok(_) => {}
                         Err(Failure::Lost(m)) => return lost(&tx, m),
                         Err(Failure::Reply(e)) if e.code == ErrorCode::INPUT_BUSY => {
