@@ -38,9 +38,12 @@ Write this exact text into `MIRA.md`:
 ```markdown
 # Mira
 
-Mira is installed. When a repository has a `.mira/` folder, or the user mentions Mira,
-use the mira skill: run and read project tools with the `mira` CLI instead of starting
-processes yourself. To add a tool, use the mira-extend skill.
+Mira is installed. In a repository with a `.mira/` folder, run project commands through
+Mira, so the user sees them in the Mira TUI: dev servers, tests, checks, builds, and
+one-off scripts. Use a Mira tool when one fits (`mira catalog --search WORDS`), otherwise
+`mira exec --label "what it does" -- COMMAND`. Read the mira skill before the first
+command. To add or change a tool, use the mira-extend skill. If `mira` is not found,
+use `~/.mira/bin/mira`.
 ```
 
 For Claude Code, for example:
