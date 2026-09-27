@@ -1,8 +1,13 @@
 //! [`App::handle`]: one event from the input thread, a worker, or the host stream.
 
+use mira_protocol::time::Timestamp;
+
 use crate::ipc::{Event, LogChunk, Read};
 
 use super::{App, Inputs, Modal, Quit, inputs_of};
+
+/// How far back the TUI lists finished one-off runs when it opens.
+const ONEOFF_RECENT_MS: i64 = 24 * 60 * 60 * 1000;
 
 impl App {
     pub fn handle(&mut self, ev: Event) {
@@ -167,12 +172,12 @@ impl App {
             }
             Event::Run(Err(_)) => {}
             Event::Recent(Ok(list)) => {
-                // One-off runs of this session (or still running) are listed too.
-                let session = self.session.as_ref().map(|s| &s.id).cloned();
+                // One-off runs that are still running or started in the last day are listed
+                // too, whoever started them: an agent's run shows up when the TUI opens.
+                let since = Timestamp::now().unix_ms() - ONEOFF_RECENT_MS;
                 for rec in list.runs.iter().filter(|r| {
                     r.action_ref.is_none()
-                        && (r.lifecycle.is_active()
-                            || (session.is_some() && r.session_id == session))
+                        && (r.lifecycle.is_active() || r.started_at.unix_ms() >= since)
                 }) {
                     self.oneoff_record(rec, true);
                 }
