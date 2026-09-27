@@ -14,7 +14,7 @@ for t in "${targets[@]}"; do
   stage="$(mktemp -d)/$name"
   mkdir -p "$stage"
   cp "target/$t/release/mira" "$stage/mira"
-  cp README.md "$stage/"
+  cp README.md LICENSE "$stage/"
   tar -C "$(dirname "$stage")" -czf "dist/$name.tar.gz" "$name"
   (cd dist && shasum -a 256 "$name.tar.gz" > "$name.tar.gz.sha256")
   echo "dist/$name.tar.gz ($(file -b "$stage/mira" | cut -d, -f1-2))"
