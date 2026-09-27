@@ -730,90 +730,6 @@ fn stop_text(d: &SessionStopData) -> String {
     }
 }
 
-/// Stops a host from another Mira build (for example after an upgrade), which the protocol
-/// handshake refuses. The host's owner file must name this workspace and the process must
-/// still be that `mira __host`; the host then shuts down its work on SIGTERM as usual.
-enum HostStop {
-    /// No host for this workspace was found at that owner file.
-    NotFound,
-    /// The host exited; carries its version.
-    Stopped(String),
-    /// It was found but did not exit in time.
-    StillStopping(String),
-}
-
-/// Stops the host named by `owner` when it serves `root` and is still a `__host` process.
-/// It gets SIGTERM, so it stops its runs within its shutdown deadline as usual.
-async fn stop_host_from_owner(owner: &std::path::Path, root: &str) -> HostStop {
-    use rustix::process::{Pid, Signal, kill_process, test_kill_process};
-    let owner: Option<Value> = std::fs::read(owner)
-        .ok()
-        .and_then(|b| serde_json::from_slice(&b).ok());
-    let field = |k: &str| owner.as_ref().and_then(|o| o.get(k)).cloned();
-    let root_matches = field("root").as_ref().and_then(Value::as_str) == Some(root);
-    let pid = field("pid")
-        .as_ref()
-        .and_then(Value::as_i64)
-        .and_then(|p| i32::try_from(p).ok())
-        .and_then(Pid::from_raw);
-    let version = field("version")
-        .as_ref()
-        .and_then(Value::as_str)
-        .unwrap_or("unknown")
-        .to_owned();
-    let is_host = |pid: Pid| {
-        std::process::Command::new("/bin/ps")
-            .args(["-o", "args=", "-p", &pid.as_raw_nonzero().to_string()])
-            .output()
-            .ok()
-            .is_some_and(|o| String::from_utf8_lossy(&o.stdout).contains("__host"))
-    };
-    let Some(pid) = pid.filter(|p| root_matches && is_host(*p)) else {
-        return HostStop::NotFound;
-    };
-    if kill_process(pid, Signal::TERM).is_err() {
-        return HostStop::NotFound;
-    }
-    // The host stops its runs within its shutdown deadline (15 s), then exits.
-    let deadline = tokio::time::Instant::now() + Duration::from_secs(30);
-    while test_kill_process(pid).is_ok() {
-        if tokio::time::Instant::now() >= deadline {
-            return HostStop::StillStopping(version);
-        }
-        tokio::time::sleep(POLL).await;
-    }
-    HostStop::Stopped(version)
-}
-
-/// Stops a host from another Mira build (for example after an upgrade), which the protocol
-/// handshake refuses. The host's owner file must name this workspace.
-async fn stop_other_build_host(ctx: &Ctx, cx: ReplyContext, refused: ErrorInfo) -> ExitCode {
-    let Ok(paths) = ctx.paths() else {
-        return ctx.fail(cx, refused);
-    };
-    match stop_host_from_owner(&paths.owner(), paths.root.as_str()).await {
-        HostStop::NotFound => ctx.fail(cx, refused),
-        HostStop::StillStopping(v) => ctx.fail(
-            cx,
-            ErrorInfo::new(
-                ErrorCode::TIMEOUT,
-                format!("the older host (mira {v}) is still stopping after 30 s"),
-            ),
-        ),
-        HostStop::Stopped(v) => {
-            let data = SessionStopData {
-                session: None,
-                stopped_session: None,
-                stopped_runs: 0,
-            };
-            let reply = PublicReply::success(cx, data, mira_protocol::reply::ReplyMeta::default());
-            ctx.emit(&reply, |_| {
-                format!("stopped the host from mira {v} and its work; the next command starts this build")
-            })
-        }
-    }
-}
-
 pub fn down(ctx: &Ctx, wait: bool) -> ExitCode {
     block_on(async {
         let paths = match ctx.paths() {
@@ -844,13 +760,7 @@ pub fn down(ctx: &Ctx, wait: bool) -> ExitCode {
                     PublicReply::success(cx, data, mira_protocol::reply::ReplyMeta::default());
                 return ctx.emit(&reply, |_| "Nothing is running.".to_owned());
             }
-            Err(e) => {
-                let e = e.to_error_info();
-                if e.code == ErrorCode::PROTOCOL_MISMATCH {
-                    return stop_other_build_host(ctx, cx, e).await;
-                }
-                return ctx.fail(cx, e);
-            }
+            Err(e) => return ctx.fail(cx, e.to_error_info()),
         };
         let reply = match client
             .call::<_, SessionStopData>(Method::SessionStop, &Empty {})

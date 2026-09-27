@@ -44,7 +44,7 @@ All commands accept `--project PATH`, `--json`, `--text`. `REF` is `plugin.item`
 | `REQUEST_KEY_CONFLICT` | same key, different input | use the original input or a new key for new work |
 | `REVISION_CONFLICT` | catalog changed since you read it | re-read catalog, rebase your draft, apply again |
 | `VIEW_CHANGED` | the table you acted on changed | re-read the view and choose again |
-| `PROTOCOL_MISMATCH` | a host from another Mira build (for example before an upgrade) still runs | `mira down` stops that host and its work; the next command starts this build |
+| `PROTOCOL_MISMATCH` | a host from another Mira build still runs for this workspace | run the error's `next_action` (`kill PID`), or `mira down` with that build; the next command starts this build |
 | `OUTCOME_UNKNOWN` | the host stopped before the result was known | inspect state before repeating side effects |
 | `STORAGE_UNAVAILABLE` | a required record could not be saved; nothing new started | report it; `stop`/`down` still work |
 | `INPUT_BUSY` / `SCREEN_CHANGED` | someone else holds the terminal / the screen moved on | re-read `terminal RUN`, then retry |

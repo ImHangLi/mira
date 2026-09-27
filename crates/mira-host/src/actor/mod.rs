@@ -473,24 +473,28 @@ impl Actor {
     }
 
     fn hello(&mut self, p: HelloParams, out: Outbound) -> Result<(ClientId, HelloReply), RpcError> {
-        let refuse = |msg: String| {
-            let info = ErrorInfo::new(ErrorCode::PROTOCOL_MISMATCH, msg.clone())
-                .with_next_action(&["mira", "status"], "Retry after the running host finishes its work and exits, or use the matching mira build.");
-            RpcError::new(RpcError::HANDSHAKE, msg).with_info(info)
-        };
         if &p.protocol_hash != schemas::protocol_hash() {
-            return Err(refuse(format!(
-                "this host runs a different Mira protocol build (host {} {}, client {})",
+            let pid = std::process::id().to_string();
+            let msg = format!(
+                "this host (pid {pid}) runs another Mira build (host {} {}, client {})",
                 mira_protocol::VERSION,
                 schemas::protocol_hash(),
                 p.protocol_hash
-            )));
+            );
+            let info = ErrorInfo::new(ErrorCode::PROTOCOL_MISMATCH, msg.clone()).with_next_action(
+                &["kill", &pid],
+                "Stop the host from the other build (or run `mira down` with that build); \
+                 the next command starts this build.",
+            );
+            return Err(RpcError::new(RpcError::HANDSHAKE, msg).with_info(info));
         }
         if p.workspace_id != self.paths.id || p.workspace_root != self.paths.root {
-            return Err(refuse(format!(
+            let msg = format!(
                 "this host serves workspace {} at {}, not {} at {}",
                 self.paths.id, self.paths.root, p.workspace_id, p.workspace_root
-            )));
+            );
+            let info = ErrorInfo::new(ErrorCode::PROTOCOL_MISMATCH, msg.clone());
+            return Err(RpcError::new(RpcError::HANDSHAKE, msg).with_info(info));
         }
         let id = ClientId::random();
         self.clients.insert(
