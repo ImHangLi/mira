@@ -39,7 +39,7 @@ Run project commands through Mira, so the human sees them in the TUI: a tool whe
 
 - `mira logs RUN_ID_OR_ACTION --json` — the last 100 records of that run, oldest first. Page older with `--after "$(meta.next_cursor)"`. `--follow` streams JSONL until the run ends.
 - `mira runs --action REF --json`, `mira runs RUN_ID --json` — outcome, exit, cleanup, note, and `provenance`; `definition_current: false` means that success used an older definition.
-- `mira view PLUGIN.VIEW --json` — typed tables, logs, trees, text, JSON. `freshness` is `current` only while the producing run is still live; data from a finished run or a manual publish is `historical` (normal, not an error); `stale` means the definition changed, the source failed, or the host restarted since. Always read `recorded_at`: an old success is not evidence that the current code works.
+- `mira view PLUGIN.VIEW --json` — typed tables, logs, trees, text, JSON. `freshness` is `current` only while the producing run is still live; data from a finished run or a manual publish is `historical` (normal, not an error); `stale` means the definition changed or the source run did not succeed. A `last` view keeps its data and freshness across host restarts. Always read `recorded_at`: an old success is not evidence that the current code works.
 - Large values come back as `meta.payload`; read them with `mira payload read TOKEN`. `PAYLOAD_GONE` means the data was cleaned up; do not rerun the action to recreate it unless the task needs it.
 
 Read only the run you care about. Never read `state.sqlite3`, `~/Library/Logs/Mira`, or caches directly; `mira paths --json` explains what each location is for.
