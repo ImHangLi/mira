@@ -4,6 +4,8 @@
 //! [`mpp`], [`view`]) → effects in the host. This crate performs no async IO and never
 //! executes plugin code.
 
+pub mod catalog;
+pub mod clock;
 pub mod config;
 pub mod error;
 pub mod hash;

@@ -1,4 +1,4 @@
-//! Socket ownership and connection handling (§9).
+//! Socket ownership and connection handling.
 
 use std::fs::{File, OpenOptions};
 use std::io::Write;
@@ -100,9 +100,7 @@ fn write_owner(paths: &WorkspacePaths, epoch: &str) {
     let record = serde_json::json!({
         "pid": std::process::id(),
         "host_epoch": epoch,
-        "version": mira_protocol::VERSION,
         "protocol_hash": schemas::protocol_hash(),
-        "root": paths.root,
         "started_at": mira_protocol::Timestamp::now(),
     });
     if let Ok(mut f) = OpenOptions::new()
@@ -359,7 +357,7 @@ async fn connection(stream: UnixStream, actor: mpsc::Sender<Msg>) {
                             Some(req.id),
                             RpcError::new(
                                 RpcError::NOT_ALLOWED,
-                                "stream connections may only subscribe or unsubscribe",
+                                "stream connections may only subscribe",
                             ),
                         ));
                         continue;

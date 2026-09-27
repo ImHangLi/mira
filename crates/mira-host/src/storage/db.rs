@@ -16,15 +16,15 @@ use rusqlite::{Connection, ErrorCode as SqlCode, OpenFlags, OptionalExtension, p
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
-use super::schema::MIGRATIONS;
+use super::schema::SCHEMA;
 use super::{
     Claim, GcPolicy, GcSelection, KeyClaim, OpenReport, RunFilter, SCHEMA_VERSION, StorageError,
     StoredView, VIEW_REVISION_BLOCK,
 };
 
-/// Request-key reservations are honored for this long (§11.5).
+/// Request-key reservations are honored for this long.
 const REQUEST_KEY_TTL_MS: i64 = 24 * 60 * 60 * 1000;
-/// The oldest SQLite release with the 2026 WAL-reset fix (§15.1).
+/// The oldest SQLite release with the 2026 WAL-reset fix.
 const MIN_SQLITE: (u32, u32, u32) = (3, 51, 3);
 const DEFAULT_RUN_LIMIT: usize = 50;
 const MAX_RUN_LIMIT: usize = 1000;
@@ -37,7 +37,6 @@ pub(super) struct Db {
     conn: Connection,
     paths: WorkspacePaths,
     sqlite_version: String,
-    schema_version: u32,
     warnings: Vec<Warning>,
 }
 
@@ -192,7 +191,7 @@ fn dir_usage(dir: &Path, budget: &mut u64) -> (u64, u64) {
     (bytes, files)
 }
 
-// ---------- open and migrate ----------
+// ---------- open and create ----------
 
 impl Db {
     /// Opens (or creates) the workspace database. Returns the key and what was found.
@@ -228,18 +227,11 @@ impl Db {
             conn,
             paths: paths.clone(),
             sqlite_version: String::new(),
-            schema_version: 0,
             warnings: Vec::new(),
         };
 
-        // Read-only inspection first: nothing below writes until the file is known good.
-        let found = db.inspect()?;
-        if found > SCHEMA_VERSION {
-            return Err(StorageError::VersionUnsupported {
-                found,
-                supported: SCHEMA_VERSION,
-            });
-        }
+        // Read-only check first: nothing below writes until the file is known good.
+        let fresh = db.check_schema_version(&db_path)?;
         db.sqlite_version = db
             .conn
             .query_row("SELECT sqlite_version()", [], |r| r.get(0))
@@ -253,9 +245,10 @@ impl Db {
                 ),
             ));
         }
-        let fresh = found == 0;
         db.apply_pragmas(fresh)?;
-        db.migrate(found)?;
+        if fresh {
+            db.create_schema()?;
+        }
         db.check_workspace()?;
         let interrupted = db.interrupt_active_runs()?;
         let report = OpenReport {
@@ -266,40 +259,23 @@ impl Db {
         Ok((db, key, report))
     }
 
-    /// Returns the stored schema version (0 for an empty database) without writing.
-    fn inspect(&self) -> Result<u32> {
+    /// Returns true for an empty database. Refuses a database with another schema version.
+    fn check_schema_version(&self, db_path: &Path) -> Result<bool> {
         let tables: i64 = self
             .conn
             .query_row("SELECT count(*) FROM sqlite_schema", [], |r| r.get(0))
             .map_err(|e| sql("read state database", e))?;
-        if tables == 0 {
-            return Ok(0);
+        let found = self.pragma_i64("user_version")?;
+        if tables == 0 && found == 0 {
+            return Ok(true);
         }
-        let has_migrations: bool = self
-            .conn
-            .query_row(
-                "SELECT EXISTS (SELECT 1 FROM sqlite_schema
-                 WHERE type = 'table' AND name = 'schema_migrations')",
-                [],
-                |r| r.get(0),
-            )
-            .map_err(|e| sql("read state database", e))?;
-        if !has_migrations {
-            return Err(StorageError::Corrupt(
-                "state database has tables but no schema_migrations; it is not a Mira ledger"
-                    .into(),
-            ));
+        if found == i64::from(SCHEMA_VERSION) {
+            return Ok(false);
         }
-        let v: Option<i64> = self
-            .conn
-            .query_row("SELECT max(version) FROM schema_migrations", [], |r| {
-                r.get(0)
-            })
-            .map_err(|e| sql("read schema version", e))?;
-        match v {
-            None => Err(StorageError::Corrupt("schema_migrations is empty".into())),
-            Some(v) => u32::try_from(v).map_err(|_| corrupt("schema version", v)),
-        }
+        Err(StorageError::SchemaMismatch {
+            found,
+            path: db_path.display().to_string(),
+        })
     }
 
     fn pragma_i64(&self, name: &str) -> Result<i64> {
@@ -324,7 +300,7 @@ impl Db {
 
     fn apply_pragmas(&mut self, fresh: bool) -> Result<()> {
         if fresh {
-            // Must precede the first table (§15.1).
+            // Must precede the first table.
             self.set_pragma("auto_vacuum", "INCREMENTAL", 2)?;
         } else if self.pragma_i64("auto_vacuum")? != 2 {
             self.warnings.push(warning(
@@ -363,24 +339,16 @@ impl Db {
         Ok(())
     }
 
-    fn migrate(&mut self, from: u32) -> Result<()> {
-        let now = Timestamp::now().unix_ms();
+    fn create_schema(&mut self) -> Result<()> {
         let tx = self
             .conn
             .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
-            .map_err(|e| sql("begin migration", e))?;
-        for m in MIGRATIONS.iter().filter(|m| m.version > from) {
-            tx.execute_batch(m.sql)
-                .map_err(|e| sql(&format!("apply migration {}", m.version), e))?;
-            tx.execute(
-                "INSERT INTO schema_migrations (version, applied_at) VALUES (?1, ?2)",
-                params![m.version, now],
-            )
-            .map_err(|e| sql("record migration", e))?;
-        }
-        tx.commit().map_err(|e| sql("commit migration", e))?;
-        self.schema_version = SCHEMA_VERSION;
-        Ok(())
+            .map_err(|e| sql("begin schema creation", e))?;
+        tx.execute_batch(SCHEMA)
+            .map_err(|e| sql("create schema", e))?;
+        tx.execute_batch(&format!("PRAGMA user_version = {SCHEMA_VERSION}"))
+            .map_err(|e| sql("set PRAGMA user_version", e))?;
+        tx.commit().map_err(|e| sql("commit schema creation", e))
     }
 
     fn check_workspace(&mut self) -> Result<()> {
@@ -412,7 +380,7 @@ impl Db {
         }
     }
 
-    /// Marks runs left active by a previous host as finished/interrupted (§15.4).
+    /// Marks runs left active by a previous host as finished/interrupted.
     fn interrupt_active_runs(&mut self) -> Result<Vec<RunId>> {
         let rows: Vec<(String, String)> = {
             let mut stmt = self
@@ -544,7 +512,7 @@ impl Db {
                 Claim::New
             }
             Some((fp, stored_ref, created_at)) => {
-                // An active run keeps its reservation past 24 h (§11.5).
+                // An active run keeps its reservation past 24 h.
                 let still_active: bool = tx
                     .query_row(
                         "SELECT EXISTS (SELECT 1 FROM runs
@@ -687,7 +655,7 @@ impl Db {
         Ok(out)
     }
 
-    /// Selects finished runs, views, and request keys beyond retention (§14.3, §14.5).
+    /// Selects finished runs, views, and request keys beyond retention.
     /// Active runs are excluded; request keys referring to active runs are kept.
     pub(super) fn gc_select(
         &self,
@@ -1066,7 +1034,7 @@ impl Db {
         }
         Ok(StorageStatusData {
             other_workspaces: Vec::new(),
-            schema_version: self.schema_version,
+            schema_version: SCHEMA_VERSION,
             sqlite_version: self.sqlite_version.clone(),
             usage: vec![
                 usage(PathClass::StateDb, db_bytes, runs),

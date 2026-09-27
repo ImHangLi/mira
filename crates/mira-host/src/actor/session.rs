@@ -1,4 +1,4 @@
-//! The workspace work session (§5.1, §5.2): controllers keep it alive; a background lease
+//! The workspace work session: controllers keep it alive; a background lease
 //! keeps it alive without controllers until its deadline; observers never do.
 
 use std::collections::HashSet;
@@ -23,8 +23,8 @@ pub struct Session {
     /// Background lease deadline; `Some(None)` means an explicit `ttl: none` lease.
     pub lease: Option<Option<(Instant, Timestamp)>>,
     pub stopping: bool,
-    /// Environment captured from the controller that created the session (autostart, schedules).
-    #[allow(dead_code)] // read by interval schedules (LYR-13)
+    /// Environment captured from the controller that created the session; interval
+    /// schedules run with it.
     pub env: ClientEnv,
 }
 
@@ -140,11 +140,6 @@ impl Actor {
         }
     }
 
-    pub(super) fn session_detach(&mut self, client: &ClientId, r: Responder) {
-        self.controller_left(client);
-        self.session_reply(r);
-    }
-
     pub(super) fn session_open(&mut self, _client: &ClientId, p: SessionOpenParams, r: Responder) {
         let lease = match lease_from(p.ttl) {
             Ok(l) => l,
@@ -258,7 +253,7 @@ impl Actor {
             return;
         }
         // Wall clock, not monotonic time: macOS monotonic time pauses during sleep, and the
-        // lease is an absolute deadline that must be checked after wake (§5.2).
+        // lease is an absolute deadline that must be checked after wake.
         if let Some(Some((_, wall))) = s.lease
             && Timestamp::now() >= wall
         {

@@ -89,7 +89,7 @@
     },
     "PayloadRef": {
       "additionalProperties": false,
-      "description": "Reference to a bounded result or view serialization held by the host (§11.1).",
+      "description": "Reference to a bounded result or view serialization held by the host.",
       "properties": {
         "availability": {
           "$ref": "#/$defs/PayloadAvailability"

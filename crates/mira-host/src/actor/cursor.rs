@@ -1,9 +1,8 @@
-//! Opaque paging cursors (§11.2): base64url of a small versioned JSON object that names the
-//! data source, a hash of the filter, the position, and the revision it is bound to.
+//! Opaque paging cursors: base64url of a small JSON object that names the data source, a
+//! hash of the filter, the position, and the revision it is bound to.
 //!
 //! Cursors are not credentials and never carry secrets, env values, or raw query text: the
-//! filter is stored only as a short hash. Decoding is strict. A cursor from an older format
-//! is reported as expired instead of being misread.
+//! filter is stored only as a short hash. Decoding is strict: anything else is invalid.
 
 use base64::Engine as _;
 use mira_protocol::error::{ErrorCode, ErrorInfo};
@@ -11,8 +10,6 @@ use mira_protocol::limits::MAX_CURSOR_BYTES;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest as _, Sha256};
-
-const VERSION: u64 = 1;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Kind {
@@ -58,7 +55,6 @@ pub(crate) struct Pos {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Wire {
-    v: u64,
     k: String,
     /// Source ID: workspace, run, or view.
     s: String,
@@ -90,7 +86,6 @@ pub(crate) fn encode(
     revision: Option<u64>,
 ) -> String {
     let wire = Wire {
-        v: VERSION,
         k: kind.tag().to_owned(),
         s: source.to_owned(),
         f: filter.to_owned(),
@@ -113,17 +108,8 @@ pub(crate) fn decode(s: &str, kind: Kind, source: &str, filter: &str) -> Result<
     let bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
         .decode(s)
         .map_err(|_| invalid("invalid cursor: not a Mira cursor"))?;
-    let value: Value =
-        serde_json::from_slice(&bytes).map_err(|_| invalid("invalid cursor: not a Mira cursor"))?;
-    // An object with a kind but another (or no) version is an older cursor format.
-    if value.get("k").is_some() && value.get("v").and_then(Value::as_u64) != Some(VERSION) {
-        return Err(ErrorInfo::new(
-            ErrorCode::CURSOR_EXPIRED,
-            "the cursor comes from an older Mira format; restart from the first page",
-        ));
-    }
     let wire: Wire =
-        serde_json::from_value(value).map_err(|_| invalid("invalid cursor: malformed fields"))?;
+        serde_json::from_slice(&bytes).map_err(|_| invalid("invalid cursor: not a Mira cursor"))?;
     if wire.k != kind.tag() {
         return Err(invalid(format!(
             "the cursor continues a `{}` read, not a `{}` read",

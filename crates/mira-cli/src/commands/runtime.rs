@@ -1,4 +1,4 @@
-//! Run control commands (§5.2, §10.2): the CLI waits; the host never blocks on a task.
+//! Run control commands: the CLI waits; the host never blocks on a task.
 
 use std::io::{Read, Write};
 use std::path::Path;
@@ -144,7 +144,7 @@ fn run_text(r: &RunRecord) -> String {
         ));
     }
     if let Some(n) = &r.note {
-        s.push_str(&format!("\n  note: {}", human::note_text(n)));
+        s.push_str(&format!("\n  note: {}", n));
     }
     s
 }
@@ -156,7 +156,7 @@ fn run_summary(r: &RunRecord) -> String {
         .as_ref()
         .map_or_else(|| format!("exec \"{}\"", r.label), ToString::to_string);
     let mut outcome = match r.lifecycle {
-        Lifecycle::Finished { outcome } => outcome_text(outcome).to_owned(),
+        Lifecycle::Finished { outcome } => outcome.word().to_owned(),
         other => lifecycle_text(&other),
     };
     if let Some(e) = &r.exit {
@@ -174,7 +174,7 @@ fn run_summary(r: &RunRecord) -> String {
     let mut s = format!(
         "{}  {target}\n  {outcome}\n  started {}, {took} {}",
         r.run_id,
-        human::clock_seconds(r.started_at),
+        human::clock().hms(r.started_at),
         human::run_duration(r)
     );
     match &r.cleanup {
@@ -196,23 +196,13 @@ fn run_summary(r: &RunRecord) -> String {
         ));
     }
     if let Some(n) = &r.note {
-        s.push_str(&format!("\n  note: {}", human::note_text(n)));
+        s.push_str(&format!("\n  note: {}", n));
     }
     s.push_str(&format!(
         "\n  output: mira logs {}",
         human::short_run(&r.run_id)
     ));
     s
-}
-
-fn outcome_text(o: Outcome) -> &'static str {
-    match o {
-        Outcome::Succeeded => "succeeded",
-        Outcome::Failed => "failed",
-        Outcome::Cancelled => "cancelled",
-        Outcome::TimedOut => "timed out",
-        Outcome::Interrupted => "interrupted",
-    }
 }
 
 /// Log lines shown under a failed `run --text`.
@@ -226,7 +216,7 @@ async fn failure_text(client: &mut Client, rec: &RunRecord, e: &ErrorInfo) -> St
         .map_or_else(|| rec.label.clone(), ToString::to_string);
     let mut status = match (rec.stop_reason, &rec.note) {
         (Some(StopReason::ProtocolError), Some(note)) => {
-            format!("{target} stopped: {}", human::note_text(note))
+            format!("{target} stopped: {}", note)
         }
         (Some(StopReason::ProtocolError), None) => {
             format!("{target} stopped: invalid plugin output")
@@ -730,90 +720,6 @@ fn stop_text(d: &SessionStopData) -> String {
     }
 }
 
-/// Stops a host from another Mira build (for example after an upgrade), which the protocol
-/// handshake refuses. The host's owner file must name this workspace and the process must
-/// still be that `mira __host`; the host then shuts down its work on SIGTERM as usual.
-enum HostStop {
-    /// No host for this workspace was found at that owner file.
-    NotFound,
-    /// The host exited; carries its version.
-    Stopped(String),
-    /// It was found but did not exit in time.
-    StillStopping(String),
-}
-
-/// Stops the host named by `owner` when it serves `root` and is still a `__host` process.
-/// It gets SIGTERM, so it stops its runs within its shutdown deadline as usual.
-async fn stop_host_from_owner(owner: &std::path::Path, root: &str) -> HostStop {
-    use rustix::process::{Pid, Signal, kill_process, test_kill_process};
-    let owner: Option<Value> = std::fs::read(owner)
-        .ok()
-        .and_then(|b| serde_json::from_slice(&b).ok());
-    let field = |k: &str| owner.as_ref().and_then(|o| o.get(k)).cloned();
-    let root_matches = field("root").as_ref().and_then(Value::as_str) == Some(root);
-    let pid = field("pid")
-        .as_ref()
-        .and_then(Value::as_i64)
-        .and_then(|p| i32::try_from(p).ok())
-        .and_then(Pid::from_raw);
-    let version = field("version")
-        .as_ref()
-        .and_then(Value::as_str)
-        .unwrap_or("unknown")
-        .to_owned();
-    let is_host = |pid: Pid| {
-        std::process::Command::new("/bin/ps")
-            .args(["-o", "args=", "-p", &pid.as_raw_nonzero().to_string()])
-            .output()
-            .ok()
-            .is_some_and(|o| String::from_utf8_lossy(&o.stdout).contains("__host"))
-    };
-    let Some(pid) = pid.filter(|p| root_matches && is_host(*p)) else {
-        return HostStop::NotFound;
-    };
-    if kill_process(pid, Signal::TERM).is_err() {
-        return HostStop::NotFound;
-    }
-    // The host stops its runs within its shutdown deadline (15 s), then exits.
-    let deadline = tokio::time::Instant::now() + Duration::from_secs(30);
-    while test_kill_process(pid).is_ok() {
-        if tokio::time::Instant::now() >= deadline {
-            return HostStop::StillStopping(version);
-        }
-        tokio::time::sleep(POLL).await;
-    }
-    HostStop::Stopped(version)
-}
-
-/// Stops a host from another Mira build (for example after an upgrade), which the protocol
-/// handshake refuses. The host's owner file must name this workspace.
-async fn stop_other_build_host(ctx: &Ctx, cx: ReplyContext, refused: ErrorInfo) -> ExitCode {
-    let Ok(paths) = ctx.paths() else {
-        return ctx.fail(cx, refused);
-    };
-    match stop_host_from_owner(&paths.owner(), paths.root.as_str()).await {
-        HostStop::NotFound => ctx.fail(cx, refused),
-        HostStop::StillStopping(v) => ctx.fail(
-            cx,
-            ErrorInfo::new(
-                ErrorCode::TIMEOUT,
-                format!("the older host (mira {v}) is still stopping after 30 s"),
-            ),
-        ),
-        HostStop::Stopped(v) => {
-            let data = SessionStopData {
-                session: None,
-                stopped_session: None,
-                stopped_runs: 0,
-            };
-            let reply = PublicReply::success(cx, data, mira_protocol::reply::ReplyMeta::default());
-            ctx.emit(&reply, |_| {
-                format!("stopped the host from mira {v} and its work; the next command starts this build")
-            })
-        }
-    }
-}
-
 pub fn down(ctx: &Ctx, wait: bool) -> ExitCode {
     block_on(async {
         let paths = match ctx.paths() {
@@ -844,13 +750,7 @@ pub fn down(ctx: &Ctx, wait: bool) -> ExitCode {
                     PublicReply::success(cx, data, mira_protocol::reply::ReplyMeta::default());
                 return ctx.emit(&reply, |_| "Nothing is running.".to_owned());
             }
-            Err(e) => {
-                let e = e.to_error_info();
-                if e.code == ErrorCode::PROTOCOL_MISMATCH {
-                    return stop_other_build_host(ctx, cx, e).await;
-                }
-                return ctx.fail(cx, e);
-            }
+            Err(e) => return ctx.fail(cx, e.to_error_info()),
         };
         let reply = match client
             .call::<_, SessionStopData>(Method::SessionStop, &Empty {})

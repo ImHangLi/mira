@@ -1,4 +1,4 @@
-//! Workspace selection (§4.1). Reads only directory entries; never executes anything.
+//! Workspace selection. Reads only directory entries; never executes anything.
 
 use std::path::{Path, PathBuf};
 
@@ -139,7 +139,58 @@ pub fn git_worktree_root(dir: &Path) -> Option<PathBuf> {
         .map(Path::to_path_buf)
 }
 
-/// Selects the workspace for `project` (explicit) or `cwd` using the fixed §4.1 order.
+/// What a work tree's `HEAD` names, read from `.git` files without running `git`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GitHead {
+    /// The symbolic ref (for example `refs/heads/main`) when HEAD is attached.
+    pub symbolic_ref: Option<String>,
+    /// The commit HEAD points to, when it can be read.
+    pub commit: Option<String>,
+}
+
+impl GitHead {
+    /// The branch name when HEAD is attached to a branch.
+    pub fn branch(&self) -> Option<&str> {
+        self.symbolic_ref.as_deref()?.strip_prefix("refs/heads/")
+    }
+}
+
+/// Reads HEAD of the work tree at `root`. `None` when `root` has no `.git` or HEAD cannot
+/// be read. Worktrees and submodules (a `.git` file naming the git directory) are followed.
+pub fn git_head(root: &Path) -> Option<GitHead> {
+    let dot = root.join(".git");
+    let gitdir = if dot.is_file() {
+        let text = std::fs::read_to_string(&dot).ok()?;
+        let p = PathBuf::from(text.strip_prefix("gitdir:")?.trim());
+        if p.is_absolute() { p } else { root.join(p) }
+    } else if dot.is_dir() {
+        dot
+    } else {
+        return None;
+    };
+    let head = std::fs::read_to_string(gitdir.join("HEAD")).ok()?;
+    let head = head.trim();
+    let Some(r) = head.strip_prefix("ref: ") else {
+        return Some(GitHead {
+            symbolic_ref: None,
+            commit: Some(head.to_owned()).filter(|h| !h.is_empty()),
+        });
+    };
+    // A linked worktree keeps shared refs in the common git directory.
+    let common = std::fs::read_to_string(gitdir.join("commondir"))
+        .ok()
+        .map_or_else(|| gitdir.clone(), |c| gitdir.join(c.trim()));
+    let commit = std::fs::read_to_string(gitdir.join(r))
+        .or_else(|_| std::fs::read_to_string(common.join(r)))
+        .ok()
+        .map(|s| s.trim().to_owned());
+    Some(GitHead {
+        symbolic_ref: Some(r.to_owned()),
+        commit,
+    })
+}
+
+/// Selects the workspace for `project` (explicit) or `cwd` using the fixed selection order.
 pub fn select(project: Option<&Path>, cwd: &Path) -> Result<Selected, SelectError> {
     if let Some(p) = project {
         let root = canonical(p)?;
@@ -193,4 +244,45 @@ pub fn select(project: Option<&Path>, cwd: &Path) -> Result<Selected, SelectErro
         searched: cwd_abs,
         candidates,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn scratch(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("mira-git-{}-{name}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(dir.join(".git/refs/heads")).expect("scratch dir");
+        dir
+    }
+
+    #[test]
+    fn git_head_reads_branch_and_commit() {
+        let root = scratch("branch");
+        std::fs::write(root.join(".git/HEAD"), "ref: refs/heads/main\n").expect("HEAD");
+        std::fs::write(root.join(".git/refs/heads/main"), "abc123\n").expect("ref");
+        let head = git_head(&root).expect("head");
+        assert_eq!(head.branch(), Some("main"));
+        assert_eq!(head.commit.as_deref(), Some("abc123"));
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn git_head_reads_a_detached_commit() {
+        let root = scratch("detached");
+        std::fs::write(root.join(".git/HEAD"), "0123456789abcdef\n").expect("HEAD");
+        let head = git_head(&root).expect("head");
+        assert_eq!(head.branch(), None);
+        assert_eq!(head.commit.as_deref(), Some("0123456789abcdef"));
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn git_head_is_none_outside_a_repository() {
+        let root = std::env::temp_dir().join(format!("mira-git-{}-none", std::process::id()));
+        std::fs::create_dir_all(&root).expect("dir");
+        assert_eq!(git_head(&root), None);
+        let _ = std::fs::remove_dir_all(&root);
+    }
 }

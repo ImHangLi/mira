@@ -941,10 +941,8 @@ dependencies = [
  "mira-host",
  "mira-protocol",
  "mira-tui",
- "rustix",
  "serde",
  "serde_json",
- "time",
  "tokio",
 ]
 
@@ -1012,7 +1010,6 @@ dependencies = [
  "rustix",
  "serde",
  "serde_json",
- "time",
  "tokio",
  "unicode-segmentation",
  "unicode-width",

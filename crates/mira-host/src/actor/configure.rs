@@ -1,4 +1,4 @@
-//! Configuration transactions (§6, §16.3–16.4): validate → apply with catalog CAS → accept
+//! Configuration transactions: validate → apply with catalog CAS → accept
 //! one immutable set. Disk writes are per-file temp+rename; several files are never claimed
 //! to be one atomic transaction.
 
@@ -22,7 +22,7 @@ use super::{Actor, ConfigState, Msg, Responder};
 use crate::diag;
 use crate::storage::{Claim, KeyClaim, KeyScope, Storage};
 
-/// File notifications are coalesced this long before re-validating (§16.3).
+/// File notifications are coalesced this long before re-validating.
 const WATCH_DEBOUNCE: Duration = Duration::from_millis(150);
 
 pub enum ConfigJob {
@@ -83,13 +83,13 @@ fn start_watcher(
 ) -> Option<notify::RecommendedWatcher> {
     use notify::{RecursiveMode, Watcher};
     let mira = paths.mira_dir.clone();
-    let ignored = [mira.join(".generated"), mira.join(".drafts")];
+    let drafts = mira.join(".drafts");
     let mut watcher = notify::recommended_watcher(move |res: notify::Result<notify::Event>| {
         if let Ok(ev) = res {
             let relevant = ev
                 .paths
                 .iter()
-                .any(|p| p.starts_with(&mira) && !ignored.iter().any(|i| p.starts_with(i)));
+                .any(|p| p.starts_with(&mira) && !p.starts_with(&drafts));
             if relevant {
                 let _ = tx.send(());
             }

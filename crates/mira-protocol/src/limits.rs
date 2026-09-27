@@ -52,10 +52,10 @@ pub const CLEANUP_TIMEOUT_MS: u64 = 10_000;
 pub const MIN_SCHEDULE_EVERY_MS: u64 = 1_000;
 pub const DEFAULT_BACKGROUND_TTL_MS: u64 = 2 * 60 * 60 * 1000;
 
-/// PTY screen size before any writer resizes it (§13.2).
+/// PTY screen size before any writer resizes it.
 pub const DEFAULT_TERMINAL_COLS: u16 = 100;
 pub const DEFAULT_TERMINAL_ROWS: u16 = 30;
 pub const MAX_TERMINAL_COLS: u16 = 400;
 pub const MAX_TERMINAL_ROWS: u16 = 200;
-/// Largest single `terminal.input` body; larger input is refused, never truncated (§13.3).
+/// Largest single `terminal.input` body; larger input is refused, never truncated.
 pub const MAX_TERMINAL_INPUT_BYTES: usize = 64 * KIB;

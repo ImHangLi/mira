@@ -1,4 +1,4 @@
-//! Public error codes, `ErrorInfo`, validation issues, and CLI exit codes (§10.3).
+//! Public error codes, `ErrorInfo`, validation issues, and CLI exit codes.
 
 use std::borrow::Cow;
 use std::fmt;
@@ -39,7 +39,7 @@ codes! {
     INPUT_BUSY => 4, ITEM_ID_CONFLICT => 4, CURSOR_EXPIRED => 4, RESET_REQUIRED => 4,
     PAYLOAD_GONE => 3, REQUEST_KEY_CONFLICT => 4, OUTCOME_UNKNOWN => 4, EXECUTION_FAILED => 5,
     TIMEOUT => 6, CANCELLED => 130, STORAGE_UNAVAILABLE => 8, CONFIG_APPLY_INCOMPLETE => 8,
-    SCREEN_CHANGED => 4, OUTPUT_LIMIT => 5, STORAGE_VERSION_UNSUPPORTED => 8,
+    SCREEN_CHANGED => 4, PERMISSION_DENIED => 4,
     UNSUPPORTED_PATH_ENCODING => 2, WORKSPACE_ID_COLLISION => 4, COUNTER_EXHAUSTED => 7,
     INTERNAL => 7,
 }
@@ -139,6 +139,31 @@ impl ErrorInfo {
             next_action: None,
         }
     }
+    /// NOT_SETUP: the workspace has no `.mira/workspace.json`, with the setup steps.
+    pub fn not_setup() -> Self {
+        Self::new(
+            ErrorCode::NOT_SETUP,
+            "this workspace has no .mira/workspace.json yet",
+        )
+        .with_next_action(&["mira", "validate", ".mira"], NOT_SETUP_HINT)
+    }
+    /// NOT_FOUND for a catalog item. `kind` is `catalog item`, `action`, or `view`;
+    /// `details.item_ref` names the missing item.
+    pub fn item_not_found(kind: &str, item_ref: impl fmt::Display) -> Self {
+        let item_ref = item_ref.to_string();
+        let message = format!("no {kind} `{item_ref}`");
+        let mut details = Map::new();
+        details.insert("item_ref".into(), Value::String(item_ref));
+        Self::new(ErrorCode::NOT_FOUND, message).with_details(details)
+    }
+    /// NOT_FOUND for a run; `details.run_id` names the missing run.
+    pub fn run_not_found(run_id: impl fmt::Display) -> Self {
+        let run_id = run_id.to_string();
+        let message = format!("no run {run_id}");
+        let mut details = Map::new();
+        details.insert("run_id".into(), Value::String(run_id));
+        Self::new(ErrorCode::NOT_FOUND, message).with_details(details)
+    }
     pub fn retryable(mut self, retryable: bool) -> Self {
         self.retryable = retryable;
         self
@@ -185,6 +210,10 @@ impl ErrorInfo {
         Ok(())
     }
 }
+
+/// How to set up a workspace that has no `.mira/workspace.json`.
+pub const NOT_SETUP_HINT: &str = "Write .mira/workspace.json and a plugin in .mira/plugins/ \
+     (mira skill, setup reference), validate them, then run `mira reload`.";
 
 /// Cuts a string to at most `max` bytes on a character boundary.
 pub fn truncate_utf8(s: &mut String, max: usize) {
@@ -259,9 +288,14 @@ impl Issues {
         let Some(first) = self.0.first() else {
             return ErrorInfo::new(ErrorCode::INTERNAL, "validation failed without issues");
         };
+        let at = if first.pointer.is_empty() {
+            String::new()
+        } else {
+            format!(" at `{}`", first.pointer)
+        };
         let message = match &first.file {
-            Some(f) => format!("{f}: {} at `{}`", first.message, first.pointer),
-            None => format!("{} at `{}`", first.message, first.pointer),
+            Some(f) => format!("{f}: {}{at}", first.message),
+            None => format!("{}{at}", first.message),
         };
         let mut shown = Vec::new();
         let mut budget = MAX_ERROR_DETAILS_BYTES - 256;

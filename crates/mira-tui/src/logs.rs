@@ -1,4 +1,4 @@
-//! Pipe log panel state (§12.2, §12.4): records of one run, a viewport that is either
+//! Pipe log panel state: records of one run, a viewport that is either
 //! following the tail or pinned to a record, a record cursor for copy, and cell-accurate
 //! slicing. Only visible rows are prepared.
 

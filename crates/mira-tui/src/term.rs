@@ -1,4 +1,4 @@
-//! Terminal ownership (§12.6, §13.5): one guard enters raw mode and the alternate screen,
+//! Terminal ownership: one guard enters raw mode and the alternate screen,
 //! and every exit path (normal, error, panic) restores the outer terminal exactly once.
 
 use std::io::{Stdout, Write};
@@ -120,7 +120,7 @@ fn has_device_attributes(buf: &[u8]) -> bool {
         })
 }
 
-/// Application mouse mode (§12.5); off by default so the terminal's own selection works.
+/// Application mouse mode; off by default so the terminal's own selection works.
 pub fn set_mouse(on: bool) {
     let mut out = std::io::stdout();
     let _ = if on {

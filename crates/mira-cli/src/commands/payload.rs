@@ -1,4 +1,4 @@
-//! `mira payload read`: bounded UTF-8 chunks of a host-held payload (§11.1). A read never
+//! `mira payload read`: bounded UTF-8 chunks of a host-held payload. A read never
 //! re-runs the action that produced the data; data that is gone is PAYLOAD_GONE.
 
 use std::process::ExitCode;

@@ -1,4 +1,4 @@
-//! Artifact registration and bounded reads (§8.4). `managed` files must resolve inside the
+//! Artifact registration and bounded reads. `managed` files must resolve inside the
 //! run's artifact directory; `external` ones are references with size and existence only.
 //! Nothing is opened at registration; `artifact.read` is the only explicit read.
 

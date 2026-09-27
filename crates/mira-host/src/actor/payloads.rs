@@ -1,4 +1,4 @@
-//! Payload references (§11.1): large host-held values returned by reference and read in
+//! Payload references: large host-held values returned by reference and read in
 //! bounded UTF-8 chunks with `payload.read`.
 //!
 //! Two sources exist. `session` payloads are serialized copies of bounded values (view bodies,

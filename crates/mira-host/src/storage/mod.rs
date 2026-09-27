@@ -1,4 +1,4 @@
-//! Workspace ledger (§14.2, §15): one SQLite connection owned by one dedicated thread.
+//! Workspace ledger: one SQLite connection owned by one dedicated thread.
 //!
 //! The actor talks to it only through [`Storage`], a cloneable handle that sends typed jobs
 //! over a bounded channel and awaits their results. No other code opens the database.
@@ -11,8 +11,8 @@ use mira_protocol::time::Timestamp;
 use mira_protocol::view::SourceKind;
 
 /// Current schema version written by this binary.
-pub const SCHEMA_VERSION: u32 = 2;
-/// View revisions are reserved in blocks of this size (§15.3).
+pub const SCHEMA_VERSION: u32 = 1;
+/// View revisions are reserved in blocks of this size.
 pub const VIEW_REVISION_BLOCK: u64 = 1024;
 
 #[derive(Debug, Clone, PartialEq, thiserror::Error)]
@@ -20,9 +20,13 @@ pub enum StorageError {
     /// A required write or read could not complete (disk full, permissions, IO).
     #[error("storage unavailable: {0}")]
     Unavailable(String),
-    /// The database was written by a newer binary.
-    #[error("state database schema {found} is newer than supported {supported}")]
-    VersionUnsupported { found: u32, supported: u32 },
+    /// The database has another schema version. It is never changed in place.
+    #[error(
+        "state database {path} has schema version {found}, this build uses {SCHEMA_VERSION}; \
+         stop the host with `mira down`, then delete the state database \
+         (`mira paths` shows its location)"
+    )]
+    SchemaMismatch { found: i64, path: String },
     /// The database file exists but cannot be used; it is never replaced by an empty one.
     #[error("state database is damaged: {0}")]
     Corrupt(String),
@@ -36,8 +40,9 @@ pub enum StorageError {
 impl StorageError {
     pub fn to_error_info(&self) -> ErrorInfo {
         let code = match self {
-            Self::Unavailable(_) | Self::Corrupt(_) => ErrorCode::STORAGE_UNAVAILABLE,
-            Self::VersionUnsupported { .. } => ErrorCode::STORAGE_VERSION_UNSUPPORTED,
+            Self::Unavailable(_) | Self::Corrupt(_) | Self::SchemaMismatch { .. } => {
+                ErrorCode::STORAGE_UNAVAILABLE
+            }
             Self::WorkspaceCollision(_) => ErrorCode::WORKSPACE_ID_COLLISION,
             Self::CounterExhausted => ErrorCode::COUNTER_EXHAUSTED,
         };
@@ -45,7 +50,7 @@ impl StorageError {
     }
 }
 
-/// Idempotency scope for a request key (§11.5): per action, per view, or per operation kind.
+/// Idempotency scope for a request key: per action, per view, or per operation kind.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum KeyScope {
     Action(ActionRef),
@@ -105,7 +110,7 @@ pub struct StoredView {
     pub data_json: String,
 }
 
-/// Retention limits the ledger applies (§14.3); days are 24-hour periods.
+/// Retention limits the ledger applies; days are 24-hour periods.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GcPolicy {
     pub history_days: u64,
@@ -149,8 +154,8 @@ pub use thread::Storage;
 // Operations provided by [`Storage`]. Every method is async and fails with [`StorageError`].
 //
 // - `open(paths) -> Result<(Storage, OpenReport)>` (sync): creates dirs 0700 / files 0600,
-//   runs migrations, applies PRAGMAs, checks root and version, loads `fingerprint.key`, and
-//   marks previously active runs `interrupted` with a note.
+//   checks the schema version, applies PRAGMAs, creates the schema on a new database, checks
+//   the root, loads `fingerprint.key`, and marks previously active runs `interrupted`.
 // - `fingerprint(&Value) -> Digest` (sync, no IO): HMAC-SHA-256 over the JCS form.
 // - `claim_key(KeyClaim, reference)` → [`Claim`]; commits before returning.
 // - `insert_run(RunRecord)`: the reservation; commits before the caller spawns anything.

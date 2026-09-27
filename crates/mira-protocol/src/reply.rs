@@ -1,4 +1,4 @@
-//! `PublicReply` (§10.3): the one JSON object every non-streaming CLI command prints.
+//! `PublicReply`: the one JSON object every non-streaming CLI command prints.
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -30,7 +30,7 @@ pub enum PayloadAvailability {
     Retained,
 }
 
-/// Reference to a bounded result or view serialization held by the host (§11.1).
+/// Reference to a bounded result or view serialization held by the host.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct PayloadRef {
@@ -187,7 +187,7 @@ impl<T> PublicReply<T> {
             state_revision: self.state_revision,
         }
     }
-    /// The fixed CLI exit code (§10.3).
+    /// The fixed CLI exit code.
     pub fn exit_code(&self) -> u8 {
         self.error.as_ref().map_or(0, |e| e.code.exit_code())
     }

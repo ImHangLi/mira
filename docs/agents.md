@@ -22,7 +22,7 @@ Export the skills to the user's own skills folder. Never export them into a proj
 | Codex and other agents (Codex reads `~/.agents/skills`) | `mira skills export ~/.agents/skills` |
 | Skills managed with Skillshare (`~/.config/skillshare/skills` exists) | `mira skills export ~/.config/skillshare/skills`, then `skillshare sync` |
 
-If Skillshare is in use, use only the Skillshare row. Ask the user only if the correct folder is not clear. The command writes `mira/` and `mira-extend/` into that folder: a copy of the skills for this Mira version.
+If Skillshare is in use, use only the Skillshare row. Ask the user only if the correct folder is not clear. The command writes `mira/` and `mira-extend/` into that folder: a copy of the skills for this Mira version. If the folders already exist, for example after a Mira update, add `--force` to replace them.
 
 ## 3. Add a global note
 

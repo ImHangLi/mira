@@ -1,4 +1,4 @@
-//! The human TUI (§12): a projection of host state over the shared typed client.
+//! The human TUI: a projection of host state over the shared typed client.
 //!
 //! The TUI never writes run state, never spawns project commands, and never blocks on IPC.
 //! It joins the workspace session as a controller; closing it (q, Ctrl-C, SIGHUP) restores
@@ -58,19 +58,22 @@ pub fn run(paths: WorkspacePaths) -> Result<TuiEnd, ErrorInfo> {
         ));
     }
     // Read the local offset while the process is still single-threaded.
-    let offset = time::UtcOffset::current_local_offset().unwrap_or(time::UtcOffset::UTC);
+    let clock = mira_protocol::clock::LocalClock::detect();
     let rt = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(2)
         .enable_all()
         .build()
         .map_err(|e| ErrorInfo::new(ErrorCode::INTERNAL, format!("cannot start runtime: {e}")))?;
-    let res = rt.block_on(serve(paths, offset));
+    let res = rt.block_on(serve(paths, clock));
     // Do not wait for workers or the input thread: the host owns shutdown of the work.
     rt.shutdown_background();
     res
 }
 
-async fn serve(paths: WorkspacePaths, offset: time::UtcOffset) -> Result<TuiEnd, ErrorInfo> {
+async fn serve(
+    paths: WorkspacePaths,
+    clock: mira_protocol::clock::LocalClock,
+) -> Result<TuiEnd, ErrorInfo> {
     let mut control = connect(&paths, &ipc::options(ConnectionKind::Control))
         .await
         .map_err(|e| e.to_error_info())?;
@@ -117,7 +120,7 @@ async fn serve(paths: WorkspacePaths, offset: time::UtcOffset) -> Result<TuiEnd,
 
     let mut app = App::new(
         paths.root.to_string(),
-        offset,
+        clock,
         Io {
             control: control_tx,
             read: read_tx.clone(),
@@ -208,7 +211,7 @@ async fn serve(paths: WorkspacePaths, offset: time::UtcOffset) -> Result<TuiEnd,
     }
     let message = match app.quit.take() {
         Some(Quit::Kept(until)) => crate::app::close_message(
-            &crate::app::Close::Kept(until.map(|t| app.clock(t, false))),
+            &crate::app::Close::Kept(until.map(|t| app.clock.hm(t))),
             app.run_count(),
         ),
         Some(Quit::Normal(Some(sig))) => format!("{sig}: {}", app.quit_message()),

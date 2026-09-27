@@ -1,4 +1,4 @@
-//! Retention and cleanup (§14.3–14.5, §15.1): bounded history, managed-file GC, and
+//! Retention and cleanup: bounded history, managed-file GC, and
 //! explicit private-state clearing. Only Core-recorded files inside managed roots are
 //! removed; symlinks are never followed; active runs and their files are never touched.
 
@@ -19,7 +19,7 @@ use super::{Actor, Responder, reply_fail, reply_ok};
 use crate::diag;
 use crate::storage::{GcPolicy, GcSelection};
 
-/// Automatic incremental GC runs at most this often while the host is active (§14.5).
+/// Automatic incremental GC runs at most this often while the host is active.
 pub const AUTO_GC_EVERY: Duration = Duration::from_secs(300);
 const DAY: Duration = Duration::from_secs(86_400);
 

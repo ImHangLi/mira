@@ -1,4 +1,4 @@
-//! Typed view data (§8.1) and view snapshot metadata (§8.2).
+//! Typed view data and view snapshot metadata.
 
 use std::collections::BTreeSet;
 
@@ -134,7 +134,7 @@ impl ViewData {
         }
     }
 
-    /// Validates the whole value; any issue rejects the entire update (§8.2).
+    /// Validates the whole value; any issue rejects the entire update.
     pub fn validate(&self, pointer: &str) -> Issues {
         let mut issues = Issues::default();
         match self {
@@ -349,7 +349,7 @@ pub enum Durability {
     Unavailable,
 }
 
-/// A large value returned by reference (§11.1).
+/// A large value returned by reference.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct ReferenceData {

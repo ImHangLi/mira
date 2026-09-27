@@ -1,4 +1,4 @@
-//! `mira` with no command: the human TUI (§12). Agents get `TTY_REQUIRED` at once instead
+//! `mira` with no command: the human TUI. Agents get `TTY_REQUIRED` at once instead
 //! of a blocked process; an unconfigured workspace gets one screen of setup instructions.
 
 use std::io::{IsTerminal, Write};

@@ -1,4 +1,4 @@
-//! `mira storage status|gc|clear` (§10.2, §14.5). `gc` only plans unless `--apply`.
+//! `mira storage status|gc|clear`. `gc` only plans unless `--apply`.
 
 use std::process::ExitCode;
 

@@ -1,40 +1,7 @@
-//! Versioned schema migrations for the workspace ledger (§15.2).
-//!
-//! Each entry upgrades the schema from `version - 1` to `version`. Entries are applied in
-//! order inside one transaction and recorded in `schema_migrations`. Never edit an entry
-//! that has shipped; add a new one instead.
+//! The workspace ledger schema. A new database runs [`SCHEMA`] once and records
+//! [`super::SCHEMA_VERSION`] in `PRAGMA user_version`.
 
-pub(super) struct Migration {
-    pub version: u32,
-    pub sql: &'static str,
-}
-
-pub(super) const MIGRATIONS: &[Migration] = &[
-    Migration {
-        version: 1,
-        sql: V1,
-    },
-    Migration {
-        version: 2,
-        sql: V2,
-    },
-];
-
-/// V2: remember views removed by retention so reads say "cleaned up", not "no data".
-const V2: &str = r#"
-CREATE TABLE cleaned_views (
-    view_ref    TEXT PRIMARY KEY NOT NULL,
-    revision    INTEGER NOT NULL,
-    cleaned_at  INTEGER NOT NULL
-) STRICT;
-"#;
-
-const V1: &str = r#"
-CREATE TABLE schema_migrations (
-    version     INTEGER PRIMARY KEY NOT NULL,
-    applied_at  INTEGER NOT NULL
-) STRICT;
-
+pub(super) const SCHEMA: &str = r#"
 -- Exactly one row: the workspace this database belongs to and its persisted counters.
 CREATE TABLE workspace_meta (
     id                  INTEGER PRIMARY KEY NOT NULL CHECK (id = 1),
@@ -67,7 +34,7 @@ CREATE INDEX runs_by_start ON runs (started_at DESC, run_id DESC);
 CREATE INDEX runs_by_action ON runs (action_ref, started_at DESC, run_id DESC);
 CREATE INDEX runs_active ON runs (lifecycle) WHERE lifecycle <> 'finished';
 
--- Idempotency reservations; kept 24 h independent of run history (§11.5, §14.3).
+-- Idempotency reservations; kept 24 h independent of run history.
 CREATE TABLE request_keys (
     scope        TEXT NOT NULL,
     request_key  TEXT NOT NULL,
@@ -116,11 +83,10 @@ CREATE TABLE artifacts (
     PRIMARY KEY (run_id, name)
 ) STRICT;
 
-CREATE TABLE installations (
-    target        TEXT PRIMARY KEY NOT NULL,
-    kind          TEXT NOT NULL,
-    version       TEXT NOT NULL,
-    content_hash  TEXT NOT NULL,
-    installed_at  INTEGER NOT NULL
+-- Views removed by retention, so reads say "cleaned up" instead of "no data".
+CREATE TABLE cleaned_views (
+    view_ref    TEXT PRIMARY KEY NOT NULL,
+    revision    INTEGER NOT NULL,
+    cleaned_at  INTEGER NOT NULL
 ) STRICT;
 "#;

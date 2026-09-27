@@ -73,10 +73,6 @@ fn cap(items: &mut Vec<LogItem>, max: usize) {
     }
 }
 
-fn verr(code: ErrorCode, msg: impl Into<String>) -> ErrorInfo {
-    ErrorInfo::new(code, msg)
-}
-
 impl Actor {
     /// Derived views of the accepted catalog whose source is `action`.
     fn derived_for(&self, action: &ActionRef) -> Vec<(ViewRef, ViewDefinition)> {
@@ -281,7 +277,7 @@ impl Actor {
         def: &ViewDefinition,
     ) -> Result<Handled, ErrorInfo> {
         let Some(src) = def.source.clone() else {
-            return Err(verr(ErrorCode::INTERNAL, "not a derived view"));
+            return Err(ErrorInfo::new(ErrorCode::INTERNAL, "not a derived view"));
         };
         self.derived_refresh(&p.view_ref, def);
         let limit = p
@@ -315,7 +311,7 @@ impl Actor {
             Some(c) => {
                 let c = cursor::decode(c, Kind::View, &source, "")?;
                 if c.revision != Some(e.revision.get()) {
-                    return Err(verr(
+                    return Err(ErrorInfo::new(
                         ErrorCode::VIEW_CHANGED,
                         format!(
                             "the view changed to revision {}; restart from the first page",

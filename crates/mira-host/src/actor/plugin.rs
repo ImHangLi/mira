@@ -1,4 +1,4 @@
-//! MPP/1 run facts in the actor (§7.5, §7.6): results, reported health, progress, views, and
+//! MPP/1 run facts in the actor: results, reported health, progress, views, and
 //! artifacts from validated frames, plus the task result precedence rules.
 
 use std::collections::BTreeSet;
@@ -56,7 +56,7 @@ pub struct Verdict {
     pub note: Option<String>,
 }
 
-/// §7.6: a task succeeds only with one valid success result as its last frame and exit 0.
+/// A task succeeds only with one valid success result as its last frame and exit 0.
 pub fn verdict(
     mpp: &MppRun,
     result: Option<&RunResult>,
@@ -70,9 +70,7 @@ pub fn verdict(
         None => Verdict {
             outcome: Outcome::Failed,
             stop_reason: Some(StopReason::ProtocolError),
-            note: Some(
-                "protocol error [INVALID_FRAME]: the task ended without a result frame".into(),
-            ),
+            note: Some("invalid plugin output: the task ended without a result frame".into()),
         },
         Some(r) if !r.ok => Verdict {
             outcome: Outcome::Failed,
@@ -206,7 +204,7 @@ impl Actor {
         if !self.runs.contains_key(run_id) {
             return;
         }
-        // Large data is retained once by reference (§11.1); the record itself stays small.
+        // Large data is retained once by reference; the record itself stays small.
         let bytes = serde_json::to_vec(&data).unwrap_or_default();
         let (data, payload) = if bytes.len() > reads::INLINE_RESULT_BYTES {
             let cap = self
@@ -251,7 +249,7 @@ impl Actor {
         Ok(v)
     }
 
-    /// Stops only this run; its earlier valid views stay readable and turn stale (§7.6).
+    /// Stops only this run; its earlier valid views stay readable and turn stale.
     pub(crate) fn protocol_error(
         &mut self,
         run_id: &RunId,
@@ -268,11 +266,8 @@ impl Actor {
             return;
         }
         let text = match &view_hint {
-            Some(v) => format!(
-                "protocol error [{}] in view `{v}`: {}",
-                error.code, error.message
-            ),
-            None => format!("protocol error [{}]: {}", error.code, error.message),
+            Some(v) => format!("invalid plugin output in view `{v}`: {}", error.message),
+            None => format!("invalid plugin output: {}", error.message),
         };
         mpp.protocol_error = Some(error);
         mpp.progress = None;

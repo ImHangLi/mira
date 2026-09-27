@@ -1,4 +1,4 @@
-//! Run lifecycle, run records, and canonical log records (§5.3, §14.2, §14.4).
+//! Run lifecycle, run records, and canonical log records.
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -33,6 +33,19 @@ pub enum Outcome {
     Interrupted,
 }
 
+impl Outcome {
+    /// The outcome in plain words for human output: `succeeded`, `stopped`, `timed out`.
+    pub fn word(self) -> &'static str {
+        match self {
+            Self::Succeeded => "succeeded",
+            Self::Failed => "failed",
+            Self::Cancelled => "stopped",
+            Self::TimedOut => "timed out",
+            Self::Interrupted => "interrupted",
+        }
+    }
+}
+
 /// `starting → running → stopping → finished`; a failed start may go straight to finished.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "state", rename_all = "snake_case", deny_unknown_fields)]
@@ -44,6 +57,15 @@ pub enum Lifecycle {
 }
 
 impl Lifecycle {
+    /// The state in plain words for human output; a finished run shows its outcome.
+    pub fn word(self) -> &'static str {
+        match self {
+            Self::Starting => "starting",
+            Self::Running => "running",
+            Self::Stopping { .. } => "stopping",
+            Self::Finished { outcome } => outcome.word(),
+        }
+    }
     pub fn is_active(self) -> bool {
         !matches!(self, Self::Finished { .. })
     }
@@ -100,6 +122,10 @@ pub enum CleanupState {
     },
     Failed {
         ended_at: Timestamp,
+        /// Exit status of the cleanup command; `None` when it did not start or exit normally.
+        exit_code: Option<i32>,
+        /// The cleanup command was stopped at its time limit.
+        timed_out: bool,
         error: ErrorInfo,
     },
     Unknown {
@@ -170,13 +196,13 @@ pub struct RunRecord {
     pub git: Option<GitContext>,
     /// Set when the reported state could not be confirmed (e.g. after a host crash).
     pub note: Option<String>,
-    /// How far this record can be trusted now (§14.6). Computed by the host on every read and
+    /// How far this record can be trusted now. Computed by the host on every read and
     /// never stored; absent only in stored records.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub provenance: Option<RunProvenance>,
 }
 
-/// Read-time provenance of a run (§14.6): a success only proves that one execution, and a
+/// Read-time provenance of a run: a success only proves that one execution, and a
 /// changed definition makes an old result stale evidence.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -191,7 +217,7 @@ pub struct RunProvenance {
     pub current_definition_hash: Option<Digest>,
 }
 
-/// The run summary carried in status and state events (§11.6).
+/// The run summary carried in status and state events.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct RunSummary {
@@ -239,4 +265,19 @@ pub struct LogRecord {
     pub truncated: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub fields: Option<Map<String, Value>>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn run_states_read_as_plain_words() {
+        assert_eq!(Lifecycle::Running.word(), "running");
+        let stopped = Lifecycle::Finished {
+            outcome: Outcome::Cancelled,
+        };
+        assert_eq!(stopped.word(), "stopped");
+        assert_eq!(Outcome::TimedOut.word(), "timed out");
+    }
 }

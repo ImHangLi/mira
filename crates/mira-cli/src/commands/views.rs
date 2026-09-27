@@ -1,4 +1,4 @@
-//! Typed views, publishes, row actions, and artifacts (§8, §10.2). The CLI renders the same
+//! Typed views, publishes, row actions, and artifacts. The CLI renders the same
 //! ViewData the host stores; it never re-runs a plugin to read a view.
 
 use std::process::ExitCode;
@@ -8,7 +8,9 @@ use mira_protocol::ids::{ActionId, RequestKey, RunId, ViewRef, ViewRevision};
 use mira_protocol::ipc::*;
 use mira_protocol::manifest::ViewSourceWire;
 use mira_protocol::reply::ReplyContext;
-use mira_protocol::view::{Freshness, SourceKind, TreeNode, ViewBody, ViewData, ViewSnapshot};
+use mira_protocol::view::{
+    Freshness, LogLevel, SourceKind, TreeNode, ViewBody, ViewData, ViewSnapshot,
+};
 use serde_json::Value;
 
 use super::ctx::{Ctx, block_on};
@@ -62,14 +64,20 @@ fn data_text(d: &ViewData) -> String {
         ViewData::Log { items } => items
             .iter()
             .map(|i| {
-                format!(
-                    "{} {:<5} {}",
-                    i.recorded_at
-                        .map(crate::human::clock_seconds)
-                        .unwrap_or_default(),
-                    format!("{:?}", i.level).to_lowercase(),
-                    i.text
-                )
+                let at = i
+                    .recorded_at
+                    .map(|t| crate::human::clock().hms(t))
+                    .unwrap_or_default();
+                // Info is the normal case: show only the levels that carry meaning.
+                if i.level == LogLevel::Info {
+                    format!("{at} {}", i.text)
+                } else {
+                    format!(
+                        "{at} {:<5} {}",
+                        format!("{:?}", i.level).to_lowercase(),
+                        i.text
+                    )
+                }
             })
             .collect::<Vec<_>>()
             .join("\n"),
@@ -88,7 +96,7 @@ fn data_text(d: &ViewData) -> String {
 fn source_text(s: &ViewSnapshot) -> String {
     let at = s
         .recorded_at
-        .map(|t| format!(", {}", crate::human::clock(t)))
+        .map(|t| format!(", {}", crate::human::clock().when(t)))
         .unwrap_or_default();
     if s.freshness == Freshness::Stale {
         let why = s
@@ -130,7 +138,7 @@ fn derived_head(s: &ViewSnapshot, src: &ViewSourceWire) -> String {
     } else {
         let ended = s
             .recorded_at
-            .map(|t| format!(" {}", crate::human::clock(t)))
+            .map(|t| format!(" {}", crate::human::clock().when(t)))
             .unwrap_or_default();
         format!("○ from {} (ended{ended}) · {lines}", src.logs)
     }

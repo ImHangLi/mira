@@ -1,4 +1,4 @@
-//! The workspace actor: the only writer of workspace state (§3.1, §9.4).
+//! The workspace actor: the only writer of workspace state.
 //!
 //! Requests arrive as messages; storage commits and runner facts come back as messages.
 //! The actor never awaits a child process, a file scan, or a storage commit inline.
@@ -14,7 +14,6 @@ mod reads;
 mod retention;
 mod runs;
 mod schedule;
-mod search;
 mod session;
 mod streams;
 mod terminal;
@@ -24,6 +23,7 @@ use std::collections::{BTreeSet, HashMap, VecDeque};
 use std::sync::Arc;
 use std::time::Duration;
 
+use mira_protocol::catalog;
 use mira_protocol::config::{self, ConfigSet};
 use mira_protocol::error::{ErrorCode, ErrorInfo, Issues};
 use mira_protocol::ids::*;
@@ -148,10 +148,8 @@ pub enum Msg {
     Shutdown,
 }
 
-#[allow(dead_code)] // `connection` is informational; stream rules are enforced by the server.
 struct ClientEntry {
     kind: ClientKind,
-    connection: ConnectionKind,
     out: Outbound,
 }
 
@@ -473,31 +471,34 @@ impl Actor {
     }
 
     fn hello(&mut self, p: HelloParams, out: Outbound) -> Result<(ClientId, HelloReply), RpcError> {
-        let refuse = |msg: String| {
-            let info = ErrorInfo::new(ErrorCode::PROTOCOL_MISMATCH, msg.clone())
-                .with_next_action(&["mira", "status"], "Retry after the running host finishes its work and exits, or use the matching mira build.");
-            RpcError::new(RpcError::HANDSHAKE, msg).with_info(info)
-        };
         if &p.protocol_hash != schemas::protocol_hash() {
-            return Err(refuse(format!(
-                "this host runs a different Mira protocol build (host {} {}, client {})",
+            let pid = std::process::id().to_string();
+            let msg = format!(
+                "this host (pid {pid}) runs another Mira build (host {} {}, client {})",
                 mira_protocol::VERSION,
                 schemas::protocol_hash(),
                 p.protocol_hash
-            )));
+            );
+            let info = ErrorInfo::new(ErrorCode::PROTOCOL_MISMATCH, msg.clone()).with_next_action(
+                &["kill", &pid],
+                "Stop the host from the other build (or run `mira down` with that build); \
+                 the next command starts this build.",
+            );
+            return Err(RpcError::new(RpcError::HANDSHAKE, msg).with_info(info));
         }
         if p.workspace_id != self.paths.id || p.workspace_root != self.paths.root {
-            return Err(refuse(format!(
+            let msg = format!(
                 "this host serves workspace {} at {}, not {} at {}",
                 self.paths.id, self.paths.root, p.workspace_id, p.workspace_root
-            )));
+            );
+            let info = ErrorInfo::new(ErrorCode::PROTOCOL_MISMATCH, msg.clone());
+            return Err(RpcError::new(RpcError::HANDSHAKE, msg).with_info(info));
         }
         let id = ClientId::random();
         self.clients.insert(
             id.clone(),
             ClientEntry {
                 kind: p.client_kind,
-                connection: p.connection_kind,
                 out,
             },
         );
@@ -541,15 +542,7 @@ impl Actor {
                 let res = self.describe(parse!(p));
                 r.send(res)
             }
-            Method::PathsGet => {
-                let _: Empty = parse!(p);
-                r.send(self.ok(self.paths.to_data(), ReplyMeta::default()))
-            }
             Method::SessionAttach => self.session_attach(client, parse!(p), r),
-            Method::SessionDetach => {
-                let _: Empty = parse!(p);
-                self.session_detach(client, r)
-            }
             Method::SessionOpen => self.session_open(client, parse!(p), r),
             Method::SessionKeep => self.session_keep(parse!(p), r),
             Method::SessionStop => {
@@ -583,7 +576,6 @@ impl Actor {
             Method::TerminalInputM => self.terminal_input(client, parse!(p), r),
             Method::TerminalResize => self.terminal_resize(client, parse!(p), r),
             Method::StreamSubscribe => self.subscribe(client, parse!(p), r),
-            Method::StreamUnsubscribe => self.unsubscribe(client, parse!(p), r),
             other => r.send(Err(RpcError::new(
                 RpcError::METHOD_NOT_FOUND,
                 format!("`{}` is not available in this build", other.name()),
@@ -625,7 +617,7 @@ impl Actor {
         });
         let mut storage_warnings = self.storage_warnings.clone();
         for r in self.runs.values() {
-            // Never wait for a log a flooding runner holds: status must stay fast (§9.3). A
+            // Never wait for a log a flooding runner holds: status must stay fast. A
             // busy log is checked again on the next status or state event.
             if let Ok(log) = r.log.try_lock()
                 && let Some(e) = &log.write_error
@@ -654,15 +646,7 @@ impl Actor {
     pub(crate) fn accepted(&self) -> Result<Arc<ConfigSet>, ErrorInfo> {
         match &self.config {
             ConfigState::Accepted { set, .. } => Ok(set.clone()),
-            ConfigState::NotSetup => Err(ErrorInfo::new(
-                ErrorCode::NOT_SETUP,
-                "this workspace has no .mira/workspace.json yet",
-            )
-            .with_next_action(
-                &["mira", "validate", ".mira"],
-                "Write .mira/workspace.json and a plugin in .mira/plugins/ (mira skill, setup \
-                 reference), validate them, then run `mira reload`.",
-            )),
+            ConfigState::NotSetup => Err(ErrorInfo::not_setup()),
             ConfigState::Invalid(i) => Err(i.to_error_info()),
         }
     }
@@ -672,17 +656,11 @@ impl Actor {
             Ok(s) => s,
             Err(e) => return self.fail(e),
         };
-        let words: Vec<String> = p
-            .query
-            .as_deref()
-            .unwrap_or_default()
-            .split_whitespace()
-            .map(str::to_lowercase)
-            .collect();
+        let words = catalog::query_words(p.query.as_deref().unwrap_or_default());
         let source = self.paths.id.to_string();
         let filter = cursor::filter_hash(&serde_json::json!({ "query": words }));
         let revision = self.catalog_revision;
-        // A cached catalog is valid only for the same workspace, query, and revision (§17.1).
+        // A cached catalog is valid only for the same workspace, query, and revision.
         let same_workspace = p.if_workspace.as_ref().is_none_or(|w| w == &self.paths.id);
         if p.cursor.is_none() && same_workspace && p.if_revision == Some(revision) {
             let meta = ReplyMeta {
@@ -722,7 +700,7 @@ impl Actor {
             .limit
             .map_or(DEFAULT_CATALOG_LIMIT, |l| (l as usize).clamp(1, MAX_LIMIT));
         let budget = budget::budget(p.max_bytes);
-        let items: Vec<CatalogItem> = search::search(set.catalog(), &words);
+        let items = search(set.catalog(), &words);
         let start = offset.min(items.len());
         let candidates = &items[start..(start + limit).min(items.len())];
         let next = |taken: usize| {
@@ -779,12 +757,7 @@ impl Actor {
             Ok(s) => s,
             Err(e) => return self.fail(e),
         };
-        let not_found = || {
-            ErrorInfo::new(
-                ErrorCode::NOT_FOUND,
-                format!("no catalog item `{}`", p.item_ref),
-            )
-        };
+        let not_found = || ErrorInfo::item_not_found("catalog item", &p.item_ref);
         let Some(lp) = set.plugin(&p.item_ref.plugin) else {
             return self.fail(not_found());
         };
@@ -905,4 +878,25 @@ pub(crate) fn reply_ok<T: Serialize>(ctx: ReplyContext, data: T, meta: ReplyMeta
 pub(crate) fn reply_fail(ctx: ReplyContext, error: ErrorInfo) -> Handled {
     serde_json::to_value(PublicReply::<Value>::failure(ctx, error))
         .map_err(|e| RpcError::new(RpcError::INTERNAL_ERROR, e.to_string()))
+}
+
+/// Filters and ranks catalog items for the lowercase query `words`. An empty query keeps
+/// all items; a stable sort keeps catalog order among equal ranks.
+fn search(items: Vec<CatalogItem>, words: &[String]) -> Vec<CatalogItem> {
+    let mut ranked: Vec<(catalog::Rank, CatalogItem)> = items
+        .into_iter()
+        .filter_map(|item| {
+            let item_ref = item.item_ref.to_string();
+            let entry = catalog::Entry {
+                item_ref: &item_ref,
+                id: item.item_ref.item.as_str(),
+                title: &item.title,
+                tags: &item.tags,
+                description: &item.description,
+            };
+            catalog::rank(words, &entry).map(|r| (r, item))
+        })
+        .collect();
+    ranked.sort_by_key(|(r, _)| *r);
+    ranked.into_iter().map(|(_, item)| item).collect()
 }

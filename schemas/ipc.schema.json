@@ -137,7 +137,7 @@
         },
         "foreground": {
           "default": false,
-          "description": "Lets a waiting CLI run a task without an existing session (§5.2).",
+          "description": "Lets a waiting CLI run a task without an existing session.",
           "type": "boolean"
         },
         "input": {
@@ -379,7 +379,7 @@
         },
         "if_workspace": {
           "$ref": "#/$defs/WorkspaceId",
-          "description": "With `if_revision`: the workspace the cached catalog came from. A different workspace\nnever gets `not_modified`, even at an equal revision number (§17.1)."
+          "description": "With `if_revision`: the workspace the cached catalog came from. A different workspace\nnever gets `not_modified`, even at an equal revision number."
         },
         "limit": {
           "format": "uint32",
@@ -404,7 +404,7 @@
     },
     "ChunkData": {
       "additionalProperties": false,
-      "description": "A bounded UTF-8 chunk of an artifact or payload (§11.1). For payloads, `sha256` is the\ndigest of the whole selected value (after `pointer`), so reassembled chunks can be checked.",
+      "description": "A bounded UTF-8 chunk of an artifact or payload. For payloads, `sha256` is the\ndigest of the whole selected value (after `pointer`), so reassembled chunks can be checked.",
       "properties": {
         "done": {
           "type": "boolean"
@@ -518,14 +518,27 @@
             "error": {
               "$ref": "#/$defs/ErrorInfo"
             },
+            "exit_code": {
+              "description": "Exit status of the cleanup command; `None` when it did not start or exit normally.",
+              "format": "int32",
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
             "state": {
               "const": "failed",
               "type": "string"
+            },
+            "timed_out": {
+              "description": "The cleanup command was stopped at its time limit.",
+              "type": "boolean"
             }
           },
           "required": [
             "state",
             "ended_at",
+            "timed_out",
             "error"
           ],
           "type": "object"
@@ -671,7 +684,6 @@
     },
     "EndReason": {
       "enum": [
-        "unsubscribed",
         "source_ended",
         "reset_required",
         "session_ended"
@@ -1342,53 +1354,6 @@
       ],
       "type": "string"
     },
-    "PathEntry": {
-      "additionalProperties": false,
-      "properties": {
-        "agent_reads": {
-          "type": "boolean"
-        },
-        "auto_delete": {
-          "type": "boolean"
-        },
-        "class": {
-          "$ref": "#/$defs/PathClass"
-        },
-        "path": {
-          "$ref": "#/$defs/AbsolutePath"
-        },
-        "purpose": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "class",
-        "path",
-        "purpose",
-        "auto_delete",
-        "agent_reads"
-      ],
-      "type": "object"
-    },
-    "PathsData": {
-      "additionalProperties": false,
-      "properties": {
-        "entries": {
-          "items": {
-            "$ref": "#/$defs/PathEntry"
-          },
-          "type": "array"
-        },
-        "workspace": {
-          "$ref": "#/$defs/WorkspaceRef"
-        }
-      },
-      "required": [
-        "workspace",
-        "entries"
-      ],
-      "type": "object"
-    },
     "PayloadAvailability": {
       "enum": [
         "session",
@@ -1430,7 +1395,7 @@
     },
     "PayloadRef": {
       "additionalProperties": false,
-      "description": "Reference to a bounded result or view serialization held by the host (§11.1).",
+      "description": "Reference to a bounded result or view serialization held by the host.",
       "properties": {
         "availability": {
           "$ref": "#/$defs/PayloadAvailability"
@@ -1599,7 +1564,7 @@
     },
     "ReferenceData": {
       "additionalProperties": false,
-      "description": "A large value returned by reference (§11.1).",
+      "description": "A large value returned by reference.",
       "properties": {
         "representation": {
           "$ref": "#/$defs/ReferenceTag"
@@ -1870,7 +1835,7 @@
     },
     "RunProvenance": {
       "additionalProperties": false,
-      "description": "Read-time provenance of a run (§14.6): a success only proves that one execution, and a\nchanged definition makes an old result stale evidence.",
+      "description": "Read-time provenance of a run: a success only proves that one execution, and a\nchanged definition makes an old result stale evidence.",
       "properties": {
         "current_definition_hash": {
           "anyOf": [
@@ -1981,7 +1946,7 @@
               "type": "null"
             }
           ],
-          "description": "How far this record can be trusted now (§14.6). Computed by the host on every read and\nnever stored; absent only in stored records."
+          "description": "How far this record can be trusted now. Computed by the host on every read and\nnever stored; absent only in stored records."
         },
         "reported_health": {
           "$ref": "#/$defs/ReportedHealth"
@@ -2108,7 +2073,7 @@
     },
     "RunSummary": {
       "additionalProperties": false,
-      "description": "The run summary carried in status and state events (§11.6).",
+      "description": "The run summary carried in status and state events.",
       "properties": {
         "action_ref": {
           "anyOf": [
@@ -2433,7 +2398,7 @@
       "additionalProperties": false,
       "properties": {
         "config_warnings": {
-          "description": "On-disk configuration problems (invalid-on-disk, incomplete apply). Spec gap filler:\n§10.4 assigns disk configuration warnings to `status`.",
+          "description": "On-disk configuration problems (invalid on disk, incomplete apply); `status` is where\ndisk configuration warnings are reported.",
           "items": {
             "$ref": "#/$defs/Warning"
           },
@@ -3010,18 +2975,6 @@
       ],
       "type": "object"
     },
-    "StreamUnsubscribeParams": {
-      "additionalProperties": false,
-      "properties": {
-        "subscription_id": {
-          "$ref": "#/$defs/SubscriptionId"
-        }
-      },
-      "required": [
-        "subscription_id"
-      ],
-      "type": "object"
-    },
     "Subscribed": {
       "additionalProperties": false,
       "properties": {
@@ -3353,7 +3306,7 @@
     },
     "TerminalSnapshotParams": {
       "additionalProperties": false,
-      "description": "`terminal.snapshot`: one consistent read of the virtual screen (§13.2).",
+      "description": "`terminal.snapshot`: one consistent read of the virtual screen.",
       "properties": {
         "include_style": {
           "default": false,
@@ -4009,14 +3962,6 @@
         "$ref": "#/$defs/LogPage"
       }
     },
-    "paths.get": {
-      "params": {
-        "$ref": "#/$defs/Empty"
-      },
-      "result": {
-        "$ref": "#/$defs/PathsData"
-      }
-    },
     "payload.read": {
       "params": {
         "$ref": "#/$defs/PayloadReadParams"
@@ -4060,14 +4005,6 @@
     "session.attach": {
       "params": {
         "$ref": "#/$defs/SessionAttachParams"
-      },
-      "result": {
-        "$ref": "#/$defs/SessionData"
-      }
-    },
-    "session.detach": {
-      "params": {
-        "$ref": "#/$defs/Empty"
       },
       "result": {
         "$ref": "#/$defs/SessionData"
@@ -4127,14 +4064,6 @@
       },
       "result": {
         "$ref": "#/$defs/Subscribed"
-      }
-    },
-    "stream.unsubscribe": {
-      "params": {
-        "$ref": "#/$defs/StreamUnsubscribeParams"
-      },
-      "result": {
-        "$ref": "#/$defs/Ack"
       }
     },
     "terminal.acquire": {

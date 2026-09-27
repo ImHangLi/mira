@@ -127,7 +127,7 @@ impl Storage {
         Ok((storage, report))
     }
 
-    /// HMAC-SHA-256 with the workspace key over the JCS form of `value` (§11.5).
+    /// HMAC-SHA-256 with the workspace key over the JCS form of `value`.
     pub fn fingerprint(&self, value: &Value) -> Digest {
         // A serde_json::Value always has a JCS form; the fallback only keeps this total.
         let bytes = mira_protocol::hash::canonical_bytes(value).unwrap_or_default();

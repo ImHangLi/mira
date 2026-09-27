@@ -10,7 +10,7 @@ mod plugin_runner;
 mod pty;
 mod runner;
 mod server;
-pub mod storage;
+mod storage;
 
 use mira_protocol::ids::AbsolutePath;
 use mira_protocol::paths::WorkspacePaths;

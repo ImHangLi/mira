@@ -1,4 +1,4 @@
-//! Clipboard copy through `/usr/bin/pbcopy` (§12.5): asynchronous, at most 1 s, at most
+//! Clipboard copy through `/usr/bin/pbcopy`: asynchronous, at most 1 s, at most
 //! 1 MiB, never silently truncated.
 
 use std::process::Stdio;

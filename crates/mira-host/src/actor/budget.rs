@@ -1,4 +1,4 @@
-//! Reply byte budgets (§11.1) shared by catalog, runs, logs, and views.
+//! Reply byte budgets shared by catalog, runs, logs, and views.
 //!
 //! The budget counts the whole serialized PublicReply, envelope included. Lists return only
 //! whole items that fit. When the first item alone is too large, the caller returns its short

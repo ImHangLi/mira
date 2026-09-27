@@ -1,4 +1,4 @@
-//! Presentation state and the single key router (§12.3). The host owns every fact; this
+//! Presentation state and the single key router. The host owns every fact; this
 //! state is a projection of `state`/`log` events plus replies, and every action goes through
 //! the typed client. Footer and key handling read the same [`App::bindings`] set.
 
@@ -6,6 +6,8 @@ use std::collections::{HashMap, VecDeque};
 use std::time::Instant;
 
 use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
+use mira_protocol::catalog;
+use mira_protocol::clock::LocalClock;
 use mira_protocol::error::ErrorInfo;
 use mira_protocol::ids::{ActionId, ActionRef, Digest, ItemRef, RunId, SessionId, ViewRef};
 use mira_protocol::ipc::*;
@@ -364,7 +366,7 @@ pub struct App {
     view_poll_at: Instant,
     /// Actions whose log pane shows an older run chosen in the history list.
     pub viewing: HashMap<ActionRef, RunRecord>,
-    pub offset: time::UtcOffset,
+    pub clock: LocalClock,
     pub items: Vec<Item>,
     pub views: Vec<ViewItem>,
     plugin_order: Vec<String>,
@@ -421,7 +423,7 @@ pub struct App {
     pub recent: HashMap<ActionRef, Vec<RunRecord>>,
     /// The run state each `recent` entry was requested for; a change reads it again.
     recent_key: HashMap<ActionRef, (Option<RunId>, u8, bool)>,
-    /// The PTY attach view (§13).
+    /// The PTY attach view.
     pub term: Terminals,
     /// The last non-empty screen line of active PTY runs whose log is still empty.
     pub screens: HashMap<RunId, String>,
@@ -431,7 +433,7 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(root: String, offset: time::UtcOffset, io: Io) -> Self {
+    pub fn new(root: String, clock: LocalClock, io: Io) -> Self {
         let branch = crate::git::head_label(std::path::Path::new(&root));
         Self {
             workspace_name: workspace_name(&root),
@@ -440,7 +442,7 @@ impl App {
             view_poll_at: Instant::now(),
             viewing: HashMap::new(),
             root,
-            offset,
+            clock,
             items: Vec::new(),
             views: Vec::new(),
             plugin_order: Vec::new(),
@@ -1458,21 +1460,22 @@ impl App {
     /// is set, the matching ones come after the tools so the best tool match stays first.
     /// `keep` stays selected if it still matches.
     fn refilter(&mut self, keep: Option<Key>) {
-        let words: Vec<String> = self
-            .filter
-            .to_lowercase()
-            .split_whitespace()
-            .map(str::to_owned)
-            .collect();
-        let mut out: Vec<(usize, (u8, std::cmp::Reverse<usize>), Entry)> = Vec::new();
+        let words = catalog::query_words(&self.filter);
+        let mut out: Vec<(usize, catalog::Rank, Entry)> = Vec::new();
         for (pi, p) in self.plugin_order.iter().enumerate() {
             for (n, i) in self.items.iter().enumerate() {
                 if i.action_ref.plugin.as_str() != p {
                     continue;
                 }
-                let r = i.action_ref.to_string();
-                let id = i.action_ref.action.to_string();
-                if let Some(k) = rank(&words, &r, &id, &i.title, &i.tags, &[], &i.description) {
+                let item_ref = i.action_ref.to_string();
+                let entry = catalog::Entry {
+                    item_ref: &item_ref,
+                    id: i.action_ref.action.as_str(),
+                    title: &i.title,
+                    tags: &i.tags,
+                    description: &i.description,
+                };
+                if let Some(k) = catalog::rank(&words, &entry) {
                     out.push((pi, k, Entry::Action(n)));
                 }
             }
@@ -1480,15 +1483,23 @@ impl App {
                 if v.view_ref.plugin.as_str() != p {
                     continue;
                 }
-                let r = v.view_ref.to_string();
-                let id = v.view_ref.view.to_string();
-                let kind = [crate::views::kind_word(v.kind).to_owned()];
-                if let Some(k) = rank(&words, &r, &id, &v.title, &v.tags, &kind, &v.description) {
+                let item_ref = v.view_ref.to_string();
+                // A view's kind word matches like a tag.
+                let mut tags = v.tags.clone();
+                tags.push(crate::views::kind_word(v.kind).to_owned());
+                let entry = catalog::Entry {
+                    item_ref: &item_ref,
+                    id: v.view_ref.view.as_str(),
+                    title: &v.title,
+                    tags: &tags,
+                    description: &v.description,
+                };
+                if let Some(k) = catalog::rank(&words, &entry) {
                     out.push((pi, k, Entry::View(n)));
                 }
             }
         }
-        let mut best: HashMap<usize, (u8, std::cmp::Reverse<usize>)> = HashMap::new();
+        let mut best: HashMap<usize, catalog::Rank> = HashMap::new();
         for (pi, k, _) in &out {
             best.entry(*pi)
                 .and_modify(|b| *b = (*b).min(*k))
@@ -1498,7 +1509,14 @@ impl App {
         out.sort_by_key(|(pi, k, _)| (best.get(pi).copied(), *pi, *k));
         let oneoffs = self.oneoffs.iter().enumerate().filter(|(_, o)| {
             let title = o.title();
-            rank(&words, &title, o.run_id.as_str(), &title, &[], &[], "").is_some()
+            let entry = catalog::Entry {
+                item_ref: &title,
+                id: o.run_id.as_str(),
+                title: &title,
+                tags: &[],
+                description: "",
+            };
+            catalog::rank(&words, &entry).is_some()
         });
         let oneoffs: Vec<Entry> = oneoffs.map(|(i, _)| Entry::OneOff(i)).collect();
         let tools = out.into_iter().map(|(_, _, e)| e);
@@ -2224,7 +2242,7 @@ impl App {
                 .is_some_and(|s| Some(&s.id) == self.attached_to.as_ref())
     }
 
-    /// What closing this window does to the runs (§5.1).
+    /// What closing this window does to the runs.
     pub fn close_effect(&self) -> Close {
         let Some(s) = &self.session else {
             return Close::NoSession;
@@ -2239,7 +2257,7 @@ impl App {
             return Close::OtherWindows(s.controller_count as usize - 1);
         }
         if s.background_lease || s.expires_at.is_some() {
-            return Close::Kept(s.expires_at.map(|t| self.clock(t, false)));
+            return Close::Kept(s.expires_at.map(|t| self.clock.hm(t)));
         }
         Close::Last
     }
@@ -2257,21 +2275,6 @@ impl App {
     /// The line printed after the window closes.
     pub fn quit_message(&self) -> String {
         close_message(&self.close_effect(), self.run_count())
-    }
-
-    pub fn clock(&self, t: Timestamp, seconds: bool) -> String {
-        let nanos = i128::from(t.unix_ms()) * 1_000_000;
-        match time::OffsetDateTime::from_unix_timestamp_nanos(nanos) {
-            Ok(dt) => {
-                let dt = dt.to_offset(self.offset);
-                if seconds {
-                    format!("{:02}:{:02}:{:02}", dt.hour(), dt.minute(), dt.second())
-                } else {
-                    format!("{:02}:{:02}", dt.hour(), dt.minute())
-                }
-            }
-            Err(_) => "--:--".into(),
-        }
     }
 
     pub fn key(&mut self, k: KeyEvent) {
@@ -2965,55 +2968,6 @@ fn scroll_keys(v: &mut Vec<Binding>, p: &LogPane) {
     v.push(bind("G/End", follow, Cmd::Bottom));
 }
 
-/// How well one catalog entry matches the filter words, like `mira` catalog search:
-/// `None` when no word matches; otherwise the best tier over all words (0 exact ref or ID,
-/// 1 exact title, 2 ref/ID/title prefix, 3 ref/ID/title substring, 4 tag, 5 description),
-/// then more matched words first. `extra_tags` match like tags (a view's kind word).
-fn rank(
-    words: &[String],
-    item_ref: &str,
-    id: &str,
-    title: &str,
-    tags: &[String],
-    extra_tags: &[String],
-    description: &str,
-) -> Option<(u8, std::cmp::Reverse<usize>)> {
-    if words.is_empty() {
-        return Some((0, std::cmp::Reverse(0)));
-    }
-    let (item_ref, id, title) = (
-        item_ref.to_lowercase(),
-        id.to_lowercase(),
-        title.to_lowercase(),
-    );
-    let description = description.to_lowercase();
-    let names = [&item_ref, &id, &title];
-    let tier = |w: &str| -> Option<u8> {
-        if item_ref == w || id == w {
-            Some(0)
-        } else if title == w {
-            Some(1)
-        } else if names.iter().any(|n| n.starts_with(w)) {
-            Some(2)
-        } else if names.iter().any(|n| n.contains(w)) {
-            Some(3)
-        } else if tags
-            .iter()
-            .chain(extra_tags)
-            .any(|t| t.to_lowercase().contains(w))
-        {
-            Some(4)
-        } else if description.contains(w) {
-            Some(5)
-        } else {
-            None
-        }
-    };
-    let tiers: Vec<u8> = words.iter().filter_map(|w| tier(w)).collect();
-    let best = tiers.iter().min()?;
-    Some((*best, std::cmp::Reverse(tiers.len())))
-}
-
 /// What closing this window does to the runs.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Close {
@@ -3130,7 +3084,7 @@ mod tests {
         let paths = mira_protocol::paths::WorkspacePaths::new(root);
         App::new(
             "/tmp/mira-tui-test".into(),
-            time::UtcOffset::UTC,
+            LocalClock::UTC,
             Io {
                 control,
                 read,

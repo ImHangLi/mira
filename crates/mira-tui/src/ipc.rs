@@ -25,7 +25,7 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
-/// Default background lease for `b` (§5.2).
+/// Default background lease for `b`.
 pub const KEEP_TTL_MS: u64 = 2 * 60 * 60 * 1000;
 /// Log tail size fetched when a run is opened.
 const TAIL_LIMIT: u32 = 500;
