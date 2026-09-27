@@ -145,6 +145,15 @@ impl Actor {
                 };
                 self.state_changed();
             }
+            PluginEvent::Notify { title, message } => {
+                // In the run log too, so agents and later readers see it.
+                self.host_note(
+                    &run_id,
+                    LogLevel::Info,
+                    &format!("notification: {title}: {message}"),
+                );
+                self.broadcast_notify(&run_id, title, message);
+            }
             PluginEvent::View { view_id, op, data } => {
                 let view_ref = ViewRef::new(mpp.plugin.clone(), view_id);
                 self.enqueue_view_update(view_ref, op, data, Some(run_id), SourceKind::Plugin);

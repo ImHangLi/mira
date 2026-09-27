@@ -90,6 +90,12 @@ pub enum PluginFrame {
         op: ViewOp,
         data: ViewData,
     },
+    /// A desktop notification for the user, such as "the timer is done".
+    Notify {
+        api: Api1,
+        title: String,
+        message: String,
+    },
     Artifact {
         api: Api1,
         path: String,
@@ -147,6 +153,10 @@ pub enum PluginEvent {
         view_id: ViewId,
         op: ViewOp,
         data: ViewData,
+    },
+    Notify {
+        title: String,
+        message: String,
     },
     Artifact {
         path: String,
@@ -233,6 +243,25 @@ impl PluginFrame {
                 }
                 issues.extend(data.validate("/data"));
                 PluginEvent::View { view_id, op, data }
+            }
+            Self::Notify { title, message, .. } => {
+                // Clients pass both to the terminal, so no control characters get through.
+                for (pointer, text, max) in [
+                    ("/title", &title, MAX_NOTIFY_TITLE_BYTES),
+                    ("/message", &message, MAX_MESSAGE_BYTES),
+                ] {
+                    if text.trim().is_empty()
+                        || text.len() > max
+                        || text.chars().any(char::is_control)
+                    {
+                        issues.push(Issue::new(
+                            ErrorCode::INVALID_FRAME,
+                            pointer,
+                            format!("must be non-empty text of at most {max} bytes without control characters"),
+                        ));
+                    }
+                }
+                PluginEvent::Notify { title, message }
             }
             Self::Artifact {
                 path,

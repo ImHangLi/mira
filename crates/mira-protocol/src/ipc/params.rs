@@ -475,6 +475,8 @@ pub enum StreamKind {
     View,
     Terminal,
     Progress,
+    /// Desktop notifications from plugins.
+    Notify,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]

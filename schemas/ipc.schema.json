@@ -2815,6 +2815,39 @@
           "type": "object"
         },
         {
+          "description": "A plugin asked to notify the user; see the MPP/1 `notify` frame.",
+          "properties": {
+            "data": {
+              "properties": {
+                "message": {
+                  "type": "string"
+                },
+                "run_id": {
+                  "$ref": "#/$defs/RunId"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "run_id",
+                "title",
+                "message"
+              ],
+              "type": "object"
+            },
+            "type": {
+              "const": "notify",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "data"
+          ],
+          "type": "object"
+        },
+        {
           "properties": {
             "data": {
               "properties": {
@@ -2908,14 +2941,23 @@
       "type": "object"
     },
     "StreamKind": {
-      "enum": [
-        "state",
-        "log",
-        "view",
-        "terminal",
-        "progress"
-      ],
-      "type": "string"
+      "oneOf": [
+        {
+          "enum": [
+            "state",
+            "log",
+            "view",
+            "terminal",
+            "progress"
+          ],
+          "type": "string"
+        },
+        {
+          "const": "notify",
+          "description": "Desktop notifications from plugins.",
+          "type": "string"
+        }
+      ]
     },
     "StreamSource": {
       "additionalProperties": false,

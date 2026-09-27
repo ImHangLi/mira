@@ -130,6 +130,17 @@ pub fn set_mouse(on: bool) {
     };
 }
 
+/// Asks the terminal for a desktop notification (OSC 9). Ghostty, iTerm2, and WezTerm show
+/// it as a system notification, which the user allows once for the terminal app; other
+/// terminals ignore it. The host already rejected control characters; this strips them again
+/// so nothing can end the sequence early.
+pub fn notify(title: &str, message: &str) {
+    let clean = |s: &str| s.chars().filter(|c| !c.is_control()).collect::<String>();
+    let mut out = std::io::stdout();
+    let _ = write!(out, "\x1b]9;{}: {}\x07", clean(title), clean(message));
+    let _ = out.flush();
+}
+
 impl Drop for TerminalGuard {
     fn drop(&mut self) {
         restore();

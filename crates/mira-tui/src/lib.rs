@@ -155,6 +155,7 @@ async fn serve(
     // The query must finish before the input thread starts, so its reply is not read as keys.
     let bg = background(color);
     spawn_input(tx.clone());
+    cmdbar::defaults(app.root.clone(), tx.clone());
     let look = theme::Theme::new(color, bg);
 
     let mut last_draw = Instant::now() - FRAME_GAP;
@@ -201,6 +202,9 @@ async fn serve(
                 dirty = true;
                 if let Some(on) = app.mouse_changed.take() {
                     term::set_mouse(on);
+                }
+                for (title, message) in app.notifications.drain(..) {
+                    term::notify(&title, &message);
                 }
             }
             _ = tokio::time::sleep(wait) => {
