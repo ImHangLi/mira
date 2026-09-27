@@ -26,7 +26,7 @@ It is for everyone who runs things: frontend and backend, TypeScript, Python, an
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset=".github/assets/mira-demo-dark.gif">
-    <img src=".github/assets/mira-demo-light.gif" alt="Mira in a terminal: a web server and a queue worker start, the tests pass, a live view shows only the web server's errors, a system monitor plugin draws CPU, memory, and disk, and a one-off run from an agent appears on its own." width="100%">
+    <img src=".github/assets/mira-demo-light.gif" alt="Mira on a Next.js app: the dev server is running, the unit tests pass, a live view shows only the server errors, an agent run checks the env setup, and a system monitor plugin shows CPU, memory, and disk." width="100%">
   </picture>
 </p>
 
