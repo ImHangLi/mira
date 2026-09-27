@@ -26,7 +26,7 @@ If Skillshare is in use, use only the Skillshare row. Ask the user only if the c
 
 ## 3. Add a global note
 
-Write a file `MIRA.md` next to the user's global instructions, and add one reference line to them. Do not add the line if it is already there.
+Write a file `MIRA.md` next to the user's global instructions, and add one reference line to them. Do this for each agent in the table that is installed (its folder exists) and has the skills from step 2. With Skillshare, that is usually both. Do not add the line if it is already there.
 
 | Agent | Note file | Reference line | Added to |
 |---|---|---|---|
@@ -60,7 +60,9 @@ Follow the setup reference of the mira skill (`mira/references/setup.md` in the 
 4. Run `mira reload --json` to load the new plugins.
 5. Run `mira doctor --json`, then verify one tool, for example `mira run dev.check`.
 
-Ask the user one question: share `.mira/` with the team, or keep it personal?
+Plugins run the project's own commands. Do not add wrappers or prefixes from your own environment to them.
+
+Ask the user one question: share `.mira/` with the team, or keep it personal? Recommend sharing, so the next session and the next engineer reuse the tools. If you cannot ask, keep it personal and tell the user how to share it later.
 
 - **Share:** commit `.mira/workspace.json` and `.mira/plugins/`. Add `.mira/local.json` and `.mira/.drafts/` to `.gitignore`.
 - **Personal:** add `.mira/` to `.git/info/exclude` (find it with `git rev-parse --git-common-dir`). This applies to all worktrees of the repository and changes no tracked file.
