@@ -18,12 +18,6 @@
 
 Mira is a local control center for everything you run, built entirely from plugins.
 
-It is for everyone who runs things: frontend and backend, TypeScript, Python, and Rust, product, infra, research, growth, and operations. Add any plugin you need. It lives right in the view, and you and your agent read it the same way.
-
-- **One screen** for your servers, tests, and scripts.
-- **Customize everything.** Every tool is a plugin. Build your own, or let your agent do it.
-- **Your agent sees what you see.** Same runs, same logs.
-
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset=".github/assets/mira-demo-dark.gif">
@@ -31,25 +25,31 @@ It is for everyone who runs things: frontend and backend, TypeScript, Python, an
   </picture>
 </p>
 
-## Getting started
+## What if…
+
+**…everything you run lived in one place?** Your dev server, your tests, `top`, a Docker log with only the errors. One screen, no tab switching, no commands to remember.
+
+**…the tool you need took one file to make?** A log filter is six lines of JSON. A dev server is one command. A timer, a price table, a whole CLI inside Mira: each one is a plugin, and Mira is built entirely from them.
+
+**…your agent saw exactly what you see, natively?** Your agent reads the same runs, logs, and views through the `mira` CLI. No extra protocol, no server to set up. When it runs a migration or a test, you watch it happen. When a command is worth keeping, it saves it as a plugin, and it never spends tokens finding it again.
+
+**…you could share a tool as easily as a sentence?** Plugins are plain files in your repo. Commit them for your team, or ask your agent to write a prompt that rebuilds a plugin for someone else, fitted to their project.
+
+**…it was not only for code?** A timer, a scheduled search, your morning update. Everything you run in the terminal, with you, or with you and your agent.
+
+Mira itself runs no AI, sends nothing, and makes no network calls. A plugin does only what you write it to do.
+
+## Get started
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/ImHangLi/mira/main/scripts/install.sh | sh
 ```
 
-Then ask your agent to set up Mira for your repo.
+Then ask your agent: *"Set up Mira for this repo."* Your agent follows the [setup steps](docs/agents.md), writes the plugins, and checks them. Then run `mira`.
 
-*Are you an agent? [Start here.](docs/agents.md)*
+**Setting it up yourself?** [Read the guide for people](docs/guide.md). It covers your first plugin, every kind of plugin, and how to remove and share them. See the [example plugins](examples/plugins/) and the [architecture](docs/architecture.md).
 
-To write a plugin yourself, add a small `plugin.json` under `.mira/plugins/`, list it in `.mira/workspace.json` ([format](skills/mira-extend/references/manifest.md)), and run `mira reload`. See the [example plugins](examples/plugins/). For how Mira is built, see the [architecture](docs/architecture.md).
+## Share a plugin
 
-## Use cases
-
-| The pain | With Mira |
-|---|---|
-| Six terminal tabs, and you can't find the dev server. | One screen, every status. |
-| Your agent says the tests pass. You can't check. | You open the same run. |
-| Every new session relearns how to run the repo. | The commands are saved as plugins in the repo. |
-| The view you need doesn't exist. | Build it as a plugin, or ask your agent to. |
-| Every morning, the same Slack updates, one prompt at a time. | Your agent saves the routine. Tomorrow, press `Enter`. |
-| You open Activity Monitor, or install another app, to watch CPU and memory. | Ask your agent for a monitor plugin, with the bars and settings you want. |
+- **With your team:** commit `.mira/workspace.json` and `.mira/plugins/`.
+- **With anyone:** ask your agent to *"write a prompt that rebuilds this Mira plugin"*, and send the prompt. Their agent makes the same tool for their project.

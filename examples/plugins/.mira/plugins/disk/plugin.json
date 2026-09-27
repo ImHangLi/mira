@@ -1,0 +1,9 @@
+{
+  "api": 1, "id": "disk", "name": "Disk space", "description": "Free space of each mounted volume, refreshed on a schedule.",
+  "entry": {"argv": ["python3", "main.py"]},
+  "actions": [
+    {"id": "refresh", "title": "Refresh disk space", "description": "Read free space with df and replace the table.", "mode": "task", "run": {"kind": "plugin"},
+     "schedule": {"every_ms": 600000}, "effects": ["read-files"]}
+  ],
+  "views": [{"id": "volumes", "title": "Volumes", "kind": "table", "persistence": "last"}]
+}
