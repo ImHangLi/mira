@@ -430,6 +430,32 @@
     },
     {
       "additionalProperties": false,
+      "description": "A desktop notification for the user, such as \"the timer is done\".",
+      "properties": {
+        "api": {
+          "$ref": "#/$defs/Api1"
+        },
+        "message": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "type": {
+          "const": "notify",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "api",
+        "title",
+        "message"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
       "properties": {
         "api": {
           "$ref": "#/$defs/Api1"

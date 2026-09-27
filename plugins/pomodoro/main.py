@@ -5,7 +5,6 @@ import json
 import math
 import os
 import signal
-import subprocess
 import sys
 import time
 from datetime import date
@@ -69,21 +68,6 @@ def stop(signum, frame):
     stopped = True
 
 
-def notify(label):
-    if sys.platform != "darwin":
-        return
-    # Pass the label as an argument, never as AppleScript source.
-    script = ('on run argv\n'
-              'display notification ((item 1 of argv) & " is complete") with title "Mira Pomodoro"\n'
-              'end run')
-    try:
-        reply = subprocess.run(["osascript", "-e", script, label], capture_output=True, timeout=5)
-        if reply.returncode:
-            emit({"type": "log", "level": "warn", "text": "macOS could not show the notification."})
-    except (OSError, subprocess.TimeoutExpired):
-        emit({"type": "log", "level": "warn", "text": "The notification is unavailable."})
-
-
 def main():
     signal.signal(signal.SIGTERM, stop)
     signal.signal(signal.SIGINT, stop)
@@ -115,7 +99,7 @@ def main():
         note = ("Break complete. Your keyboard missed you." if is_break else
                 "Step away. Your agent can survive 5 minutes without you.")
         show(label, 0, total, count, note)
-        notify(label)
+        emit({"type": "notify", "title": "Mira Pomodoro", "message": f"{label} is complete. {note}"})
         noun = "pomodoro" if count == 1 else "pomodoros"
         emit({"type": "result", "ok": True, "summary": f"{label} complete. {count} {noun} today.",
               "data": {"pomodoros_today": count}})

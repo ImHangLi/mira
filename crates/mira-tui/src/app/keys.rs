@@ -117,6 +117,39 @@ impl App {
                 }
                 return;
             }
+            Modal::AddPlugin { .. } => {
+                let n = self.missing_defaults().len();
+                let Modal::AddPlugin { index } = &mut self.modal else {
+                    return;
+                };
+                match k.code {
+                    KeyCode::Esc | KeyCode::Char('q') => self.modal = Modal::None,
+                    KeyCode::Char('c') if ctrl => self.modal = Modal::None,
+                    KeyCode::Char('j') | KeyCode::Down => {
+                        *index = (*index + 1).min(n.saturating_sub(1))
+                    }
+                    KeyCode::Char('k') | KeyCode::Up => *index = index.saturating_sub(1),
+                    KeyCode::Enter if !repeat => {
+                        let i = *index;
+                        self.modal = Modal::None;
+                        let chosen = self.missing_defaults().get(i).map(|p| (*p).clone());
+                        if let Some(p) = chosen {
+                            self.info(format!("adding {}...", p.name));
+                            cmdbar::run(
+                                self.root.clone(),
+                                vec!["plugin".into(), "add".into(), p.id.clone()],
+                                Some(format!(
+                                    "Added {}. Its files are in .mira/plugins/{}/.",
+                                    p.name, p.id
+                                )),
+                                self.io.events.clone(),
+                            );
+                        }
+                    }
+                    _ => {}
+                }
+                return;
+            }
             Modal::Confirm { .. } => {
                 match k.code {
                     KeyCode::Char('y') | KeyCode::Enter if !repeat => {
@@ -258,6 +291,7 @@ impl App {
             (KeyCode::Char('H'), _) => Cmd::History,
             (KeyCode::Char('o'), _) => Cmd::OpenWritten,
             (KeyCode::Char('x'), _) => Cmd::Remove,
+            (KeyCode::Char('+'), _) => Cmd::AddPlugin,
             (KeyCode::Char(']'), _) => Cmd::NextTab,
             (KeyCode::Char('['), _) => Cmd::PrevTab,
             (KeyCode::Char(c @ '1'..='3'), _) => Cmd::GoTab(c as u8 - b'1'),

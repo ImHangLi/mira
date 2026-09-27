@@ -188,6 +188,39 @@ pub fn run(root: String, words: Vec<String>, done: Option<String>, tx: Tx) {
     });
 }
 
+/// One default plugin that `mira plugin add NAME` can copy into the project.
+#[derive(Clone, Debug, serde::Deserialize)]
+pub struct DefaultPlugin {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+}
+
+/// Reads the default plugins through the public command, so the list has one source.
+pub fn defaults(root: String, tx: Tx) {
+    tokio::spawn(async move {
+        let Ok(exe) = std::env::current_exe() else {
+            return;
+        };
+        let out = tokio::process::Command::new(exe)
+            .args(["--project", &root, "--json", "plugin", "add"])
+            .stdin(Stdio::null())
+            .stderr(Stdio::null())
+            .kill_on_drop(true)
+            .output();
+        let Ok(Ok(o)) = tokio::time::timeout(TIMEOUT, out).await else {
+            return;
+        };
+        #[derive(serde::Deserialize)]
+        struct Reply {
+            data: Option<Vec<DefaultPlugin>>,
+        }
+        if let Ok(Reply { data: Some(list) }) = serde_json::from_slice(&o.stdout) {
+            let _ = tx.send(Event::Defaults(list));
+        }
+    });
+}
+
 impl Output {
     pub fn failed(title: String, message: String) -> Self {
         Self {

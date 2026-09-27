@@ -42,6 +42,11 @@ impl App {
                     });
                 }
             }
+            Cmd::AddPlugin => {
+                if !self.missing_defaults().is_empty() {
+                    self.modal = Modal::AddPlugin { index: 0 };
+                }
+            }
             Cmd::Remove => {
                 if let Some(item) = self.selected_item() {
                     let p = item.action_ref.plugin.to_string();

@@ -326,6 +326,10 @@ impl App {
                 ));
                 self.reload_selected_tail();
             }
+            StreamEvent::Notify { title, message, .. } => {
+                self.info(format!("{title}: {message}"));
+                self.notifications.push((title, message));
+            }
             _ => {}
         }
     }

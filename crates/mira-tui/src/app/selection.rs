@@ -23,6 +23,23 @@ impl App {
         self.visible.get(self.selected).copied()
     }
 
+    /// The default plugins this project does not have yet, in `mira plugin add` order.
+    pub fn missing_defaults(&self) -> Vec<&crate::cmdbar::DefaultPlugin> {
+        self.defaults
+            .iter()
+            .filter(|d| {
+                !self
+                    .items
+                    .iter()
+                    .any(|i| i.action_ref.plugin.as_str() == d.id)
+                    && !self
+                        .views
+                        .iter()
+                        .any(|v| v.view_ref.plugin.as_str() == d.id)
+            })
+            .collect()
+    }
+
     pub fn selected_item(&self) -> Option<&Item> {
         match self.selected_entry()? {
             Entry::Action(i) => self.items.get(i),

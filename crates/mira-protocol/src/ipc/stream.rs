@@ -60,6 +60,12 @@ pub enum StreamEvent {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         total: Option<f64>,
     },
+    /// A plugin asked to notify the user; see the MPP/1 `notify` frame.
+    Notify {
+        run_id: RunId,
+        title: String,
+        message: String,
+    },
     Gap {
         reason: String,
         dropped_records: Option<u64>,

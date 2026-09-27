@@ -134,6 +134,8 @@ pub enum Event {
     /// cannot be read).
     Screen(RunId, Option<String>),
     CommandDone(crate::cmdbar::Output),
+    /// The default plugins this `mira` ships (`mira plugin add --json`).
+    Defaults(Vec<crate::cmdbar::DefaultPlugin>),
 }
 
 pub type Tx = UnboundedSender<Event>;
@@ -629,7 +631,12 @@ pub fn catalog_params() -> CatalogListParams {
 
 async fn subscribe(client: &mut Client) -> Result<(), Failure> {
     let params = StreamSubscribeParams {
-        kinds: vec![StreamKind::State, StreamKind::Log, StreamKind::View],
+        kinds: vec![
+            StreamKind::State,
+            StreamKind::Log,
+            StreamKind::View,
+            StreamKind::Notify,
+        ],
         refs: vec![],
         cursor: None,
     };

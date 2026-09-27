@@ -223,6 +223,39 @@ impl Actor {
         );
     }
 
+    /// A plugin's desktop notification, for subscribers of `notify` (the TUI shows it).
+    pub(crate) fn broadcast_notify(&mut self, run_id: &RunId, title: String, message: String) {
+        if !self
+            .subs
+            .values()
+            .any(|s| s.kinds.contains(&StreamKind::Notify))
+        {
+            return;
+        }
+        let action = self
+            .runs
+            .get(run_id)
+            .and_then(|r| r.record.action_ref.clone());
+        let keys = [
+            Some(run_id.to_string()),
+            action.as_ref().map(ToString::to_string),
+        ];
+        let line = self.frame(
+            Some(run_id.clone()),
+            action.as_ref().map(|a| a.to_item_ref()),
+            StreamEvent::Notify {
+                run_id: run_id.clone(),
+                title,
+                message,
+            },
+        );
+        self.deliver(
+            StreamKind::Notify,
+            |s| s.refs.is_empty() || s.refs.iter().any(|r| keys.iter().flatten().any(|k| k == r)),
+            &line,
+        );
+    }
+
     /// Screen-changed notice for subscribers that selected this PTY run (by run ID or
     /// action ref). Notices are coalesced upstream to the latest revision.
     pub(crate) fn broadcast_terminal(&mut self, run_id: &RunId, screen_revision: ScreenRevision) {

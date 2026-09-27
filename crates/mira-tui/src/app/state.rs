@@ -194,6 +194,10 @@ pub enum Modal {
         choices: Vec<ActionId>,
         index: usize,
     },
+    /// Choose a default plugin to add (`+`); `index` is into [`App::missing_defaults`].
+    AddPlugin {
+        index: usize,
+    },
     /// The newest runs of one action; `runs` is `None` while the host answers.
     History {
         action_ref: ActionRef,

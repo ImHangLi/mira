@@ -79,6 +79,10 @@ pub struct App {
     pub mouse: bool,
     /// A mouse-mode change the render loop still has to apply.
     pub mouse_changed: Option<bool>,
+    /// Plugin notifications the render loop still has to pass to the terminal.
+    pub notifications: Vec<(String, String)>,
+    /// The default plugins this `mira` ships; see [`App::missing_defaults`].
+    pub defaults: Vec<crate::cmdbar::DefaultPlugin>,
     status_at: Option<Instant>,
     /// Actions whose description declares a schedule.
     scheduled: std::collections::HashSet<ActionRef>,
@@ -152,6 +156,8 @@ impl App {
             last_inputs: HashMap::new(),
             mouse: false,
             mouse_changed: None,
+            notifications: Vec::new(),
+            defaults: Vec::new(),
             status_at: None,
             scheduled: Default::default(),
             catalog_error: None,

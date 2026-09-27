@@ -41,6 +41,25 @@ pub(super) fn draw_sidebar(f: &mut Frame, app: &mut App, t: &Theme, area: Rect) 
     let block = panel(t, panel_title(t, &title, focus), focus);
     let inner = block.inner(area);
     f.render_widget(block, area);
+    // A quiet hint on the last line while some default plugin is missing.
+    let inner = if app.filter.is_empty() && !app.missing_defaults().is_empty() && inner.height > 3 {
+        let [list, _, hint] = ratatui::layout::Layout::vertical([
+            ratatui::layout::Constraint::Min(1),
+            ratatui::layout::Constraint::Length(1),
+            ratatui::layout::Constraint::Length(1),
+        ])
+        .areas(inner);
+        f.render_widget(
+            Paragraph::new(Line::from(vec![
+                Span::styled(" + ", t.word(Tone::Accent)),
+                Span::styled("add a default plugin", t.muted()),
+            ])),
+            hint,
+        );
+        list
+    } else {
+        inner
+    };
     let w = inner.width as usize;
     if total == 0 && app.oneoffs.is_empty() {
         let msg = if app.catalog_error.is_some() {

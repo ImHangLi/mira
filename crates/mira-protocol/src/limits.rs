@@ -31,6 +31,7 @@ pub const MAX_SCHEMA_DEPTH: usize = 32;
 
 pub const MAX_LOG_TEXT_BYTES: usize = 8 * KIB;
 pub const MAX_MESSAGE_BYTES: usize = 2 * KIB;
+pub const MAX_NOTIFY_TITLE_BYTES: usize = 200;
 pub const MAX_ERROR_MESSAGE_BYTES: usize = 4 * KIB;
 pub const MAX_ERROR_DETAILS_BYTES: usize = 8 * KIB;
 
