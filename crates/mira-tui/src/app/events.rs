@@ -16,7 +16,7 @@ impl App {
         match ev {
             Event::Input(crossterm::event::Event::Key(k)) => self.key(k),
             Event::Input(crossterm::event::Event::Paste(t)) => {
-                if self.term.is_open() {
+                if self.term.is_focused() {
                     self.term.paste(t)
                 } else {
                     self.paste(&t)

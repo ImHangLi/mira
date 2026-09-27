@@ -93,10 +93,8 @@ fn draw_screen(f: &mut Frame, app: &mut App, t: &Theme) {
     if app.wide {
         app.want_recent();
     }
-    if app.term.is_open() {
-        crate::terminal::draw(f, &mut app.term, body, t.mode.enabled());
-    } else if app.narrow {
-        if app.focus == Focus::Logs || app.shown_tab() == Tab::History {
+    if app.narrow {
+        if app.focus == Focus::Logs || app.shown_tab() == Tab::History || app.term.is_focused() {
             draw_main(f, app, t, body);
         } else {
             draw_sidebar(f, app, t, body);

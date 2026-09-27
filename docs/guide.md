@@ -15,7 +15,8 @@ Open a new terminal, go to your project, and run `mira`. Without a `.mira/` fold
 | `j` / `k` | Move through the tools |
 | `Enter` | Run a task, start a service, or open a view |
 | `s` | Start or stop a service |
-| `a` | Type into a terminal program; `Ctrl-]` goes back to Mira |
+| `Enter` on a terminal program | Type into it. Its screen shows in the main pane while it is selected; `Ctrl-]` goes back to the tools |
+| `R` | Refresh: load `.mira` again and show new tools (Mira also does this by itself) |
 | `x` | Remove the selected plugin from the project (its files stay) |
 | `+` | Add a default plugin (shown at the bottom of the tool list until you have them all) |
 | `/` | Search the tools |
@@ -73,7 +74,7 @@ Each kind is one small change to `plugin.json`. The [example plugins](../example
 |---|---|---|
 | Only the errors of a log, live | A view with `"source": {"logs": "dev.web", "grep": "error"}`. No code. | `errors` |
 | A form for inputs | An `input_schema`, and `{input.NAME}` in `argv` | `find` |
-| A CLI inside Mira (top, a REPL, a TUI app) | `"terminal": "pty"` on the action. Press `a` to type into it. | `shell` |
+| A CLI inside Mira (top, a REPL, a TUI app) | `"terminal": "pty"` on the action. Select it to see its screen; press Enter to type into it. | `shell` |
 | A table, a text panel, or a tree | A script that prints view frames as JSON lines (`"run": {"kind": "plugin"}`) | `todos`, `disk` |
 | Something that runs on a timer | `"schedule": {"every_ms": 600000}`. Turn it on with `t` in the TUI or `mira schedule REF on`. | `daily`, `disk` |
 | A view that stays after a restart | `"persistence": "last"` on the view | `disk` |

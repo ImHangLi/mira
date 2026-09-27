@@ -23,6 +23,18 @@ use super::view_panel::draw_view;
 use super::widgets::{chip, empty_card, panel, panel_title, tab_bar};
 
 pub(super) fn draw_main(f: &mut Frame, app: &mut App, t: &Theme, area: Rect) {
+    // The selected interactive program shows its live screen here.
+    if app.term.is_open() {
+        let block = panel(
+            t,
+            panel_title(t, "Program", app.term.is_focused()),
+            app.term.is_focused(),
+        );
+        let inner = block.inner(area);
+        f.render_widget(block, area);
+        crate::terminal::draw(f, &mut app.term, inner, t.mode.enabled());
+        return;
+    }
     if let Some(i) = app.selected_oneoff_index() {
         draw_oneoff(f, app, t, i, area);
         return;

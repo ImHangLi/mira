@@ -13,7 +13,7 @@ impl App {
         if k.kind == KeyEventKind::Release {
             return;
         }
-        if self.term.is_open() {
+        if self.term.is_focused() {
             return self.term.key(k);
         }
         let repeat = k.kind == KeyEventKind::Repeat;
@@ -292,6 +292,7 @@ impl App {
             (KeyCode::Char('o'), _) => Cmd::OpenWritten,
             (KeyCode::Char('x'), _) => Cmd::Remove,
             (KeyCode::Char('+'), _) => Cmd::AddPlugin,
+            (KeyCode::Char('R'), _) => Cmd::Refresh,
             (KeyCode::Char(']'), _) => Cmd::NextTab,
             (KeyCode::Char('['), _) => Cmd::PrevTab,
             (KeyCode::Char(c @ '1'..='3'), _) => Cmd::GoTab(c as u8 - b'1'),

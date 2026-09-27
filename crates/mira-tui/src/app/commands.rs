@@ -1,6 +1,7 @@
 //! Executing commands on the selected action, one-off run, or view, and navigation.
 
 use crate::clip;
+use crate::cmdbar;
 use crate::ipc::{Control, Read};
 use crate::logs::LogPane;
 
@@ -40,6 +41,20 @@ impl App {
                         action_ref: a,
                         enabled,
                     });
+                }
+            }
+            Cmd::Refresh => {
+                self.info("refreshing...");
+                cmdbar::run(
+                    self.root.clone(),
+                    vec!["reload".into()],
+                    Some("Refreshed: tools, runs, and views are up to date.".into()),
+                    self.io.events.clone(),
+                );
+                let _ = self.io.read.send(Read::Catalog);
+                let _ = self.io.read.send(Read::Status);
+                if let Some(v) = self.selected_view().map(|v| v.view_ref.clone()) {
+                    self.load_view(&v);
                 }
             }
             Cmd::AddPlugin => {
@@ -100,9 +115,19 @@ impl App {
                     return;
                 };
                 let a = item.action_ref.clone();
+                if self.attach_target().is_some() {
+                    self.sync_terminal();
+                    self.term.focus();
+                    return;
+                }
                 match self.open_kind(item) {
                     Some(OpenKind::Logs) => self.focus = Focus::Logs,
-                    Some(OpenKind::Start) => self.intent(&a, Intent::Start),
+                    Some(OpenKind::Start) => {
+                        if self.term.is_pty(&a) {
+                            self.focus_on_start = Some(a.clone());
+                        }
+                        self.intent(&a, Intent::Start)
+                    }
                     Some(OpenKind::NeedsInput | OpenKind::Form) => self.intent(&a, Intent::Start),
                     None => {}
                 }
@@ -203,8 +228,9 @@ impl App {
             }
             Cmd::Help => self.modal = Modal::Help { top: 0, max: 0 },
             Cmd::Attach => {
-                if let Some((a, run_id)) = self.attach_target() {
-                    self.term.open(a, run_id, self.io.events.clone());
+                if self.attach_target().is_some() {
+                    self.sync_terminal();
+                    self.term.focus();
                 }
             }
             Cmd::OpenWritten => {

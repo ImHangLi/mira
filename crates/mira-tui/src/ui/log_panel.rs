@@ -115,8 +115,8 @@ pub(super) fn draw_logs(
         lines.push(Line::from(vec![
             Span::styled("waiting for input", t.word(Tone::Amber)),
             Span::styled(" · ", t.muted()),
-            Span::styled("a", t.bold()),
-            Span::styled(" attaches", t.muted()),
+            Span::styled("Enter", t.bold()),
+            Span::styled(" to use it", t.muted()),
         ]));
         f.render_widget(Paragraph::new(lines), body);
         return;
