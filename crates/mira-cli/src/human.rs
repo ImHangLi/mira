@@ -130,35 +130,19 @@ pub fn session_line(s: Option<&SessionInfo>) -> String {
     }
 }
 
-/// `cleanup failed (exit 4)` when cleanup failed; `None` otherwise.
+/// `cleanup failed (exit 4)` or `cleanup timed out` when cleanup failed; `None` otherwise.
+/// Other failures carry the host's message.
 pub fn cleanup_failure(c: &CleanupState) -> Option<String> {
     match c {
-        CleanupState::Failed { error, .. } => {
-            let m = &error.message;
-            let why = match m.strip_prefix("cleanup exited with status ") {
-                Some(code) => format!("exit {code}"),
-                None => m.strip_prefix("cleanup ").unwrap_or(m).to_owned(),
-            };
-            Some(format!("cleanup failed ({why})"))
-        }
+        CleanupState::Failed {
+            timed_out: true, ..
+        } => Some("cleanup timed out".into()),
+        CleanupState::Failed {
+            exit_code: Some(code),
+            ..
+        } => Some(format!("cleanup failed (exit {code})")),
+        CleanupState::Failed { error, .. } => Some(format!("cleanup failed: {}", error.message)),
         _ => None,
-    }
-}
-
-/// A run note in plain words: host protocol errors become `invalid plugin output: ...`.
-pub fn note_text(note: &str) -> String {
-    match note
-        .strip_prefix("protocol error [")
-        .and_then(|r| r.split_once("]: "))
-    {
-        Some((_, detail)) => {
-            let detail = detail.strip_suffix(" at ``").unwrap_or(detail);
-            let detail = detail
-                .strip_prefix("invalid MPP/1 frame: ")
-                .unwrap_or(detail);
-            format!("invalid plugin output: {detail}")
-        }
-        None => note.to_owned(),
     }
 }
 
@@ -194,18 +178,11 @@ mod tests {
     }
 
     #[test]
-    fn protocol_notes_say_invalid_plugin_output() {
-        assert_eq!(
-            note_text("protocol error [INVALID_FRAME]: invalid MPP/1 frame: EOF at ``"),
-            "invalid plugin output: EOF"
-        );
-        assert_eq!(note_text("the host restarted"), "the host restarted");
-    }
-
-    #[test]
     fn cleanup_failure_names_the_exit_status() {
         let c = CleanupState::Failed {
             ended_at: Timestamp::from_unix_ms(0),
+            exit_code: Some(4),
+            timed_out: false,
             error: mira_protocol::ErrorInfo::new(
                 mira_protocol::ErrorCode::EXECUTION_FAILED,
                 "cleanup exited with status 4",

@@ -365,20 +365,17 @@ fn run_word(l: Lifecycle) -> &'static str {
 /// A failed cleanup in a few words: `cleanup failed (exit 4)`, `cleanup timed out`;
 /// `None` when cleanup did not fail.
 pub fn cleanup_word(c: &CleanupState) -> Option<String> {
-    let CleanupState::Failed { error, .. } = c else {
-        return None;
-    };
-    let m = &error.message;
-    if m.contains("timed out") {
-        return Some("cleanup timed out".into());
+    match c {
+        CleanupState::Failed {
+            timed_out: true, ..
+        } => Some("cleanup timed out".into()),
+        CleanupState::Failed {
+            exit_code: Some(code),
+            ..
+        } => Some(format!("cleanup failed (exit {code})")),
+        CleanupState::Failed { .. } => Some("cleanup failed".into()),
+        _ => None,
     }
-    let code = m
-        .rsplit_once("status ")
-        .and_then(|(_, n)| n.trim().parse::<i64>().ok());
-    Some(match code {
-        Some(c) => format!("cleanup failed (exit {c})"),
-        None => "cleanup failed".into(),
-    })
 }
 
 fn enum_word<T: serde::Serialize>(v: T) -> String {
@@ -2547,20 +2544,22 @@ mod tests {
 
     #[test]
     fn a_failed_cleanup_reads_as_a_short_phrase() {
-        let failed = |m: &str| CleanupState::Failed {
+        let failed = |exit_code, timed_out| CleanupState::Failed {
             ended_at: Timestamp::now(),
-            error: ErrorInfo::new(ErrorCode::EXECUTION_FAILED, m.to_owned()),
+            exit_code,
+            timed_out,
+            error: ErrorInfo::new(ErrorCode::EXECUTION_FAILED, "cleanup failed"),
         };
         assert_eq!(
-            cleanup_word(&failed("cleanup exited with status 4")).as_deref(),
+            cleanup_word(&failed(Some(4), false)).as_deref(),
             Some("cleanup failed (exit 4)")
         );
         assert_eq!(
-            cleanup_word(&failed("cleanup timed out after 10 s")).as_deref(),
+            cleanup_word(&failed(None, true)).as_deref(),
             Some("cleanup timed out")
         );
         assert_eq!(
-            cleanup_word(&failed("cannot start cleanup: not found")).as_deref(),
+            cleanup_word(&failed(None, false)).as_deref(),
             Some("cleanup failed")
         );
         assert_eq!(cleanup_word(&CleanupState::NotNeeded), None);

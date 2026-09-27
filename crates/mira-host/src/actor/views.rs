@@ -491,7 +491,7 @@ impl Actor {
                 }
             };
             let Some((_, def)) = set.view(&upd.view_ref) else {
-                let e = verr(ErrorCode::NOT_FOUND, format!("no view `{}`", upd.view_ref));
+                let e = ErrorInfo::item_not_found("view", &upd.view_ref);
                 self.fail_update(upd, e);
                 continue;
             };
@@ -856,7 +856,7 @@ impl Actor {
         let set = self.accepted()?;
         let (_, def) = set
             .view(&p.view_ref)
-            .ok_or_else(|| verr(ErrorCode::NOT_FOUND, format!("no view `{}`", p.view_ref)))?;
+            .ok_or_else(|| ErrorInfo::item_not_found("view", &p.view_ref))?;
         let limit = p
             .limit
             .map_or(DEFAULT_PAGE, |l| (l as usize).clamp(1, MAX_LIMIT));
@@ -1082,7 +1082,7 @@ impl Actor {
         let set = self.accepted()?;
         let (_, def) = set
             .view(&p.view_ref)
-            .ok_or_else(|| verr(ErrorCode::NOT_FOUND, format!("no view `{}`", p.view_ref)))?;
+            .ok_or_else(|| ErrorInfo::item_not_found("view", &p.view_ref))?;
         if let Some(src) = &def.source {
             return Err(verr(
                 ErrorCode::INVALID_ARGUMENT,
@@ -1160,7 +1160,7 @@ impl Actor {
             let set = self.accepted()?;
             let (_, def) = set
                 .view(&p.view_ref)
-                .ok_or_else(|| verr(ErrorCode::NOT_FOUND, format!("no view `{}`", p.view_ref)))?;
+                .ok_or_else(|| ErrorInfo::item_not_found("view", &p.view_ref))?;
             let ra = def
                 .row_actions
                 .iter()

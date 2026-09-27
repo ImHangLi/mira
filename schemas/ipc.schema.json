@@ -518,14 +518,27 @@
             "error": {
               "$ref": "#/$defs/ErrorInfo"
             },
+            "exit_code": {
+              "description": "Exit status of the cleanup command; `None` when it did not start or exit normally.",
+              "format": "int32",
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
             "state": {
               "const": "failed",
               "type": "string"
+            },
+            "timed_out": {
+              "description": "The cleanup command was stopped at its time limit.",
+              "type": "boolean"
             }
           },
           "required": [
             "state",
             "ended_at",
+            "timed_out",
             "error"
           ],
           "type": "object"

@@ -48,9 +48,9 @@ impl Actor {
 
     fn schedule_spec(&self, action_ref: &ActionRef) -> Result<(Duration, bool), ErrorInfo> {
         let set = self.accepted()?;
-        let (_, action) = set.action(action_ref).ok_or_else(|| {
-            ErrorInfo::new(ErrorCode::NOT_FOUND, format!("no action `{action_ref}`"))
-        })?;
+        let (_, action) = set
+            .action(action_ref)
+            .ok_or_else(|| ErrorInfo::item_not_found("action", action_ref))?;
         match (&action.schedule, action.mode) {
             (Some(s), ActionMode::Task) => Ok((Duration::from_millis(s.every_ms), s.run_on_start)),
             _ => Err(ErrorInfo::new(

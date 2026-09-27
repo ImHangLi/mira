@@ -126,7 +126,14 @@ impl SchemaDoc {
             .iter_errors(instance)
             .take(crate::error::MAX_REPORTED_ISSUES)
         {
-            let at = e.instance_path().to_string();
+            let mut at = e.instance_path().to_string();
+            // A missing property is located at the property itself, not at its parent.
+            if let jsonschema::error::ValidationErrorKind::Required {
+                property: Value::String(name),
+            } = e.kind()
+            {
+                at = format!("{at}/{}", pointer_token(name));
+            }
             let top = at.trim_start_matches('/').split('/').next().unwrap_or("");
             let message = if hidden.iter().any(|h| h == top) {
                 "value does not match the schema (write-only field hidden)".to_owned()

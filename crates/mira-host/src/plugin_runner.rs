@@ -97,14 +97,10 @@ impl FrameReader {
             match parse_frame(&line) {
                 Ok(ev) => out.push(self.accept(ev)),
                 Err(issues) => {
-                    let info = issues.to_error_info();
                     let hint = view_hint(&line);
                     self.failed = true;
                     out.push(FrameOut::Error {
-                        error: ErrorInfo {
-                            message: format!("invalid MPP/1 frame: {}", info.message),
-                            ..info
-                        },
+                        error: issues.to_error_info(),
                         view_hint: hint,
                     });
                 }

@@ -139,6 +139,23 @@ impl ErrorInfo {
             next_action: None,
         }
     }
+    /// NOT_FOUND for a catalog item. `kind` is `catalog item`, `action`, or `view`;
+    /// `details.item_ref` names the missing item.
+    pub fn item_not_found(kind: &str, item_ref: impl fmt::Display) -> Self {
+        let item_ref = item_ref.to_string();
+        let message = format!("no {kind} `{item_ref}`");
+        let mut details = Map::new();
+        details.insert("item_ref".into(), Value::String(item_ref));
+        Self::new(ErrorCode::NOT_FOUND, message).with_details(details)
+    }
+    /// NOT_FOUND for a run; `details.run_id` names the missing run.
+    pub fn run_not_found(run_id: impl fmt::Display) -> Self {
+        let run_id = run_id.to_string();
+        let message = format!("no run {run_id}");
+        let mut details = Map::new();
+        details.insert("run_id".into(), Value::String(run_id));
+        Self::new(ErrorCode::NOT_FOUND, message).with_details(details)
+    }
     pub fn retryable(mut self, retryable: bool) -> Self {
         self.retryable = retryable;
         self
@@ -259,9 +276,14 @@ impl Issues {
         let Some(first) = self.0.first() else {
             return ErrorInfo::new(ErrorCode::INTERNAL, "validation failed without issues");
         };
+        let at = if first.pointer.is_empty() {
+            String::new()
+        } else {
+            format!(" at `{}`", first.pointer)
+        };
         let message = match &first.file {
-            Some(f) => format!("{f}: {} at `{}`", first.message, first.pointer),
-            None => format!("{} at `{}`", first.message, first.pointer),
+            Some(f) => format!("{f}: {}{at}", first.message),
+            None => format!("{}{at}", first.message),
         };
         let mut shown = Vec::new();
         let mut budget = MAX_ERROR_DETAILS_BYTES - 256;

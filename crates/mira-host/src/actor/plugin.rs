@@ -70,9 +70,7 @@ pub fn verdict(
         None => Verdict {
             outcome: Outcome::Failed,
             stop_reason: Some(StopReason::ProtocolError),
-            note: Some(
-                "protocol error [INVALID_FRAME]: the task ended without a result frame".into(),
-            ),
+            note: Some("invalid plugin output: the task ended without a result frame".into()),
         },
         Some(r) if !r.ok => Verdict {
             outcome: Outcome::Failed,
@@ -268,11 +266,8 @@ impl Actor {
             return;
         }
         let text = match &view_hint {
-            Some(v) => format!(
-                "protocol error [{}] in view `{v}`: {}",
-                error.code, error.message
-            ),
-            None => format!("protocol error [{}]: {}", error.code, error.message),
+            Some(v) => format!("invalid plugin output in view `{v}`: {}", error.message),
+            None => format!("invalid plugin output: {}", error.message),
         };
         mpp.protocol_error = Some(error);
         mpp.progress = None;

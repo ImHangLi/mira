@@ -233,12 +233,9 @@ impl Actor {
 
     fn prepare_action(&mut self, p: &ActionInvokeParams) -> Result<Prepared, ErrorInfo> {
         let set = self.accepted()?;
-        let (lp, action) = set.action(&p.action_ref).ok_or_else(|| {
-            err(
-                ErrorCode::NOT_FOUND,
-                format!("no action `{}`", p.action_ref),
-            )
-        })?;
+        let (lp, action) = set
+            .action(&p.action_ref)
+            .ok_or_else(|| ErrorInfo::item_not_found("action", &p.action_ref))?;
         self.check_blocked(&lp.plugin.id)?;
         if !lp.plugin.enabled {
             return Err(err(
@@ -1119,7 +1116,7 @@ impl Actor {
                     },
                     ReplyMeta::default(),
                 ),
-                None => reply_fail(ctx, err(ErrorCode::NOT_FOUND, format!("no run {run_id}"))),
+                None => reply_fail(ctx, ErrorInfo::run_not_found(&run_id)),
             });
         });
     }
@@ -1149,10 +1146,7 @@ impl Actor {
                         reads::prepare_run(&mut rec, set.as_deref(), &payloads);
                         reply_ok(ctx, rec, ReplyMeta::default())
                     }
-                    Ok(None) => reply_fail(
-                        ctx,
-                        err(ErrorCode::NOT_FOUND, format!("no run {}", p.run_id)),
-                    ),
+                    Ok(None) => reply_fail(ctx, ErrorInfo::run_not_found(&p.run_id)),
                     Err(e) => reply_fail(ctx, e.to_error_info()),
                 },
                 Err(e) => reply_fail(ctx, e.to_error_info()),

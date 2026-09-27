@@ -771,12 +771,7 @@ impl Actor {
             Ok(s) => s,
             Err(e) => return self.fail(e),
         };
-        let not_found = || {
-            ErrorInfo::new(
-                ErrorCode::NOT_FOUND,
-                format!("no catalog item `{}`", p.item_ref),
-            )
-        };
+        let not_found = || ErrorInfo::item_not_found("catalog item", &p.item_ref);
         let Some(lp) = set.plugin(&p.item_ref.plugin) else {
             return self.fail(not_found());
         };

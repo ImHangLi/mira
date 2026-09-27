@@ -65,15 +65,17 @@ pub fn fail(mode: Mode, ctx: ReplyContext, error: ErrorInfo) -> ExitCode {
     emit::<()>(mode, &PublicReply::failure(ctx, error), |_| String::new())
 }
 
+/// A string field of `details`.
+fn detail<'a>(e: &'a ErrorInfo, key: &str) -> Option<&'a str> {
+    e.details.as_ref()?.get(key)?.as_str()
+}
+
 /// A NOT_FOUND reply for a catalog item gets a search hint when it has none.
 fn item_hint(e: &ErrorInfo) -> Option<ErrorInfo> {
     if e.code != ErrorCode::NOT_FOUND || e.next_action.is_some() {
         return None;
     }
-    let rest = ["no catalog item `", "no action `", "no view `"]
-        .iter()
-        .find_map(|p| e.message.strip_prefix(p))?;
-    let item = rest.split('`').next()?;
+    let item = detail(e, "item_ref")?;
     let word = item.rsplit('.').next().filter(|w| !w.is_empty())?;
     Some(e.clone().with_next_action(
         &["mira", "catalog", "--search", word],
@@ -88,15 +90,11 @@ fn text_message(e: &ErrorInfo) -> String {
             .into();
     }
     if e.code == ErrorCode::NOT_FOUND
-        && let Some(id) = e.message.strip_prefix("no run ")
+        && let Some(id) = detail(e, "run_id")
     {
         return format!("No run `{id}`. See `mira runs`.");
     }
-    // An empty JSON Pointer names no place.
-    e.message
-        .strip_suffix(" at ``")
-        .unwrap_or(&e.message)
-        .to_owned()
+    e.message.clone()
 }
 
 pub fn render_error(e: &ErrorInfo) -> String {
@@ -133,10 +131,10 @@ mod tests {
 
     #[test]
     fn missing_items_get_a_catalog_search_hint() {
-        let e = ErrorInfo::new(ErrorCode::NOT_FOUND, "no action `dev.webb`");
+        let e = ErrorInfo::item_not_found("action", "dev.webb");
         let hinted = item_hint(&e).expect("hint");
         let argv = hinted.next_action.expect("next").argv;
         assert_eq!(argv, ["mira", "catalog", "--search", "webb"]);
-        assert!(item_hint(&ErrorInfo::new(ErrorCode::NOT_FOUND, "no run r_1")).is_none());
+        assert!(item_hint(&ErrorInfo::run_not_found("r_1")).is_none());
     }
 }

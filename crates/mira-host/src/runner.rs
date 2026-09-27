@@ -240,10 +240,7 @@ impl Batcher {
                     self.outbox.push(RunnerEvent::Frame(Box::new(ev)));
                 }
                 FrameOut::Error { error, view_hint } => {
-                    self.note(&format!(
-                        "protocol error [{}]: {}",
-                        error.code, error.message
-                    ));
+                    self.note(&format!("invalid plugin output: {}", error.message));
                     self.send();
                     self.outbox
                         .push(RunnerEvent::ProtocolError { error, view_hint });
@@ -458,6 +455,8 @@ pub(crate) async fn run_cleanup(
         Err(e) => {
             return CleanupState::Failed {
                 ended_at: Timestamp::now(),
+                exit_code: None,
+                timed_out: false,
                 error: ErrorInfo::new(
                     ErrorCode::EXECUTION_FAILED,
                     format!("cannot start cleanup: {e}"),
@@ -485,6 +484,8 @@ pub(crate) async fn run_cleanup(
         Some(s) if s.success() && !timed_out => CleanupState::Succeeded { ended_at },
         Some(s) => CleanupState::Failed {
             ended_at,
+            exit_code: if timed_out { None } else { s.code() },
+            timed_out,
             error: ErrorInfo::new(
                 if timed_out {
                     ErrorCode::TIMEOUT

@@ -432,19 +432,7 @@ impl Form {
                 .replace("~1", "/")
                 .replace("~0", "~");
             let inner = parts.next().map(|p| format!("/{p}")).unwrap_or_default();
-            // A missing required property is reported at the object root.
-            let name = if top.is_empty() {
-                self.fields
-                    .iter()
-                    .find(|f| message.contains(&format!("\"{}\"", f.name)))
-                    .map(|f| f.name.clone())
-            } else {
-                Some(top)
-            };
-            if let Some(field) = name
-                .as_ref()
-                .and_then(|n| self.fields.iter_mut().find(|f| &f.name == n))
-            {
+            if let Some(field) = self.fields.iter_mut().find(|f| f.name == top) {
                 field.error = Some(if field.write_only {
                     "rejected by the schema (value hidden)".into()
                 } else if inner.is_empty() {

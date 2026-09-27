@@ -144,7 +144,7 @@ fn run_text(r: &RunRecord) -> String {
         ));
     }
     if let Some(n) = &r.note {
-        s.push_str(&format!("\n  note: {}", human::note_text(n)));
+        s.push_str(&format!("\n  note: {}", n));
     }
     s
 }
@@ -196,7 +196,7 @@ fn run_summary(r: &RunRecord) -> String {
         ));
     }
     if let Some(n) = &r.note {
-        s.push_str(&format!("\n  note: {}", human::note_text(n)));
+        s.push_str(&format!("\n  note: {}", n));
     }
     s.push_str(&format!(
         "\n  output: mira logs {}",
@@ -226,7 +226,7 @@ async fn failure_text(client: &mut Client, rec: &RunRecord, e: &ErrorInfo) -> St
         .map_or_else(|| rec.label.clone(), ToString::to_string);
     let mut status = match (rec.stop_reason, &rec.note) {
         (Some(StopReason::ProtocolError), Some(note)) => {
-            format!("{target} stopped: {}", human::note_text(note))
+            format!("{target} stopped: {}", note)
         }
         (Some(StopReason::ProtocolError), None) => {
             format!("{target} stopped: invalid plugin output")

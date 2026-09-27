@@ -100,6 +100,10 @@ pub enum CleanupState {
     },
     Failed {
         ended_at: Timestamp,
+        /// Exit status of the cleanup command; `None` when it did not start or exit normally.
+        exit_code: Option<i32>,
+        /// The cleanup command was stopped at its time limit.
+        timed_out: bool,
         error: ErrorInfo,
     },
     Unknown {
