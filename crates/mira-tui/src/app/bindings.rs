@@ -53,6 +53,8 @@ pub enum Cmd {
     GoTab(u8),
     /// Open the view the last row action wrote (`o`).
     OpenWritten,
+    /// Remove the selected item's plugin from the project, after a confirmation (`x`).
+    Remove,
 }
 
 pub struct Binding {
@@ -129,6 +131,11 @@ impl App {
                 v.push(bind("j/k", "scroll", Cmd::Down));
                 v.push(bind("y", "copy all", Cmd::Copy));
                 v.push(bind("Esc/q", "close", Cmd::Escape));
+                return v;
+            }
+            Modal::Confirm { .. } => {
+                v.push(bind("y/Enter", "yes", Cmd::Open));
+                v.push(bind("n/Esc", "cancel", Cmd::Escape));
                 return v;
             }
             Modal::RowAction { .. } => {
@@ -245,6 +252,7 @@ impl App {
                 let w = if on { "schedule off" } else { "schedule on" };
                 v.push(bind("t", w, Cmd::Schedule));
             }
+            v.push(bind("x", "remove plugin", Cmd::Remove));
         }
         if self.selected_item().is_some() {
             v.push(hidden("[ ]", "previous or next tab", Cmd::NextTab));

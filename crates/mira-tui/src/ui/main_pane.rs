@@ -197,6 +197,10 @@ fn status_spans(app: &App, t: &Theme, item: &Item) -> Vec<Span<'static>> {
         }
         if let Some(e) = &l.exit {
             match (e.code, &e.signal) {
+                // Exit 0 with `ok: false`: the plugin reported the failure itself.
+                (Some(0), _) if l.result.as_ref().is_some_and(|r| !r.ok) => {
+                    details.push("reported by the plugin".into())
+                }
                 (Some(c), _) => details.push(format!("exit {c}")),
                 (None, Some(s)) => details.push(s.to_string()),
                 _ => {}

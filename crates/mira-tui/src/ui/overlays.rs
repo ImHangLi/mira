@@ -356,6 +356,27 @@ pub(super) fn draw_output(f: &mut Frame, app: &App, t: &Theme, area: Rect) {
     );
 }
 
+pub(super) fn draw_confirm(f: &mut Frame, app: &App, t: &Theme, area: Rect) {
+    let Modal::Confirm { title, lines, .. } = &app.modal else {
+        return;
+    };
+    let w = lines.iter().map(|l| cells(l)).max().unwrap_or(0) as u16 + 6;
+    let rect = centered(area, w.max(40), lines.len() as u16 + 4);
+    let mut text: Vec<Line> = lines.iter().map(|l| Line::from(display(l))).collect();
+    text.push(Line::from(""));
+    text.push(Line::from(vec![
+        Span::styled("y", t.bold()),
+        Span::raw(" yes   "),
+        Span::styled("n", t.bold()),
+        Span::raw(" cancel"),
+    ]));
+    clear_around(f, rect, area);
+    f.render_widget(
+        Paragraph::new(text).block(overlay(t, panel_title(t, title, true))),
+        rect,
+    );
+}
+
 pub(super) fn draw_row_actions(f: &mut Frame, app: &App, t: &Theme, area: Rect) {
     let Modal::RowAction {
         choices,

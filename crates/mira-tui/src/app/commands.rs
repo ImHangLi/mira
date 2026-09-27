@@ -42,6 +42,22 @@ impl App {
                     });
                 }
             }
+            Cmd::Remove => {
+                if let Some(item) = self.selected_item() {
+                    let p = item.action_ref.plugin.to_string();
+                    self.modal = Modal::Confirm {
+                        title: "Remove plugin".into(),
+                        lines: vec![
+                            format!("Remove plugin `{p}` from this project?"),
+                            String::new(),
+                            "Mira takes it out of .mira/workspace.json and reloads.".into(),
+                            "Its files stay in .mira/, so you can add it back.".into(),
+                        ],
+                        words: vec!["plugin".into(), "remove".into(), p.clone()],
+                        done: format!("Removed plugin `{p}`. Its files stay in .mira/."),
+                    };
+                }
+            }
             Cmd::CopyAll => {}
             Cmd::NextTab | Cmd::PrevTab | Cmd::GoTab(_) => {
                 let at = self.shown_tab().index();

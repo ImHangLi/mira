@@ -180,6 +180,14 @@ pub enum Modal {
     },
     /// Output of a command-bar command.
     Output(Box<cmdbar::Output>),
+    /// Ask before a command-bar command with a lasting effect: `y` or Enter runs `words`,
+    /// and a success shows `done` as a notice.
+    Confirm {
+        title: String,
+        lines: Vec<String>,
+        words: Vec<String>,
+        done: String,
+    },
     /// Choose which row action to run on the selected table row.
     RowAction {
         view_ref: ViewRef,
