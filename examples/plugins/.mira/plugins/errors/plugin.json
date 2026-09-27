@@ -15,8 +15,8 @@
       "input_schema": {
         "type": "object",
         "properties": {
-          "target": {"type": "string", "default": "dev.web", "minLength": 3, "maxLength": 97, "description": "The action to follow, as plugin.action."},
-          "pattern": {"type": "string", "default": "error", "minLength": 1, "maxLength": 200, "description": "Case-insensitive text to look for."}
+          "target": {"type": "string", "default": "dev.web", "minLength": 3, "maxLength": 97, "pattern": "^[a-z][a-z0-9-]*\\.[a-z][a-z0-9-]*$", "description": "The action to follow, as plugin.action."},
+          "pattern": {"type": "string", "default": "error", "minLength": 1, "maxLength": 200, "pattern": "^[^-]", "description": "Case-insensitive text to look for. No leading dash."}
         },
         "additionalProperties": false
       },

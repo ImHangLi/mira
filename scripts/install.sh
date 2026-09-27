@@ -17,11 +17,8 @@ marker="$dir/.mira-installed"
 fail() { echo "mira install: $*" >&2; exit 1; }
 
 [ "$(uname -s)" = "Darwin" ] || fail "only macOS is supported"
-case "$(uname -m)" in
-  arm64) target="aarch64-apple-darwin" ;;
-  x86_64) target="x86_64-apple-darwin" ;;
-  *) fail "unsupported architecture $(uname -m)" ;;
-esac
+[ "$(uname -m)" = "arm64" ] || fail "only Apple silicon (arm64) is supported"
+target="aarch64-apple-darwin"
 
 version="${MIRA_VERSION:-}"
 version="${version#v}"

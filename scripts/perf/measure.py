@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reproducible latency measurements for the mira binary (§19). Prints JSON with p50/p95/p99/max.
+"""Reproducible latency measurements for the mira binary. Prints JSON with p50/p95/p99/max.
 
 Usage: scripts/perf/measure.py --mira target/release/mira [--samples 50] [--flood-seconds 60]
 Runs in a scratch copy of tests/fixtures/workspace with MIRA_DATA_HOME/MIRA_RUNTIME_DIR under /tmp,

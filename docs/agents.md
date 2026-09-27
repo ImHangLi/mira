@@ -22,7 +22,7 @@ Export the skills to the user's own skills folder. Never export them into a proj
 | Codex and other agents (Codex reads `~/.agents/skills`) | `mira skills export ~/.agents/skills` |
 | Skills managed with Skillshare (`~/.config/skillshare/skills` exists) | `mira skills export ~/.config/skillshare/skills`, then `skillshare sync` |
 
-If Skillshare is in use, use only the Skillshare row. Ask the user only if the correct folder is not clear. The command writes `mira/` and `mira-extend/` in that folder. It does not overwrite a file that the user changed: it writes the new version next to it as `*.mira-new`. Run the same command again after you upgrade Mira; `mira doctor` warns when the exported skills are older than Mira.
+If Skillshare is in use, use only the Skillshare row. Ask the user only if the correct folder is not clear. The command writes `mira/` and `mira-extend/` into that folder: a copy of the skills for this Mira version.
 
 ## 3. Add a global note
 
@@ -56,8 +56,9 @@ Follow the setup reference of the mira skill (`mira/references/setup.md` in the 
 
 1. Read the README, docs, scripts, Makefile, Compose files, and CI config. Never run project code to find out what it does.
 2. Write `.mira/workspace.json` and the plugins in `.mira/plugins/<id>/plugin.json`.
-3. Run `mira validate .mira`, then `mira reload` (or `mira apply` when the project already has a catalog).
-4. Run `mira doctor`, then verify one tool, for example `mira run dev.check`.
+3. Run `mira validate .mira --json`. Fix each error and run it again until it passes.
+4. Run `mira reload --json` to load the new plugins.
+5. Run `mira doctor --json`, then verify one tool, for example `mira run dev.check`.
 
 Ask the user one question: share `.mira/` with the team, or keep it personal?
 

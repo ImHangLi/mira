@@ -17,9 +17,9 @@ done
 
 while read -r case code; do
   [[ -z "$case" || "$case" == \#* ]] && continue
-  got="$({ "$MIRA" validate "fixtures/invalid/$case" --json || true; } | python3 -c 'import json,sys; r=json.load(sys.stdin); print("ok" if r["ok"] else r["error"]["code"])')"
+  got="$({ "$MIRA" validate "tests/fixtures/invalid/$case" --json || true; } | python3 -c 'import json,sys; r=json.load(sys.stdin); print("ok" if r["ok"] else r["error"]["code"])')"
   if [[ "$got" != "$code" ]]; then echo "fixture $case: expected $code, got $got"; status=1; fi
-done < fixtures/invalid/EXPECTED
+done < tests/fixtures/invalid/EXPECTED
 
 [[ $status -eq 0 ]] && echo "contract: ok"
 exit $status
