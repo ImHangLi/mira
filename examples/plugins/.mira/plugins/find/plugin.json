@@ -1,0 +1,26 @@
+{
+  "api": 1,
+  "id": "find",
+  "name": "Find files",
+  "description": "Find files in the workspace by name. A command plugin: this manifest is the whole plugin, with no script.",
+  "tags": ["files", "find", "search"],
+  "actions": [
+    {
+      "id": "files",
+      "title": "Find files",
+      "description": "List the files under a folder whose name matches a pattern, for example *.md. Skips .git. Changes nothing.",
+      "mode": "task",
+      "run": {"kind": "command", "argv": ["find", "{input.folder}", "-type", "f", "-name", "{input.name}", "-not", "-path", "*/.git/*"]},
+      "timeout": {"kind": "after", "ms": 30000},
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string", "default": "*.md", "minLength": 1, "maxLength": 200, "pattern": "^[^/-][^/]*$", "description": "File name pattern; * matches any text. No slash, and no leading dash."},
+          "folder": {"type": "string", "default": ".", "minLength": 1, "maxLength": 500, "pattern": "^(\\.|[A-Za-z0-9_][A-Za-z0-9_.-]*)(/[A-Za-z0-9_][A-Za-z0-9_.-]*)*$", "description": "Folder inside the workspace, relative to its root. No leading slash or dash, and no .. segment."}
+        },
+        "additionalProperties": false
+      },
+      "effects": ["read-files"]
+    }
+  ]
+}

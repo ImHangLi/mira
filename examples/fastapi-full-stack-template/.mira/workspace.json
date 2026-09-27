@@ -1,1 +1,0 @@
-{"api": 1, "name": "FastAPI Full Stack Template", "plugins": ["plugins/dev", "plugins/compose-ports", "plugins/api-routes"], "autostart": [], "ui": {"mouse": false}, "meta": {}}

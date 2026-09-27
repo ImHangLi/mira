@@ -2,11 +2,13 @@
 
 import json
 import os
+import re
 import subprocess
 import sys
 import time
 
 RETRY_SECONDS = 5
+REF = re.compile(r"^[a-z][a-z0-9-]*\.[a-z][a-z0-9-]*$")
 
 
 def emit(frame):
@@ -20,9 +22,10 @@ def status(state, message):
 
 def follow(root, target, pattern):
     """Runs `mira logs --follow` once; returns when the followed run ends."""
+    # Values go in --flag=value form, so a value is never read as a flag.
     argv = [
-        os.environ["MIRA_BIN"], "--project", root, "logs", target,
-        "--follow", "--json", "--grep", pattern,
+        os.environ["MIRA_BIN"], f"--project={root}", "logs", "--follow", "--json",
+        f"--grep={pattern}", target,
     ]
     with subprocess.Popen(argv, stdout=subprocess.PIPE, text=True) as child:
         for line in child.stdout:
@@ -49,6 +52,9 @@ def main():
     root = req["context"]["workspace_root"]
     target = req["input"].get("target", "dev.web")
     pattern = req["input"].get("pattern", "error")
+    if not REF.match(target) or pattern.startswith("-"):
+        print("target must be plugin.action, and pattern must not start with -", file=sys.stderr)
+        return 2
     while True:
         try:
             follow(root, target, pattern)

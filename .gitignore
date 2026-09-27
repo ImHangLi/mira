@@ -1,16 +1,8 @@
-# Local-only reference documents. Never commit or publish them.
-/docs/MIRA_IMPLEMENTATION_SPEC.md
-/docs/MIRA_DELIVERY_PLAN.md
-
 /target/
+/dist/
+/scratch/
+/.claude/
+/AGENTS.md
 .DS_Store
 *.swp
-/scratch/
-
-# Local agent state and worktrees
-/.claude/
-/dist/
 __pycache__/
-
-# Agent instructions are local-only
-/AGENTS.md

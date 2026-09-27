@@ -12,12 +12,10 @@ Goal: a small set of ordinary plugins that run this project's real commands, val
    - **Executables.** An action inherits the environment of the client that starts it: your shell for the CLI, the human's shell for the TUI. Tools in per-user locations (`~/.bun/bin`, nvm, pyenv) can be missing from one of them. Prefer project-local paths (`node_modules/.bin/…`, `.venv/bin/…`), or `["/bin/zsh", "-lc", "…"]` to get the login-shell PATH.
    - **Dependencies.** If the project has an install step, add it as an action (for example `dev.install`) and run it only when the user agrees.
    - **Interactive setup scripts** (prompts that create `.env` or config): do not run them from a task. Tell the user, or write the files they would create when the docs make the values clear.
-7. **Write and apply.** Put files in `.mira/.drafts/setup/` (a `.mira`-shaped directory: `workspace.json` + `plugins/<id>/plugin.json`), then:
-   ```sh
-   mira validate .mira/.drafts/setup --json
-   mira apply .mira/.drafts/setup --expected-revision 0 --json   # use the current catalog_revision if one exists
-   ```
-   Then run `mira doctor --json`: `validate` checks the manifest, but only `doctor` reports executables that are not installed. Delete the draft directory after a successful apply.
+7. **Write, validate, and load.** Write `.mira/workspace.json` and the plugins in `.mira/plugins/<id>/plugin.json`, then:
+   1. Run `mira validate .mira --json`. Fix each error and run it again until it passes.
+   2. Run `mira reload --json` to load the new plugins.
+   3. Run `mira doctor --json`: `validate` checks the manifests, but only `doctor` reports executables that are not installed.
 
    Ask the user once whether to share `.mira/` with the team or keep it personal:
    - **Share:** commit `.mira/workspace.json` and `.mira/plugins/`. Add ignore rules for personal and generated files to the project's `.gitignore` without rewriting it: `.mira/local.json`, `.mira/.drafts/`.

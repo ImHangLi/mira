@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""TUI latency in a real PTY (§19): first operable frame (cold and warm host) and key→screen
+"""TUI latency in a real PTY: first operable frame (cold and warm host) and key→screen
 change, idle and during a log flood. Needs `pyte` (pip install pyte). Prints JSON.
 
 Usage: scripts/perf/tui.py --mira target/release/mira [--starts 20] [--keys 300]

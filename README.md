@@ -40,7 +40,7 @@ Then ask your agent to set up Mira for your repo.
 
 *Are you an agent? [Start here.](docs/agents.md)*
 
-To write a plugin yourself, add a small `plugin.json` under `.mira/plugins/` ([format](skills/mira-extend/references/manifest.md)) and run `mira reload`.
+To write a plugin yourself, add a small `plugin.json` under `.mira/plugins/`, list it in `.mira/workspace.json` ([format](skills/mira-extend/references/manifest.md)), and run `mira reload`. See the [example plugins](examples/plugins/).
 
 ## Use cases
 

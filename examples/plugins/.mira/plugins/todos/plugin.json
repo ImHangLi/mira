@@ -1,0 +1,46 @@
+{
+  "api": 1,
+  "id": "todos",
+  "name": "TODOs",
+  "description": "Show the TODO markers in the workspace as a table. Select a row to see the lines around it.",
+  "tags": ["todo", "markers", "table"],
+  "entry": {"argv": ["python3", "main.py"]},
+  "actions": [
+    {
+      "id": "scan",
+      "title": "Scan for TODOs",
+      "description": "Search the text files in the workspace for a marker and publish one table row per match. Reads files only.",
+      "mode": "task",
+      "run": {"kind": "plugin"},
+      "timeout": {"kind": "after", "ms": 30000},
+      "input_schema": {
+        "type": "object",
+        "properties": {"marker": {"type": "string", "default": "TODO", "minLength": 1, "maxLength": 64, "description": "Text to look for, case-sensitive."}},
+        "additionalProperties": false
+      },
+      "effects": ["read-files"]
+    },
+    {
+      "id": "show",
+      "title": "Show lines",
+      "description": "Show the lines around one match in the Context view.",
+      "mode": "task",
+      "run": {"kind": "plugin"},
+      "timeout": {"kind": "after", "ms": 10000},
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "path": {"type": "string", "minLength": 1, "maxLength": 1000, "description": "File path relative to the workspace root."},
+          "line": {"type": "integer", "minimum": 1, "description": "Line number."}
+        },
+        "required": ["path", "line"],
+        "additionalProperties": false
+      },
+      "effects": ["read-files"]
+    }
+  ],
+  "views": [
+    {"id": "matches", "title": "TODOs", "kind": "table", "row_actions": [{"action": "show", "bindings": {"path": "path", "line": "line"}}]},
+    {"id": "context", "title": "Context", "kind": "text"}
+  ]
+}

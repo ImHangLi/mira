@@ -37,7 +37,7 @@ An invalid update is rejected whole and the previous data stays (marked stale). 
 
 To only filter another action's log (for example, errors), a [derived log view](manifest.md#derived-log-view) needs no code. Follow the log from a plugin when you need logic on each line, such as grouping or parsing.
 
-`"$MIRA_BIN" --project "$MIRA_WORKSPACE_ROOT" logs REF --follow --json [--grep TEXT]` prints one JSON object per line: first `{"type":"ready",...}`, then `{"type":"log","data":{"run_id":"r_…","records":[{"log_seq","recorded_at","stream","level","text",...}]}}` for new records, and it exits after `{"type":"end",...}` or when the run ends. A line with `"ok": false` is an error reply instead (for example, the action never ran). `examples/plugins/.mira/plugins/errors` uses this.
+`"$MIRA_BIN" --project="$MIRA_WORKSPACE_ROOT" logs --follow --json [--grep=TEXT] REF` prints one JSON object per line: first `{"type":"ready",...}`, then `{"type":"log","data":{"run_id":"r_…","records":[{"log_seq","recorded_at","stream","level","text",...}]}}` for new records, and it exits after `{"type":"end",...}` or when the run ends. A line with `"ok": false` is an error reply instead (for example, the action never ran). Pass values as `--flag=value` and check REF, so input never becomes an option. The `errors` plugin in the [example plugins](https://github.com/ImHangLi/mira/tree/main/examples/plugins) uses this.
 
 ## Minimal Python pattern
 
