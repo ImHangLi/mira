@@ -110,6 +110,28 @@ def put(screen, y, x, text, style=0):
             pass
 
 
+# Mira's palette in xterm 256 colors, the entries that read well on light and dark
+# backgrounds: accent (terracotta), leaf (green), and key chips (dark ink on terracotta).
+STYLE = {"accent": curses.A_BOLD, "leaf": curses.A_BOLD, "chip": curses.A_REVERSE | curses.A_BOLD}
+
+
+def init_palette():
+    if not curses.has_colors():
+        return
+    try:
+        curses.start_color()
+        curses.use_default_colors()
+        if curses.COLORS >= 256:
+            curses.init_pair(1, 166, -1)
+            curses.init_pair(2, 65, -1)
+            curses.init_pair(3, 234, 209)
+            STYLE.update(accent=curses.color_pair(1) | curses.A_BOLD,
+                         leaf=curses.color_pair(2) | curses.A_BOLD,
+                         chip=curses.color_pair(3) | curses.A_BOLD)
+    except curses.error:
+        pass
+
+
 def key_hints(screen, y, x, hints):
     """Whole key chips with labels, in the same order as Mira's footer."""
     width = screen.getmaxyx()[1]
@@ -118,7 +140,7 @@ def key_hints(screen, y, x, hints):
         text = f" {label}  "
         if x + len(chip) + len(text) >= width:
             break
-        put(screen, y, x, chip, curses.A_REVERSE | curses.A_BOLD)
+        put(screen, y, x, chip, STYLE["chip"])
         x += len(chip)
         put(screen, y, x, text, curses.A_DIM)
         x += len(text)
@@ -139,17 +161,17 @@ def draw(screen, game, best, warning):
     bw, bh = game.width, game.height
     left = (width - need_w) // 2
     top = (height - need_h) // 2
-    put(screen, top, left, f"Snake   Score {game.score}   Best {best}", curses.A_BOLD)
+    put(screen, top, left, f"Score {game.score}   Best {best}", curses.A_BOLD)
     put(screen, top + 2, left, "┌" + "─" * (bw * 2) + "┐")
     for y in range(bh):
         put(screen, top + 3 + y, left, "│")
         put(screen, top + 3 + y, left + bw * 2 + 1, "│")
     put(screen, top + 3 + bh, left, "└" + "─" * (bw * 2) + "┘")
     for index, (x, y) in enumerate(game.snake):
-        put(screen, top + 3 + y, left + 1 + x * 2, "██" if index == 0 else "▓▓", curses.A_BOLD)
+        put(screen, top + 3 + y, left + 1 + x * 2, "██" if index == 0 else "▓▓", STYLE["leaf"])
     if game.food:
         x, y = game.food
-        put(screen, top + 3 + y, left + 1 + x * 2, "● ", curses.A_REVERSE | curses.A_BOLD)
+        put(screen, top + 3 + y, left + 1 + x * 2, "● ", STYLE["accent"])
     if game.over:
         snacks = "snack" if game.score == 1 else "snacks"
         message = ("You filled the board. Take the rest of today off." if game.won else
@@ -179,13 +201,7 @@ def main(screen):
     screen.keypad(True)
     screen.timeout(20)
     curses.set_escdelay(25)
-    # Use the terminal's default palette; Mira provides the accent and focus border.
-    if curses.has_colors():
-        try:
-            curses.start_color()
-            curses.use_default_colors()
-        except curses.error:
-            pass
+    init_palette()
     directions = {curses.KEY_UP: (0, -1), ord("w"): (0, -1),
                   curses.KEY_DOWN: (0, 1), ord("s"): (0, 1),
                   curses.KEY_LEFT: (-1, 0), ord("a"): (-1, 0),

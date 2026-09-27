@@ -570,6 +570,21 @@ impl ViewPane {
         }
     }
 
+    /// The selected table row in words: its first two cells, for example `3773 · node`.
+    pub fn row_summary(&self) -> Option<String> {
+        let ViewData::Table { columns, rows } = self.data()? else {
+            return None;
+        };
+        let r = rows.get(self.cursor)?;
+        let parts: Vec<String> = columns
+            .iter()
+            .take(2)
+            .map(|c| r.values.get(&c.id).map(cell).unwrap_or_default())
+            .filter(|v| !v.is_empty())
+            .collect();
+        (!parts.is_empty()).then(|| display(&parts.join(" · ")))
+    }
+
     /// Full value of the selected table cell for the detail line.
     pub fn cell_detail(&self) -> Option<String> {
         let ViewData::Table { columns, rows } = self.data()? else {

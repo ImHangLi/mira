@@ -119,6 +119,8 @@ pub fn hint(prefix: &str) -> String {
         .collect();
     if prefix.contains(' ') || matches.is_empty() {
         "Enter runs it (mira … --json) · Esc cancels".into()
+    } else if first.is_empty() {
+        "for example: status · doctor · reload · plugin add · exec --label NAME -- CMD".into()
     } else {
         matches.join(" ")
     }

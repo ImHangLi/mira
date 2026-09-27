@@ -145,6 +145,27 @@ def put(screen, y, x, text, style=0):
             pass
 
 
+# Mira's palette in xterm 256 colors, the entries that read well on light and dark
+# backgrounds: accent (terracotta), leaf (green), and key chips (dark ink on terracotta).
+STYLE = {"accent": curses.A_BOLD, "leaf": curses.A_BOLD, "chip": curses.A_REVERSE | curses.A_BOLD}
+
+
+def init_palette():
+    if not curses.has_colors():
+        return
+    try:
+        curses.start_color()
+        curses.use_default_colors()
+        if curses.COLORS >= 256:
+            curses.init_pair(1, 166, -1)
+            curses.init_pair(2, 65, -1)
+            curses.init_pair(3, 234, 209)
+            STYLE.update(accent=curses.color_pair(1), leaf=curses.color_pair(2),
+                         chip=curses.color_pair(3) | curses.A_BOLD)
+    except curses.error:
+        pass
+
+
 def key_hints(screen, y, x, hints):
     """Whole key chips with labels, in the same order as Mira's footer."""
     width = screen.getmaxyx()[1]
@@ -153,7 +174,7 @@ def key_hints(screen, y, x, hints):
         text = f" {label}  "
         if x + len(chip) + len(text) >= width:
             break
-        put(screen, y, x, chip, curses.A_REVERSE | curses.A_BOLD)
+        put(screen, y, x, chip, STYLE["chip"])
         x += len(chip)
         put(screen, y, x, text, curses.A_DIM)
         x += len(text)
@@ -162,7 +183,8 @@ def key_hints(screen, y, x, hints):
 def draw(screen, t):
     screen.erase()
     height, width = screen.getmaxyx()
-    accent = curses.A_BOLD
+    # Focus in the accent, a break in green (Mira's color for things going well).
+    accent = STYLE["accent"] if t.mode == "focus" else STYLE["leaf"]
     left = t.remaining()
     secs = int(left + 0.999) if t.state == "running" else int(left)
     clock = f"{secs // 60:02}:{secs % 60:02}"
@@ -173,13 +195,12 @@ def draw(screen, t):
         key_hints(screen, 2, 0, [("Enter", "start"), ("Space", "pause"), ("r", "reset")])
         screen.refresh()
         return
-    put(screen, 0, 2, "Pomodoro", curses.A_BOLD)
-    put(screen, 0, max(12, width - len(today) - 3), today, curses.A_DIM)
+    put(screen, 0, max(2, width - len(today) - 3), today, curses.A_DIM)
     # Mode switch, like two tabs.
     x = 2
     for m in MODES:
         label = f"  {m.capitalize()}  "
-        style = (curses.A_REVERSE | curses.A_BOLD) if m == t.mode else curses.A_DIM
+        style = STYLE["chip"] if m == t.mode else curses.A_DIM
         put(screen, 2, x, label, style)
         x += len(label) + 1
     # From the bottom up: keys, note, lengths, progress. The clock gets the rest.
@@ -209,7 +230,7 @@ def draw(screen, t):
         x = 2
         for i, m in enumerate(t.minutes[t.mode]):
             label = f" {m} min "
-            style = (accent | curses.A_REVERSE) if i == t.choice[t.mode] else 0
+            style = STYLE["chip"] if i == t.choice[t.mode] else 0
             put(screen, chips_y, x, label, style)
             x += len(label) + 2
         put(screen, chips_y, x, "←/→ pick   +/- change", curses.A_DIM)
@@ -231,13 +252,7 @@ def main(screen):
     screen.keypad(True)
     screen.timeout(200)
     curses.set_escdelay(25)
-    # Use the terminal's default palette; Mira provides the accent and focus border.
-    if curses.has_colors():
-        try:
-            curses.start_color()
-            curses.use_default_colors()
-        except curses.error:
-            pass
+    init_palette()
     t = Timer()
     while True:
         t.tick()

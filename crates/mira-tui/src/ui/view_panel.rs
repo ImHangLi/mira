@@ -155,7 +155,7 @@ pub(super) fn draw_view(f: &mut Frame, app: &mut App, t: &Theme, area: Rect) {
         bar.push("the table changed since you chose this row".into());
     }
     if !p.row_actions.is_empty() {
-        bar.push("Enter reviews row actions".into());
+        bar.push("Enter acts on the row".into());
     }
     if p.wrap {
         bar.push("wrap".into());

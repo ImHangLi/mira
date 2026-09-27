@@ -123,9 +123,37 @@ pub(super) fn key_chip(t: &Theme, keys: &str) -> Span<'static> {
     Span::styled(format!(" {keys} "), t.chip(Tone::Accent))
 }
 
+/// Footer order, most useful first; a narrow footer drops chips from the end. The way back
+/// to the tools comes first, then what the selected tool does, then moving around, then the
+/// rest, and quitting last.
+fn rank(cmd: Cmd) -> u8 {
+    match cmd {
+        Cmd::Tools => 0,
+        Cmd::Forward => 1,
+        Cmd::Open => 2,
+        Cmd::Toggle => 3,
+        Cmd::Restart => 4,
+        Cmd::Attach => 5,
+        Cmd::Up | Cmd::Down | Cmd::PageUp | Cmd::PageDown | Cmd::Top | Cmd::Bottom => 6,
+        Cmd::Left | Cmd::Right => 7,
+        Cmd::Focus => 8,
+        Cmd::Search | Cmd::NextMatch | Cmd::PrevMatch => 9,
+        Cmd::History | Cmd::NextTab | Cmd::PrevTab | Cmd::GoTab(_) => 10,
+        Cmd::OpenWritten => 2,
+        Cmd::Copy | Cmd::CopyAll | Cmd::Select | Cmd::Wrap => 11,
+        Cmd::Schedule => 12,
+        Cmd::Escape | Cmd::Detach => 13,
+        Cmd::Command => 14,
+        Cmd::Keep => 15,
+        Cmd::Quit => 16,
+        _ => 12,
+    }
+}
+
 pub(super) fn draw_footer(f: &mut Frame, app: &App, t: &Theme, area: Rect) {
     let w = area.width as usize;
     let mut all: Vec<Binding> = app.bindings().into_iter().filter(|b| b.footer).collect();
+    all.sort_by_key(|b| rank(b.cmd));
     let help = all
         .iter()
         .position(|b| b.cmd == Cmd::Help)
