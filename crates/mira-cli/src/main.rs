@@ -128,6 +128,30 @@ enum Command {
         #[arg(long, value_name = "FILE")]
         input: Option<String>,
     },
+    /// Save a command as a tool in one step: `mira save "Unit tests" -- npm test`.
+    ///
+    /// Adds a command action to the `tools` plugin (or --plugin), then validates and loads it.
+    /// Run from a subfolder, the tool runs in that subfolder.
+    Save {
+        /// What people see in the tool list, for example "Unit tests".
+        #[arg(value_name = "TITLE")]
+        title: String,
+        /// A long-running service, such as a dev server (default: a task that ends).
+        #[arg(long)]
+        service: bool,
+        /// The action ID (default: made from the title, for example `unit-tests`).
+        #[arg(long)]
+        id: Option<String>,
+        /// The plugin to add the tool to.
+        #[arg(long, default_value = "tools")]
+        plugin: String,
+        /// One sentence about what the tool does (default: the command).
+        #[arg(long)]
+        description: Option<String>,
+        /// The command and its arguments, after `--`. No shell: use `sh -c '…'` for pipes.
+        #[arg(last = true, value_name = "COMMAND")]
+        argv: Vec<String>,
+    },
     /// Run a one-off command (not saved as a plugin).
     Exec {
         #[arg(long)]
@@ -179,8 +203,12 @@ enum Command {
     Logs {
         /// A run ID, a unique prefix of one (such as r_fb60aacf), or an action ref for its
         /// current or latest run.
-        #[arg(value_name = "RUN_OR_ACTION")]
-        target: String,
+        #[arg(value_name = "RUN_OR_ACTION", required_unless_present = "host")]
+        target: Option<String>,
+        /// Show Mira's own host log instead of a run: starts, stops, configuration, storage
+        /// problems, and crashes. Works when the host is down. Uses --limit and --grep.
+        #[arg(long, conflicts_with_all = ["target", "after", "follow", "stream", "max_bytes"])]
+        host: bool,
         /// Read forward from this cursor instead of the end.
         #[arg(long, value_name = "CURSOR")]
         after: Option<String>,
@@ -611,7 +639,36 @@ fn main() -> ExitCode {
             max_bytes,
         }) => commands::runtime::runs(&ctx, run, action, outcome, limit, after, max_bytes),
         Some(Command::Logs {
-            target,
+            host: true,
+            limit,
+            grep,
+            ..
+        }) => commands::host_log::show(&ctx, limit, grep),
+        Some(Command::Logs { target: None, .. }) => ctx.fail(
+            mira_protocol::reply::ReplyContext::default(),
+            output::invalid_argument("name a run or an action, or pass --host"),
+        ),
+        Some(Command::Save {
+            title,
+            service,
+            id,
+            plugin,
+            description,
+            argv,
+        }) => commands::save::save(
+            &ctx,
+            commands::save::SaveArgs {
+                title,
+                argv,
+                id,
+                plugin,
+                service,
+                description,
+            },
+        ),
+        Some(Command::Logs {
+            target: Some(target),
+            host: false,
             after,
             limit,
             max_bytes,

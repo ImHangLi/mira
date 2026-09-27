@@ -172,7 +172,7 @@ pub fn make_temp_dir() -> Result<PathBuf, ErrorInfo> {
 }
 
 /// Copies files and folders (not symlinks, as the host's apply does).
-fn copy_tree(src: &Path, dst: &Path) -> Result<(), ErrorInfo> {
+pub fn copy_tree(src: &Path, dst: &Path) -> Result<(), ErrorInfo> {
     std::fs::create_dir_all(dst).map_err(|e| io(dst, e))?;
     for e in std::fs::read_dir(src).map_err(|e| io(src, e))?.flatten() {
         let (from, to) = (e.path(), dst.join(e.file_name()));
@@ -189,6 +189,11 @@ fn copy_tree(src: &Path, dst: &Path) -> Result<(), ErrorInfo> {
 
 /// The byte offsets of the `[` and `]` of the top-level `plugins` array of `text`.
 fn plugins_array(text: &str) -> Option<(usize, usize)> {
+    top_level_array(text, "plugins")
+}
+
+/// The byte offsets of the `[` and `]` of the top-level array `key` of the object in `text`.
+pub fn top_level_array(text: &str, name: &str) -> Option<(usize, usize)> {
     let b = text.as_bytes();
     let (mut depth, mut i) = (0usize, 0usize);
     let mut key: Option<&str> = None;
@@ -206,7 +211,7 @@ fn plugins_array(text: &str) -> Option<(usize, usize)> {
                     key = text.get(start..i);
                 }
             }
-            b':' if depth == 1 && open.is_none() => want = key == Some("plugins"),
+            b':' if depth == 1 && open.is_none() => want = key == Some(name),
             b'[' => {
                 if want && depth == 1 && open.is_none() {
                     open = Some(i);

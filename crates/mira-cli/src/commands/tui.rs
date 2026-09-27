@@ -53,7 +53,11 @@ agents start here:
 
   https://github.com/ImHangLi/mira/blob/main/docs/agents.md
 
-Or start with a plugin that ships with Mira, then run `mira`:
+Or save a command you already use as a tool, then run `mira`:
+
+  mira save "Unit tests" -- npm test
+
+Or start with a plugin that ships with Mira:
 
 {defaults}
 Or set it up yourself (guide: https://github.com/ImHangLi/mira/blob/main/docs/guide.md).

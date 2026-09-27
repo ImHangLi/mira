@@ -35,6 +35,7 @@ pub const COMMANDS: &[&str] = &[
     "exec",
     "reload",
     "plugin",
+    "save",
 ];
 
 pub struct Output {

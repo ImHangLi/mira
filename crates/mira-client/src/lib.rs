@@ -164,7 +164,7 @@ pub async fn connect(paths: &WorkspacePaths, opts: &ConnectOptions) -> Result<Cl
                     Ok(s) => break s,
                     Err(e) if tokio::time::Instant::now() >= deadline => {
                         return Err(ClientError::Connect(format!(
-                            "host did not start ({e}; first error: {first}); see {}",
+                            "host did not start ({e}; first error: {first}); read `mira logs --host` ({})",
                             paths.host_log().display()
                         )));
                     }

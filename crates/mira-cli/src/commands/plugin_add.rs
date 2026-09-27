@@ -126,7 +126,7 @@ pub fn add(ctx: &Ctx, name: &str) -> ExitCode {
 }
 
 /// A minimal `.mira/workspace.json`, so `mira plugin add` works in a project without one.
-fn create_workspace(mira_dir: &Path, root: &str) -> Result<(), ErrorInfo> {
+pub(super) fn create_workspace(mira_dir: &Path, root: &str) -> Result<(), ErrorInfo> {
     let name = Path::new(root).file_name().map_or_else(
         || "My project".to_owned(),
         |n| n.to_string_lossy().into_owned(),
