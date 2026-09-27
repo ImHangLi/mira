@@ -124,7 +124,7 @@ pub enum Event {
     Copied(Result<String, String>),
     Signal(&'static str),
     /// Facts from the attached PTY view's worker.
-    Terminal(crate::terminal::Msg),
+    Terminal(crate::terminal::AttachmentId, crate::terminal::Msg),
     View(ViewRef, Result<Box<ViewLoad>, ErrorInfo>),
     ViewDescribed(ViewRef, Result<Box<ItemDescription>, ErrorInfo>),
     ViewActed(ViewRef, ActionId, Result<InvokeAccepted, ErrorInfo>),

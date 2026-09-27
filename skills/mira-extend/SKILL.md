@@ -47,7 +47,7 @@ Rules that matter:
 - stdout of a structured plugin carries only protocol frames; debug output goes to stderr. Exactly one `result` frame, last, for tasks; none for processes.
 - Keep secrets out of stdout, views, and manifests. Put required env names in the docs; values come from the user's environment or `env_files`.
 - Write private files to `MIRA_STATE_DIR`, rebuildable files to `MIRA_CACHE_DIR`, run outputs to `MIRA_ARTIFACT_DIR`. Never scatter logs in the repo.
-- Long-running or polling work must be an explicit `process` or a `schedule` the user enables; saving a plugin never starts it. Give anything that creates external resources (containers, tunnels) a `cleanup` that removes only what it created.
+- Long-running or polling work must be an explicit `process` or a `schedule` the user enables; the host never starts it on catalog load. Use `show: "on_select"` only for PTY app pages that can open safely with default inputs, such as a timer or game; keep servers and shells on explicit start. See the [manifest](references/manifest.md#open-a-program-on-selection). Give anything that creates external resources (containers, tunnels) a `cleanup` that removes only what it created.
 - Prefer a standard view (table with row actions, log, tree) so the human can use the same tool in the TUI. Do not build a second implementation for humans.
 
 ## 4. Validate, apply, prove

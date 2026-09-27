@@ -144,7 +144,7 @@ pub(super) fn draw_footer(f: &mut Frame, app: &App, t: &Theme, area: Rect) {
         .map(|b| ChipSize {
             keys: cells(b.keys),
             label: cells(&b.label),
-            pinned: matches!(b.cmd, Cmd::Focus | Cmd::Quit),
+            pinned: matches!(b.cmd, Cmd::Tools | Cmd::Focus | Cmd::Quit),
         })
         .collect();
     let room = w.saturating_sub(rw + 3);

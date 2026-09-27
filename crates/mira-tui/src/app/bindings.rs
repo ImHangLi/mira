@@ -22,6 +22,8 @@ pub enum Cmd {
     Toggle,
     Restart,
     Focus,
+    /// Return to the tools from any pane, modal, or program.
+    Tools,
     Search,
     Quit,
     Keep,
@@ -88,6 +90,12 @@ impl App {
     /// Every key that works now. The footer shows the `footer` ones; the router accepts
     /// only these.
     pub fn bindings(&self) -> Vec<Binding> {
+        let mut v = self.context_bindings();
+        v.insert(0, bind("F1", "tools", Cmd::Tools));
+        v
+    }
+
+    fn context_bindings(&self) -> Vec<Binding> {
         if let Some(v) = self.term.bindings() {
             return v;
         }
@@ -379,6 +387,11 @@ impl App {
     }
 
     fn global_bindings(&self, v: &mut Vec<Binding>) {
+        v.push(hidden(
+            "Shift-Esc / Ctrl-]",
+            "back to tools (F1 works too)",
+            Cmd::Tools,
+        ));
         if self.focus == Focus::List && !self.filter.is_empty() && self.selected_view().is_some() {
             v.push(bind("Esc", "clear filter", Cmd::Escape));
         }
@@ -453,12 +466,7 @@ impl App {
                         && !p.row_actions.is_empty()
                         && self.control_lost.is_none()
                     {
-                        let w = if p.row_actions.len() == 1 {
-                            format!("run {}", p.row_actions[0])
-                        } else {
-                            "row actions".into()
-                        };
-                        v.push(bind("Enter", w, Cmd::Open));
+                        v.push(bind("Enter", "review actions", Cmd::Open));
                     }
                     if rows > 0 {
                         let (y, big) = match p.kind {

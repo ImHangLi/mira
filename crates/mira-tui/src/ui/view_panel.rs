@@ -2,7 +2,7 @@
 
 use mira_protocol::manifest::ViewKind;
 use mira_protocol::time::Timestamp;
-use mira_protocol::view::Freshness;
+use mira_protocol::view::{Durability, Freshness};
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::style::Modifier;
@@ -12,10 +12,10 @@ use ratatui::widgets::{Padding, Paragraph};
 use crate::app::{App, Focus};
 use crate::logs::display;
 use crate::theme::{Theme, Tone};
-use crate::views::{durability_word, freshness_word, kind_word};
+use crate::views::{freshness_word, kind_word};
 
 use super::marks::{kind_glyph, view_tone};
-use super::text::{ago, ellipsize, enum_word, fit_spans, short_id};
+use super::text::{ago, ellipsize, fit_spans};
 use super::widgets::{chip, panel, panel_title, right_info};
 
 pub(super) fn draw_view(f: &mut Frame, app: &mut App, t: &Theme, area: Rect) {
@@ -49,16 +49,11 @@ pub(super) fn draw_view(f: &mut Frame, app: &mut App, t: &Theme, area: Rect) {
                 &format!("{} {} view", kind_glyph(kind), kind_word(kind)),
                 Tone::Sky,
             ),
-            Span::raw(" "),
-            Span::styled(
-                format!("◇ {}", r.plugin),
-                t.word(Tone::AccentDeep).add_modifier(Modifier::BOLD),
-            ),
         ],
         w,
     ));
-    // Source, freshness, durability, and time are always shown; freshness never by color alone.
-    let status: Vec<Span> = match &p.meta {
+    // Freshness uses words and timestamps as well as color.
+    let mut status: Vec<Span> = match &p.meta {
         None => vec![Span::styled("◌ reading…", t.muted())],
         Some(m) => match m.revision {
             None => vec![
@@ -103,12 +98,7 @@ pub(super) fn draw_view(f: &mut Frame, app: &mut App, t: &Theme, area: Rect) {
                     }
                 }
             }
-            Some(rev) => {
-                let src = match (m.source_kind, &m.source_run_id) {
-                    (_, Some(run)) => format!(" · from run {}", short_id(&run.to_string())),
-                    (Some(k), None) => format!(" · published by {}", enum_word(k)),
-                    (None, None) => String::new(),
-                };
+            Some(_) => {
                 let at = m.recorded_at.map_or(String::new(), |a| {
                     format!(" · recorded {} ({})", ago(a), hm(a))
                 });
@@ -122,37 +112,34 @@ pub(super) fn draw_view(f: &mut Frame, app: &mut App, t: &Theme, area: Rect) {
                     Freshness::Historical => "○",
                 };
                 let st = tone.map_or(t.muted(), |c| t.word(c));
-                // Past data names where it came from instead of the word "historical".
-                // The head says it all; the host's reason would only repeat it.
-                let (word, why, at, src) = match (m.freshness, &m.source_run_id, m.recorded_at) {
-                    (Freshness::Historical, Some(run), _) => (
-                        format!("from run {} (ended)", short_id(&run.to_string())),
+                // Completed runs and publications show when the data was updated.
+                let (word, why, at) = match (m.freshness, &m.source_run_id, m.recorded_at) {
+                    (Freshness::Historical, Some(_), Some(a)) => (
+                        format!("updated {}", ago(a)),
                         String::new(),
-                        at,
-                        String::new(),
+                        format!(" · {}", hm(a)),
                     ),
                     (Freshness::Historical, None, Some(a)) if m.source_kind.is_some() => (
                         format!("published {}", ago(a)),
                         String::new(),
                         format!(" · {}", hm(a)),
-                        String::new(),
                     ),
-                    _ => (freshness_word(m.freshness).to_owned(), why, at, src),
+                    _ => (freshness_word(m.freshness).to_owned(), why, at),
                 };
-                // The revision comes right after the state, so a narrow pane cuts the
-                // details first.
+                // Detailed provenance stays available through `mira view --json`.
                 vec![
                     Span::styled(format!("{glyph} {word}"), st.add_modifier(Modifier::BOLD)),
-                    Span::styled(" · ", t.muted()),
-                    Span::styled(format!("rev {rev}"), t.bold()),
-                    Span::styled(
-                        format!("{why} · {}{at}{src}", durability_word(m.durability)),
-                        t.muted(),
-                    ),
+                    Span::styled(format!("{why}{at}"), t.muted()),
                 ]
             }
         },
     };
+    if p.meta
+        .as_ref()
+        .is_some_and(|m| m.revision.is_some() && m.durability == Durability::Unavailable)
+    {
+        status.push(Span::styled(" · not saved", t.word(Tone::Amber)));
+    }
     let mut card = vec![l1];
     if !description.trim().is_empty() {
         card.push(Line::from(Span::styled(
@@ -165,11 +152,10 @@ pub(super) fn draw_view(f: &mut Frame, app: &mut App, t: &Theme, area: Rect) {
     if let (Some(s), Some(cur)) = (p.sel_rev, p.revision())
         && s != cur
     {
-        bar.push(format!("row chosen in rev {s}"));
+        bar.push("the table changed since you chose this row".into());
     }
     if !p.row_actions.is_empty() {
-        let names: Vec<String> = p.row_actions.iter().map(ToString::to_string).collect();
-        bar.push(format!("row actions: {}", names.join(", ")));
+        bar.push("Enter reviews row actions".into());
     }
     if p.wrap {
         bar.push("wrap".into());

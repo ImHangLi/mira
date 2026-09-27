@@ -70,6 +70,10 @@
         "schedule": {
           "$ref": "#/$defs/ScheduleWire"
         },
+        "show": {
+          "$ref": "#/$defs/ShowPolicy",
+          "default": "on_run"
+        },
         "stop_grace_ms": {
           "default": 5000,
           "format": "uint64",
@@ -236,6 +240,14 @@
         "every_ms"
       ],
       "type": "object"
+    },
+    "ShowPolicy": {
+      "description": "When the TUI opens a terminal program's page.",
+      "enum": [
+        "on_run",
+        "on_select"
+      ],
+      "type": "string"
     },
     "SourceStream": {
       "description": "Which output streams a derived log view keeps.",

@@ -15,6 +15,12 @@ use super::{App, Cmd, Entry, Inputs, Item, Key, Modal, OneOff, Tab, ViewItem, st
 const MAX_PANES: usize = 8;
 
 impl App {
+    /// The tool's title for messages, or its ref when the catalog does not have it.
+    pub fn title_of(&self, a: &ActionRef) -> String {
+        self.item(a)
+            .map_or_else(|| a.to_string(), |i| i.title.clone())
+    }
+
     pub fn item(&self, a: &ActionRef) -> Option<&Item> {
         self.items.iter().find(|i| &i.action_ref == a)
     }
@@ -186,6 +192,17 @@ impl App {
     pub(super) fn on_select(&mut self) {
         self.output_top = 0;
         let sel = self.selected_ref();
+        if !matches!(self.modal, Modal::Search { logs: false, .. })
+            && self
+                .auto_opened
+                .as_ref()
+                .is_some_and(|(a, _)| Some(a) != sel.as_ref())
+        {
+            self.auto_opened = None;
+        }
+        if self.focus_on_start.as_ref() != sel.as_ref() {
+            self.focus_on_start = None;
+        }
         if self
             .notice
             .as_ref()

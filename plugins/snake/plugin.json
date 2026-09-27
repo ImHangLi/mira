@@ -8,9 +8,10 @@
     {
       "id": "play",
       "title": "Play Snake",
-      "description": "Enter starts the game; Ctrl-] goes back to the tools.",
+      "description": "Select to see the game. Enter gives it the keys; F1 returns to tools.",
       "mode": "process",
       "terminal": "pty",
+      "show": "on_select",
       "run": {"kind": "command", "argv": ["sh", "-c", "exec python3 \"$MIRA_PLUGIN_DIR/main.py\""]},
       "effects": ["writes-state"]
     }

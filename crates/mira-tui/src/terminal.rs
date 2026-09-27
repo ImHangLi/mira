@@ -4,7 +4,7 @@
 //! One attach opens its own control connection (the input lock belongs to it, so closing it
 //! always releases the lock) and its own stream connection subscribed to `terminal` events
 //! for the run. While attached as the writer every key goes to the program, Esc and Ctrl-C
-//! included; only Ctrl-] returns to Mira. When another client holds the lock the screen is
+//! included; F1, Shift-Esc, and Ctrl-] return to Mira. When another client holds the lock the screen is
 //! shown read-only. Scrollback is not part of this view: history is the run's log panel in
 //! Mira, and scrolling it never sends anything to the program.
 
@@ -17,7 +17,7 @@ use mira_protocol::error::{ErrorCode, ErrorInfo};
 use mira_protocol::ids::{ActionRef, RunId, ScreenRevision};
 use mira_protocol::ipc::*;
 use mira_protocol::limits::{MAX_REPLY_BUDGET_BYTES, MAX_TERMINAL_COLS, MAX_TERMINAL_ROWS};
-use mira_protocol::manifest::TerminalMode;
+use mira_protocol::manifest::{ShowPolicy, TerminalMode};
 use mira_protocol::paths::WorkspacePaths;
 use ratatui::Frame;
 use ratatui::layout::Rect;
@@ -65,6 +65,14 @@ pub enum Msg {
     Failed(String),
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct AttachmentId(u64);
+
+struct Events {
+    id: AttachmentId,
+    tx: Tx,
+}
+
 pub struct Attach {
     pub action_ref: ActionRef,
     pub run_id: RunId,
@@ -84,6 +92,8 @@ pub struct Attach {
 pub struct Terminals {
     paths: WorkspacePaths,
     pty: HashSet<ActionRef>,
+    on_select: HashSet<ActionRef>,
+    id: AttachmentId,
     pub attach: Option<Attach>,
 }
 
@@ -92,13 +102,22 @@ impl Terminals {
         Self {
             paths,
             pty: HashSet::new(),
+            on_select: HashSet::new(),
+            id: AttachmentId(0),
             attach: None,
         }
     }
 
     /// Learns from `item.describe` whether an action runs in a PTY.
     pub fn note_described(&mut self, a: &ActionRef, res: &Result<Box<ItemDescription>, ErrorInfo>) {
+        self.on_select.remove(a);
         if let Ok(d) = res {
+            if d.action
+                .as_ref()
+                .is_some_and(|x| x.show == ShowPolicy::OnSelect)
+            {
+                self.on_select.insert(a.clone());
+            }
             if d.action
                 .as_ref()
                 .is_some_and(|x| x.terminal == TerminalMode::Pty)
@@ -112,6 +131,10 @@ impl Terminals {
 
     pub fn is_pty(&self, a: &ActionRef) -> bool {
         self.pty.contains(a)
+    }
+
+    pub fn opens_on_select(&self, a: &ActionRef) -> bool {
+        self.on_select.contains(a)
     }
 
     pub fn is_open(&self) -> bool {
@@ -139,7 +162,7 @@ impl Terminals {
     }
 
     /// Keeps showing the screen, but keys go back to Mira and the input lock is freed.
-    fn unfocus(&mut self) {
+    pub fn unfocus(&mut self) {
         if let Some(a) = self.attach.as_mut() {
             a.focused = false;
             let _ = a.tx.send(Command::Release);
@@ -148,12 +171,16 @@ impl Terminals {
 
     pub fn open(&mut self, action_ref: ActionRef, run_id: RunId, events: Tx, focused: bool) {
         self.detach();
+        self.id = AttachmentId(self.id.0.wrapping_add(1));
         let (tx, rx) = unbounded_channel();
         tokio::spawn(worker(
             self.paths.clone(),
             run_id.clone(),
             rx,
-            events,
+            Events {
+                id: self.id,
+                tx: events,
+            },
             focused,
         ));
         self.attach = Some(Attach {
@@ -176,7 +203,10 @@ impl Terminals {
         }
     }
 
-    pub fn handle(&mut self, msg: Msg) {
+    pub fn handle(&mut self, id: AttachmentId, msg: Msg) {
+        if id != self.id {
+            return;
+        }
         let Some(a) = self.attach.as_mut() else {
             return;
         };
@@ -257,12 +287,11 @@ impl Terminals {
                 "go to the program (Esc and Ctrl-C too)",
                 Cmd::Forward,
             ));
-            v.push(bind("Ctrl-]", "back to the tools", Cmd::Detach));
         } else {
             if !exited && matches!(a.ownership, Ownership::ReadOnly(_)) {
                 v.push(bind("a", "take input", Cmd::Attach));
             }
-            v.push(bind("Ctrl-]/Esc/q", "back to the tools", Cmd::Detach));
+            v.push(bind("Esc/q", "back to the tools", Cmd::Detach));
         }
         Some(v)
     }
@@ -270,9 +299,6 @@ impl Terminals {
 
 impl Attach {
     fn resize_if_needed(&mut self) {
-        if self.ownership != Ownership::Writer {
-            return;
-        }
         if let Some(size) = self.want
             && self.sent != Some(size)
         {
@@ -416,45 +442,53 @@ fn styled_line<'a>(text: &'a str, runs: &[TerminalStyleRun], use_color: bool) ->
     Line::from(spans)
 }
 
-/// Draws the attached screen into `area`: one title row, then the program's rows.
+/// Draws the program, with an extra note only for pending input or errors.
 pub fn draw(f: &mut Frame, term: &mut Terminals, area: Rect, use_color: bool) {
     debug_panic();
     let Some(a) = term.attach.as_mut() else {
         return;
     };
-    let rows = area.height.saturating_sub(1).clamp(1, MAX_TERMINAL_ROWS);
-    let cols = area.width.clamp(1, MAX_TERMINAL_COLS);
-    a.want = Some((cols, rows));
-    a.resize_if_needed();
+    // A line above the screen only when something needs saying; the panel title and the
+    // footer carry the normal state and keys.
     let exited = a.snapshot.as_ref().is_some_and(|s| s.exited);
-    let status = if exited {
-        "the program exited; this is its last screen".to_owned()
+    let mut note = if exited {
+        Some("The program exited. This is its last screen.".to_owned())
     } else {
         match (&a.ownership, a.focused) {
-            (Ownership::Connecting, _) => "connecting...".to_owned(),
-            (Ownership::Viewer, true) => "taking input...".to_owned(),
-            (Ownership::Viewer, false) => "Enter to use it".to_owned(),
-            (Ownership::Writer, true) => {
-                "keys go to the program · Ctrl-] back to the tools".to_owned()
-            }
-            (Ownership::Writer, false) => "Enter to use it".to_owned(),
-            (Ownership::ReadOnly(why), _) => format!("read-only: {why} · Enter retries"),
+            (Ownership::Connecting, _) => Some("Connecting...".to_owned()),
+            (Ownership::Viewer, true) => Some("Taking input...".to_owned()),
+            (Ownership::ReadOnly(why), _) => Some(format!("Read-only: {why}. Enter tries again.")),
+            _ => None,
         }
     };
-    let mut title = format!("{} · {status}", a.action_ref);
     if let Some(e) = &a.error {
-        title.push_str(&format!(" · {e}"));
+        note = Some(match note {
+            Some(n) => format!("{n} {e}"),
+            None => e.clone(),
+        });
     }
-    let title_style = Style::default().add_modifier(Modifier::REVERSED);
-    f.render_widget(
-        Paragraph::new(Line::from(Span::styled(title, title_style))),
-        Rect { height: 1, ..area },
-    );
-    let screen = Rect {
-        y: area.y + 1,
-        height: area.height.saturating_sub(1),
-        ..area
+    let screen = match note {
+        Some(n) => {
+            f.render_widget(
+                Paragraph::new(Line::from(Span::styled(
+                    n,
+                    Style::default().add_modifier(Modifier::DIM),
+                ))),
+                Rect { height: 1, ..area },
+            );
+            Rect {
+                y: area.y + 1,
+                height: area.height.saturating_sub(1),
+                ..area
+            }
+        }
+        None => area,
     };
+    a.want = Some((
+        screen.width.clamp(1, MAX_TERMINAL_COLS),
+        screen.height.clamp(1, MAX_TERMINAL_ROWS),
+    ));
+    a.resize_if_needed();
     let Some(s) = &a.snapshot else {
         f.render_widget(Paragraph::new("reading the screen..."), screen);
         return;
@@ -499,11 +533,11 @@ fn debug_panic() {}
 
 // ----- worker -----------------------------------------------------------------------
 
-fn send(tx: &Tx, m: Msg) -> bool {
-    tx.send(Event::Terminal(m)).is_ok()
+fn send(events: &Events, m: Msg) -> bool {
+    events.tx.send(Event::Terminal(events.id, m)).is_ok()
 }
 
-async fn acquire(client: &mut Client, run_id: &RunId, tx: &Tx) -> Result<bool, String> {
+async fn acquire(client: &mut Client, run_id: &RunId, tx: &Events) -> Result<bool, String> {
     let params = TerminalRunParams {
         run_id: run_id.clone(),
     };
@@ -607,7 +641,7 @@ async fn worker(
     paths: WorkspacePaths,
     run_id: RunId,
     mut rx: UnboundedReceiver<Command>,
-    tx: Tx,
+    tx: Events,
     take: bool,
 ) {
     let mut control = match connect(&paths, &ipc::options(ConnectionKind::Control)).await {
@@ -617,7 +651,7 @@ async fn worker(
             return;
         }
     };
-    let lost = |tx: &Tx, m: String| {
+    let lost = |tx: &Events, m: String| {
         send(tx, Msg::Failed(format!("host connection lost: {m}")));
     };
     let mut writer = if take {
@@ -675,13 +709,36 @@ async fn worker(
                 }
                 Some(Command::Input(_)) => {}
                 Some(Command::Resize { cols, rows }) => {
-                    if writer {
+                    // Fit an idle screen without retaining input ownership. Another writer's
+                    // size wins; observers never interrupt their input lock.
+                    let temporary = if writer {
+                        false
+                    } else {
+                        let params = TerminalRunParams { run_id: run_id.clone() };
+                        match ipc::call::<_, Ack>(&mut control, Method::TerminalAcquire, &params).await {
+                            Ok(_) => true,
+                            Err(Failure::Lost(m)) => return lost(&tx, m),
+                            Err(Failure::Reply(_)) => false,
+                        }
+                    };
+                    if writer || temporary {
                         let params = TerminalResizeParams { run_id: run_id.clone(), cols, rows };
                         match ipc::call::<_, Ack>(&mut control, Method::TerminalResize, &params).await {
                             Ok(_) => refresh = true,
                             Err(Failure::Lost(m)) => return lost(&tx, m),
                             Err(Failure::Reply(e)) => {
                                 send(&tx, Msg::Failed(format!("resize refused: {}", e.message)));
+                            }
+                        }
+                    }
+                    if temporary {
+                        let params = TerminalRunParams { run_id: run_id.clone() };
+                        match ipc::call::<_, Ack>(&mut control, Method::TerminalRelease, &params).await {
+                            Ok(_) => {}
+                            Err(Failure::Lost(m)) => return lost(&tx, m),
+                            Err(Failure::Reply(e)) => {
+                                send(&tx, Msg::Failed(format!("could not release input: {}", e.message)));
+                                return;
                             }
                         }
                     }

@@ -110,7 +110,21 @@ def put(screen, y, x, text, style=0):
             pass
 
 
-def draw(screen, game, best, warning, colors):
+def key_hints(screen, y, x, hints):
+    """Whole key chips with labels, in the same order as Mira's footer."""
+    width = screen.getmaxyx()[1]
+    for key, label in hints:
+        chip = f" {key} "
+        text = f" {label}  "
+        if x + len(chip) + len(text) >= width:
+            break
+        put(screen, y, x, chip, curses.A_REVERSE | curses.A_BOLD)
+        x += len(chip)
+        put(screen, y, x, text, curses.A_DIM)
+        x += len(text)
+
+
+def draw(screen, game, best, warning):
     screen.erase()
     height, width = screen.getmaxyx()
     need_w, need_h = game.width * 2 + 2, game.height + CHROME
@@ -119,24 +133,23 @@ def draw(screen, game, best, warning, colors):
         put(screen, 0, 0, "Make the window bigger")
         put(screen, 1, 0, f"Needs {need_w + 1} x {need_h}.")
         put(screen, 2, 0, "Game paused.")
-        put(screen, 4, 0, "q: quit")
-        put(screen, 5, 0, "Ctrl-]: back to Mira")
+        key_hints(screen, 4, 0, [("q", "quit")])
         screen.refresh()
         return False
     bw, bh = game.width, game.height
     left = (width - need_w) // 2
     top = (height - need_h) // 2
-    put(screen, top, left, f"SNAKE   Score: {game.score}   Best: {best}", curses.A_BOLD)
+    put(screen, top, left, f"Snake   Score {game.score}   Best {best}", curses.A_BOLD)
     put(screen, top + 2, left, "┌" + "─" * (bw * 2) + "┐")
     for y in range(bh):
         put(screen, top + 3 + y, left, "│")
         put(screen, top + 3 + y, left + bw * 2 + 1, "│")
     put(screen, top + 3 + bh, left, "└" + "─" * (bw * 2) + "┘")
     for index, (x, y) in enumerate(game.snake):
-        put(screen, top + 3 + y, left + 1 + x * 2, "██" if index == 0 else "▓▓", colors[0])
+        put(screen, top + 3 + y, left + 1 + x * 2, "██" if index == 0 else "▓▓", curses.A_BOLD)
     if game.food:
         x, y = game.food
-        put(screen, top + 3 + y, left + 1 + x * 2, "● ", colors[1])
+        put(screen, top + 3 + y, left + 1 + x * 2, "● ", curses.A_REVERSE | curses.A_BOLD)
     if game.over:
         snacks = "snack" if game.score == 1 else "snacks"
         message = ("You filled the board. Take the rest of today off." if game.won else
@@ -149,9 +162,9 @@ def draw(screen, game, best, warning, colors):
     else:
         message = "One snack at a time."
     put(screen, top + bh + 4, left, message)
-    controls = "r: restart | q: quit" if game.over else "Arrows / WASD: move | p: pause"
-    put(screen, top + bh + 5, left, controls)
-    put(screen, top + bh + 6, left, "q: quit | Ctrl-]: back to Mira")
+    controls = ([("r", "restart"), ("q", "quit")] if game.over else
+                [("Arrows/WASD", "move"), ("p", "pause"), ("q", "quit")])
+    key_hints(screen, top + bh + 5, left, controls)
     if warning:
         put(screen, top + bh + 7, left, warning)
     screen.refresh()
@@ -166,14 +179,11 @@ def main(screen):
     screen.keypad(True)
     screen.timeout(20)
     curses.set_escdelay(25)
-    colors = (curses.A_BOLD, curses.A_BOLD)
+    # Use the terminal's default palette; Mira provides the accent and focus border.
     if curses.has_colors():
         try:
             curses.start_color()
             curses.use_default_colors()
-            curses.init_pair(1, curses.COLOR_GREEN, -1)
-            curses.init_pair(2, curses.COLOR_MAGENTA, -1)
-            colors = (curses.color_pair(1) | curses.A_BOLD, curses.color_pair(2) | curses.A_BOLD)
         except curses.error:
             pass
     directions = {curses.KEY_UP: (0, -1), ord("w"): (0, -1),
@@ -187,7 +197,7 @@ def main(screen):
         # Until the first move, the board follows the window size.
         if not game.started and board_size(screen) != (game.width, game.height):
             game = Game(board_size(screen))
-        fits = draw(screen, game, best, warning, colors)
+        fits = draw(screen, game, best, warning)
         key = screen.getch()
         if key == ord("q"):
             return

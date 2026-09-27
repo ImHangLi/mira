@@ -16,6 +16,7 @@ impl App {
             return;
         }
         match cmd {
+            Cmd::Tools => self.return_to_tools(),
             Cmd::Command => {
                 self.modal = Modal::Command {
                     text: String::new(),
@@ -155,9 +156,10 @@ impl App {
             Cmd::Search => {
                 self.modal = Modal::Search {
                     logs: self.focus == Focus::Logs,
-                    // A new search starts empty; Esc restores `prev_filter`.
+                    // Cancel restores the previous filter and selection.
                     text: String::new(),
                     prev_filter: self.filter.clone(),
+                    prev_selection: self.selected_key(),
                 }
             }
             Cmd::Quit => self.quit = Some(Quit::Normal(None)),

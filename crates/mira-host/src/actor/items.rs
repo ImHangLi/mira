@@ -141,6 +141,7 @@ impl Actor {
                     Runner::Plugin => "plugin".into(),
                 },
                 terminal: a.terminal,
+                show: a.show,
                 timeout: a.timeout.to_wire(),
                 cwd: a.cwd.clone(),
                 env_names: a.env.keys().cloned().collect(),

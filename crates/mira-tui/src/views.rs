@@ -8,8 +8,7 @@ use mira_protocol::ids::{ActionId, RunId, ViewRevision};
 use mira_protocol::manifest::ViewKind;
 use mira_protocol::time::Timestamp;
 use mira_protocol::view::{
-    ColumnType, Durability, Freshness, LogLevel, SourceKind, TreeNode, ViewBody, ViewData,
-    ViewSnapshot,
+    Durability, Freshness, LogLevel, SourceKind, TreeNode, ViewBody, ViewData, ViewSnapshot,
 };
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
@@ -96,15 +95,6 @@ pub fn freshness_word(f: Freshness) -> &'static str {
         Freshness::Current => "current",
         Freshness::Historical => "historical",
         Freshness::Stale => "STALE",
-    }
-}
-
-pub fn durability_word(d: Durability) -> &'static str {
-    match d {
-        Durability::Committed => "saved",
-        Durability::Buffered => "saving",
-        Durability::SessionOnly => "this session only",
-        Durability::Unavailable => "not saved",
     }
 }
 
@@ -588,13 +578,7 @@ impl ViewPane {
         let r = rows.get(self.cursor)?;
         let c = columns.get(self.col)?;
         let v = r.values.get(&c.id).map(cell).unwrap_or_default();
-        let t = match c.column_type {
-            ColumnType::Text => "text",
-            ColumnType::Number => "number",
-            ColumnType::Boolean => "boolean",
-            ColumnType::Timestamp => "timestamp",
-        };
-        Some(display(&format!("{} ({t}): {v}", c.label)))
+        Some(display(&format!("{}: {v}", c.label)))
     }
 
     /// Visible rows as (row index, wrapped part).

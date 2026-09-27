@@ -1,7 +1,7 @@
 //! The right rail on wide terminals: recent runs and the session.
 
 use mira_protocol::clock;
-use mira_protocol::ipc::{SessionMode, SessionState};
+use mira_protocol::ipc::SessionState;
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::style::Style;
@@ -67,51 +67,33 @@ pub(super) fn draw_rail(f: &mut Frame, app: &App, t: &Theme, area: Rect) {
     let w = inner.width as usize;
     let row = |k: &str, v: String, st: Style| {
         Line::from(vec![
-            Span::styled(format!(" {k:<12}"), t.muted()),
-            Span::styled(ellipsize(&v, w.saturating_sub(14)), st),
+            Span::styled(format!(" {k:<8}"), t.muted()),
+            Span::styled(ellipsize(&v, w.saturating_sub(10)), st),
         ])
     };
+    // Only what a person acts on: what runs, how many windows, and when it all stops.
     let mut lines = Vec::new();
+    let mut running = format!("{}", app.active.len());
+    if app.adhoc_runs > 0 {
+        running.push_str(&format!(" + {} one-off", app.adhoc_runs));
+    }
+    lines.push(row("running", running, Style::default()));
     match &app.session {
-        None => lines.push(row("mode", "○ no session".into(), t.muted())),
+        None => lines.push(row("session", "closed".into(), t.muted())),
         Some(s) => {
-            let (mode, st) = match (s.state, s.mode) {
-                (SessionState::Stopping, _) => ("◐ stopping", t.word(Tone::Amber)),
-                (_, SessionMode::Foreground) => ("● foreground", t.word(Tone::Leaf)),
-                (_, SessionMode::Background) => ("◐ background", t.word(Tone::Amber)),
-            };
-            lines.push(row("mode", mode.into(), st));
             lines.push(row(
                 "windows",
-                format!("{} open", s.controller_count),
+                format!("{}", s.controller_count),
                 Style::default(),
             ));
-            let exp = match s.expires_at {
-                Some(e) => app.clock.until(e),
-                None if s.background_lease => "at `mira down`".into(),
-                None => "last window closes".into(),
+            let (stops, st) = match (s.state, s.expires_at) {
+                (SessionState::Stopping, _) => ("stopping now".to_owned(), t.word(Tone::Amber)),
+                (_, Some(e)) => (format!("at {}", app.clock.hm(e)), t.word(Tone::Amber)),
+                (_, None) if s.background_lease => ("at `mira down`".to_owned(), Style::default()),
+                (_, None) => ("last window closes".to_owned(), Style::default()),
             };
-            lines.push(row("ends", exp, Style::default()));
+            lines.push(row("stops", stops, st));
         }
     }
-    let mut active = format!("{} run(s)", app.active.len());
-    if app.adhoc_runs > 0 {
-        active.push_str(&format!(" + {} one-off", app.adhoc_runs));
-    }
-    lines.push(row("active", active, Style::default()));
-    lines.push(row(
-        "this window",
-        if app.is_controller() {
-            "in control".into()
-        } else {
-            "watching".into()
-        },
-        Style::default(),
-    ));
-    lines.push(row(
-        "mouse",
-        if app.mouse { "on" } else { "off" }.into(),
-        Style::default(),
-    ));
     f.render_widget(Paragraph::new(lines), inner);
 }

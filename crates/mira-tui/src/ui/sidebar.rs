@@ -18,7 +18,8 @@ use super::text::ellipsize;
 use super::widgets::{panel, panel_title};
 
 pub(super) fn draw_sidebar(f: &mut Frame, app: &mut App, t: &Theme, area: Rect) {
-    let focus = app.focus == Focus::List;
+    // The list gives the focus away while a program in the main pane takes the keys.
+    let focus = app.focus == Focus::List && !app.term.is_focused();
     let total = app.items.len() + app.views.len();
     let title = if app.filter.is_empty() {
         format!("Tools · {total}")

@@ -64,6 +64,9 @@
         "runner": {
           "type": "string"
         },
+        "show": {
+          "$ref": "#/$defs/ShowPolicy"
+        },
         "terminal": {
           "$ref": "#/$defs/TerminalMode"
         },
@@ -81,6 +84,7 @@
         "mode",
         "runner",
         "terminal",
+        "show",
         "timeout",
         "cwd",
         "env_names",
@@ -2393,6 +2397,14 @@
         "stopped_runs"
       ],
       "type": "object"
+    },
+    "ShowPolicy": {
+      "description": "When the TUI opens a terminal program's page.",
+      "enum": [
+        "on_run",
+        "on_select"
+      ],
+      "type": "string"
     },
     "SourceKind": {
       "enum": [

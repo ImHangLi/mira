@@ -145,10 +145,24 @@ def put(screen, y, x, text, style=0):
             pass
 
 
-def draw(screen, t, colors):
+def key_hints(screen, y, x, hints):
+    """Whole key chips with labels, in the same order as Mira's footer."""
+    width = screen.getmaxyx()[1]
+    for key, label in hints:
+        chip = f" {key} "
+        text = f" {label}  "
+        if x + len(chip) + len(text) >= width:
+            break
+        put(screen, y, x, chip, curses.A_REVERSE | curses.A_BOLD)
+        x += len(chip)
+        put(screen, y, x, text, curses.A_DIM)
+        x += len(text)
+
+
+def draw(screen, t):
     screen.erase()
     height, width = screen.getmaxyx()
-    accent = colors[t.mode]
+    accent = curses.A_BOLD
     left = t.remaining()
     secs = int(left + 0.999) if t.state == "running" else int(left)
     clock = f"{secs // 60:02}:{secs % 60:02}"
@@ -156,16 +170,16 @@ def draw(screen, t, colors):
     if width < 30 or height < 12:
         put(screen, 0, 0, f"{t.mode.upper()}  {clock}", accent | curses.A_BOLD)
         put(screen, 1, 0, today)
-        put(screen, 2, 0, "Enter start  Space pause  r reset")
+        key_hints(screen, 2, 0, [("Enter", "start"), ("Space", "pause"), ("r", "reset")])
         screen.refresh()
         return
-    put(screen, 0, 2, "POMODORO", curses.A_BOLD)
+    put(screen, 0, 2, "Pomodoro", curses.A_BOLD)
     put(screen, 0, max(12, width - len(today) - 3), today, curses.A_DIM)
     # Mode switch, like two tabs.
     x = 2
     for m in MODES:
         label = f"  {m.capitalize()}  "
-        style = (colors[m] | curses.A_REVERSE | curses.A_BOLD) if m == t.mode else curses.A_DIM
+        style = (curses.A_REVERSE | curses.A_BOLD) if m == t.mode else curses.A_DIM
         put(screen, 2, x, label, style)
         x += len(label) + 1
     # From the bottom up: keys, note, lengths, progress. The clock gets the rest.
@@ -201,11 +215,11 @@ def draw(screen, t, colors):
         put(screen, chips_y, x, "←/→ pick   +/- change", curses.A_DIM)
     put(screen, note_y, 2, t.note)
     keys = {
-        "idle": "Enter start   Tab focus/break   q quit",
-        "running": "Space pause   r reset   q quit",
-        "paused": "Space resume   r reset   q quit",
+        "idle": [("Enter", "start"), ("Tab", "focus/break"), ("q", "quit")],
+        "running": [("Space", "pause"), ("r", "reset"), ("q", "quit")],
+        "paused": [("Space", "resume"), ("r", "reset"), ("q", "quit")],
     }[t.state]
-    put(screen, keys_y, 2, keys, curses.A_DIM)
+    key_hints(screen, keys_y, 2, keys)
     screen.refresh()
 
 
@@ -217,20 +231,17 @@ def main(screen):
     screen.keypad(True)
     screen.timeout(200)
     curses.set_escdelay(25)
-    colors = {"focus": curses.A_BOLD, "break": curses.A_BOLD}
+    # Use the terminal's default palette; Mira provides the accent and focus border.
     if curses.has_colors():
         try:
             curses.start_color()
             curses.use_default_colors()
-            curses.init_pair(1, curses.COLOR_RED, -1)
-            curses.init_pair(2, curses.COLOR_GREEN, -1)
-            colors = {"focus": curses.color_pair(1), "break": curses.color_pair(2)}
         except curses.error:
             pass
     t = Timer()
     while True:
         t.tick()
-        draw(screen, t, colors)
+        draw(screen, t)
         key = screen.getch()
         if key == ord("q"):
             return

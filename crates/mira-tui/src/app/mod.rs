@@ -87,6 +87,8 @@ pub struct App {
     pub catalog_revision: Option<mira_protocol::ids::CatalogRevision>,
     /// A PTY program started with Enter; it gets the keys when its screen opens.
     pub focus_on_start: Option<ActionRef>,
+    /// One automatic start attempt per selection and definition, including failures.
+    auto_opened: Option<(ActionRef, Digest)>,
     status_at: Option<Instant>,
     /// Actions whose description declares a schedule.
     scheduled: std::collections::HashSet<ActionRef>,
@@ -164,6 +166,7 @@ impl App {
             defaults: Vec::new(),
             catalog_revision: None,
             focus_on_start: None,
+            auto_opened: None,
             status_at: None,
             scheduled: Default::default(),
             catalog_error: None,
