@@ -138,7 +138,7 @@ impl Actor {
                     log.push_line(
                         mira_protocol::run::LogStream::Host,
                         mira_protocol::view::LogLevel::Error,
-                        "terminal output exceeded what the host can parse; stopping (OUTPUT_LIMIT)",
+                        "terminal output exceeded what the host can parse; stopping the run",
                         false,
                     );
                 }

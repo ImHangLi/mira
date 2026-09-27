@@ -357,7 +357,7 @@ async fn connection(stream: UnixStream, actor: mpsc::Sender<Msg>) {
                             Some(req.id),
                             RpcError::new(
                                 RpcError::NOT_ALLOWED,
-                                "stream connections may only subscribe or unsubscribe",
+                                "stream connections may only subscribe",
                             ),
                         ));
                         continue;

@@ -23,8 +23,8 @@ pub struct Session {
     /// Background lease deadline; `Some(None)` means an explicit `ttl: none` lease.
     pub lease: Option<Option<(Instant, Timestamp)>>,
     pub stopping: bool,
-    /// Environment captured from the controller that created the session (autostart, schedules).
-    #[allow(dead_code)] // read by interval schedules (LYR-13)
+    /// Environment captured from the controller that created the session; interval
+    /// schedules run with it.
     pub env: ClientEnv,
 }
 
@@ -138,11 +138,6 @@ impl Actor {
             };
             self.invoke_internal(client, p, None);
         }
-    }
-
-    pub(super) fn session_detach(&mut self, client: &ClientId, r: Responder) {
-        self.controller_left(client);
-        self.session_reply(r);
     }
 
     pub(super) fn session_open(&mut self, _client: &ClientId, p: SessionOpenParams, r: Responder) {

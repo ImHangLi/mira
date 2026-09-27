@@ -623,12 +623,6 @@ pub struct StreamSubscribeParams {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct StreamUnsubscribeParams {
-    pub subscription_id: SubscriptionId,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
-#[serde(deny_unknown_fields)]
 pub struct StorageStatusParams {
     #[serde(default)]
     pub all: bool,
@@ -1157,7 +1151,6 @@ pub struct StreamSource {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum EndReason {
-    Unsubscribed,
     SourceEnded,
     ResetRequired,
     SessionEnded,
@@ -1239,7 +1232,7 @@ macro_rules! methods {
             pub fn parse(name: &str) -> Option<Self> {
                 match name { $($name => Some(Method::$variant),)* _ => None }
             }
-            /// Stream connections may only call subscribe/unsubscribe after hello.
+            /// Stream connections may only call subscribe after hello.
             pub fn allowed_on_stream(self) -> bool {
                 match self { $(Method::$variant => $stream),* }
             }
@@ -1261,7 +1254,6 @@ macro_rules! methods {
 methods! {
     Hello = "hello", HelloParams => HelloReply, stream: true;
     SessionAttach = "session.attach", SessionAttachParams => SessionData, stream: false;
-    SessionDetach = "session.detach", Empty => SessionData, stream: false;
     SessionOpen = "session.open", SessionOpenParams => SessionData, stream: false;
     SessionKeep = "session.keep", SessionKeepParams => SessionData, stream: false;
     SessionStop = "session.stop", Empty => SessionStopData, stream: false;
@@ -1286,8 +1278,6 @@ methods! {
     TerminalInputM = "terminal.input", TerminalInputParams => TerminalSnapshot, stream: false;
     TerminalResize = "terminal.resize", TerminalResizeParams => Ack, stream: false;
     StreamSubscribe = "stream.subscribe", StreamSubscribeParams => Subscribed, stream: true;
-    StreamUnsubscribe = "stream.unsubscribe", StreamUnsubscribeParams => Ack, stream: true;
-    PathsGet = "paths.get", Empty => PathsData, stream: false;
     StorageStatus = "storage.status", StorageStatusParams => StorageStatusData, stream: false;
     StorageGc = "storage.gc", StorageGcParams => GcReport, stream: false;
     StorageClear = "storage.clear", StorageClearParams => Ack, stream: false;

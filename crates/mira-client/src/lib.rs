@@ -8,12 +8,12 @@ use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use mira_protocol::ids::{AbsolutePath, ClientId, HostEpoch};
+use mira_protocol::ids::AbsolutePath;
 use mira_protocol::ipc::*;
 use mira_protocol::limits::MAX_IPC_FRAME_BYTES;
 use mira_protocol::mpp::LineDecoder;
 use mira_protocol::paths::{WorkspacePaths, current_uid};
-use mira_protocol::reply::{PublicReply, ReplyContext, WorkspaceRef};
+use mira_protocol::reply::{PublicReply, ReplyContext};
 use mira_protocol::{ErrorCode, ErrorInfo, schemas};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -95,14 +95,20 @@ impl ConnectOptions {
     }
 }
 
+/// A connected client after a successful handshake.
 pub struct Client {
+    conn: Connection,
+    hello: HelloReply,
+}
+
+/// The framed JSON-RPC connection under a [`Client`].
+struct Connection {
     reader: OwnedReadHalf,
     writer: OwnedWriteHalf,
     decoder: LineDecoder,
     lines: VecDeque<Vec<u8>>,
     events: VecDeque<StreamFrame>,
     next_id: u64,
-    hello: HelloReply,
 }
 
 async fn try_connect(socket: &Path) -> std::io::Result<UnixStream> {
@@ -174,30 +180,21 @@ pub async fn connect(paths: &WorkspacePaths, opts: &ConnectOptions) -> Result<Cl
         .map_err(|e| ClientError::Connect(format!("cannot read peer credentials: {e}")))?;
     if peer.uid() != current_uid() {
         return Err(ClientError::Refused(ErrorInfo::new(
-            ErrorCode::PROTOCOL_MISMATCH,
-            "the socket is owned by another user",
+            ErrorCode::PERMISSION_DENIED,
+            format!(
+                "the host socket {} is owned by another user",
+                socket.display()
+            ),
         )));
     }
     let (reader, writer) = stream.into_split();
-    let mut client = Client {
+    let mut conn = Connection {
         reader,
         writer,
         decoder: LineDecoder::new(MAX_IPC_FRAME_BYTES),
         lines: VecDeque::new(),
         events: VecDeque::new(),
         next_id: 0,
-        hello: HelloReply {
-            api: mira_protocol::ids::Api1,
-            protocol_hash: schemas::protocol_hash().clone(),
-            host_epoch: HostEpoch::random(),
-            client_id: ClientId::random(),
-            workspace: WorkspaceRef {
-                id: paths.id.clone(),
-                root: paths.root.clone(),
-            },
-            catalog_revision: mira_protocol::CatalogRevision::ZERO,
-            state_revision: mira_protocol::StateRevision::ZERO,
-        },
     };
     let params = HelloParams {
         api: mira_protocol::ids::Api1,
@@ -207,7 +204,7 @@ pub async fn connect(paths: &WorkspacePaths, opts: &ConnectOptions) -> Result<Cl
         client_kind: opts.client_kind,
         connection_kind: opts.connection_kind,
     };
-    let value = client
+    let value = conn
         .raw_call(Method::Hello, &params, HELLO_TIMEOUT)
         .await
         .map_err(|e| match e {
@@ -217,9 +214,9 @@ pub async fn connect(paths: &WorkspacePaths, opts: &ConnectOptions) -> Result<Cl
             ),
             other => other,
         })?;
-    client.hello = serde_json::from_value(value)
+    let hello = serde_json::from_value(value)
         .map_err(|e| ClientError::Protocol(format!("bad hello reply: {e}")))?;
-    Ok(client)
+    Ok(Client { conn, hello })
 }
 
 impl Client {
@@ -237,6 +234,37 @@ impl Client {
         }
     }
 
+    /// Calls a method whose successful answer is a `PublicReply<R>`.
+    pub async fn call<P: Serialize, R: DeserializeOwned>(
+        &mut self,
+        method: Method,
+        params: &P,
+    ) -> Result<PublicReply<R>, ClientError> {
+        self.call_with_timeout(method, params, RPC_TIMEOUT).await
+    }
+
+    pub async fn call_with_timeout<P: Serialize, R: DeserializeOwned>(
+        &mut self,
+        method: Method,
+        params: &P,
+        timeout: Duration,
+    ) -> Result<PublicReply<R>, ClientError> {
+        let value = self.conn.raw_call(method, params, timeout).await?;
+        serde_json::from_value(value)
+            .map_err(|e| ClientError::Protocol(format!("bad {} reply: {e}", method.name())))
+    }
+
+    /// The next stream frame, waiting for one if none is buffered.
+    pub async fn next_event(&mut self) -> Result<StreamFrame, ClientError> {
+        self.conn.next_event().await
+    }
+
+    pub async fn status(&mut self) -> Result<PublicReply<StatusData>, ClientError> {
+        self.call(Method::WorkspaceStatus, &Empty {}).await
+    }
+}
+
+impl Connection {
     async fn read_line(&mut self) -> Result<Vec<u8>, ClientError> {
         let mut buf = vec![0u8; 64 * 1024];
         loop {
@@ -316,28 +344,7 @@ impl Client {
             .map_err(|_| ClientError::Timeout(timeout))?
     }
 
-    /// Calls a method whose successful answer is a `PublicReply<R>`.
-    pub async fn call<P: Serialize, R: DeserializeOwned>(
-        &mut self,
-        method: Method,
-        params: &P,
-    ) -> Result<PublicReply<R>, ClientError> {
-        self.call_with_timeout(method, params, RPC_TIMEOUT).await
-    }
-
-    pub async fn call_with_timeout<P: Serialize, R: DeserializeOwned>(
-        &mut self,
-        method: Method,
-        params: &P,
-        timeout: Duration,
-    ) -> Result<PublicReply<R>, ClientError> {
-        let value = self.raw_call(method, params, timeout).await?;
-        serde_json::from_value(value)
-            .map_err(|e| ClientError::Protocol(format!("bad {} reply: {e}", method.name())))
-    }
-
-    /// The next stream frame, waiting for one if none is buffered.
-    pub async fn next_event(&mut self) -> Result<StreamFrame, ClientError> {
+    async fn next_event(&mut self) -> Result<StreamFrame, ClientError> {
         loop {
             if let Some(ev) = self.events.pop_front() {
                 return Ok(ev);
@@ -350,10 +357,6 @@ impl Client {
                 HostMessage::Response(_) => {}
             }
         }
-    }
-
-    pub async fn status(&mut self) -> Result<PublicReply<StatusData>, ClientError> {
-        self.call(Method::WorkspaceStatus, &Empty {}).await
     }
 }
 

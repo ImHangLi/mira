@@ -83,13 +83,13 @@ fn start_watcher(
 ) -> Option<notify::RecommendedWatcher> {
     use notify::{RecursiveMode, Watcher};
     let mira = paths.mira_dir.clone();
-    let ignored = [mira.join(".generated"), mira.join(".drafts")];
+    let drafts = mira.join(".drafts");
     let mut watcher = notify::recommended_watcher(move |res: notify::Result<notify::Event>| {
         if let Ok(ev) = res {
             let relevant = ev
                 .paths
                 .iter()
-                .any(|p| p.starts_with(&mira) && !ignored.iter().any(|i| p.starts_with(i)));
+                .any(|p| p.starts_with(&mira) && !p.starts_with(&drafts));
             if relevant {
                 let _ = tx.send(());
             }

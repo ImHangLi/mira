@@ -4,7 +4,7 @@
 
 use std::collections::HashSet;
 
-use mira_protocol::ids::{ActionId, Digest, RunId, ViewRevision};
+use mira_protocol::ids::{ActionId, RunId, ViewRevision};
 use mira_protocol::manifest::ViewKind;
 use mira_protocol::time::Timestamp;
 use mira_protocol::view::{
@@ -28,8 +28,6 @@ pub struct Meta {
     pub freshness: Freshness,
     pub freshness_reason: Option<String>,
     pub durability: Durability,
-    #[allow(dead_code)] // kept with the snapshot; row actions are re-checked by the host
-    pub definition_hash: Digest,
 }
 
 impl Meta {
@@ -214,7 +212,6 @@ impl ViewPane {
             freshness: snap.freshness,
             freshness_reason: snap.freshness_reason,
             durability: snap.durability,
-            definition_hash: snap.definition_hash,
         });
         self.body = match snap.data {
             None => Body::Empty,
@@ -790,7 +787,6 @@ mod tests {
             freshness,
             freshness_reason: None,
             durability,
-            definition_hash: Digest::of_bytes(b"v"),
         }
     }
 

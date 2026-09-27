@@ -113,29 +113,6 @@ impl Actor {
         self.subs.insert(id, sub);
     }
 
-    pub(super) fn unsubscribe(
-        &mut self,
-        client: &ClientId,
-        p: StreamUnsubscribeParams,
-        r: Responder,
-    ) {
-        let known = self
-            .subs
-            .get(&p.subscription_id)
-            .is_some_and(|s| &s.client == client);
-        if known && let Some(sub) = self.subs.remove(&p.subscription_id) {
-            let end = self.frame(
-                None,
-                None,
-                StreamEvent::End {
-                    reason: EndReason::Unsubscribed,
-                },
-            );
-            sub.out.respond(end);
-        }
-        r.send(self.ok(Ack { ok: known }, ReplyMeta::default()));
-    }
-
     /// Sends to matching subscribers; resets any whose queue is full.
     fn deliver(&mut self, kind: StreamKind, matches: impl Fn(&Sub) -> bool, line: &[u8]) {
         let mut reset = Vec::new();

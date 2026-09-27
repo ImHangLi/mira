@@ -671,7 +671,6 @@
     },
     "EndReason": {
       "enum": [
-        "unsubscribed",
         "source_ended",
         "reset_required",
         "session_ended"
@@ -1341,53 +1340,6 @@
         "runtime"
       ],
       "type": "string"
-    },
-    "PathEntry": {
-      "additionalProperties": false,
-      "properties": {
-        "agent_reads": {
-          "type": "boolean"
-        },
-        "auto_delete": {
-          "type": "boolean"
-        },
-        "class": {
-          "$ref": "#/$defs/PathClass"
-        },
-        "path": {
-          "$ref": "#/$defs/AbsolutePath"
-        },
-        "purpose": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "class",
-        "path",
-        "purpose",
-        "auto_delete",
-        "agent_reads"
-      ],
-      "type": "object"
-    },
-    "PathsData": {
-      "additionalProperties": false,
-      "properties": {
-        "entries": {
-          "items": {
-            "$ref": "#/$defs/PathEntry"
-          },
-          "type": "array"
-        },
-        "workspace": {
-          "$ref": "#/$defs/WorkspaceRef"
-        }
-      },
-      "required": [
-        "workspace",
-        "entries"
-      ],
-      "type": "object"
     },
     "PayloadAvailability": {
       "enum": [
@@ -3010,18 +2962,6 @@
       ],
       "type": "object"
     },
-    "StreamUnsubscribeParams": {
-      "additionalProperties": false,
-      "properties": {
-        "subscription_id": {
-          "$ref": "#/$defs/SubscriptionId"
-        }
-      },
-      "required": [
-        "subscription_id"
-      ],
-      "type": "object"
-    },
     "Subscribed": {
       "additionalProperties": false,
       "properties": {
@@ -4009,14 +3949,6 @@
         "$ref": "#/$defs/LogPage"
       }
     },
-    "paths.get": {
-      "params": {
-        "$ref": "#/$defs/Empty"
-      },
-      "result": {
-        "$ref": "#/$defs/PathsData"
-      }
-    },
     "payload.read": {
       "params": {
         "$ref": "#/$defs/PayloadReadParams"
@@ -4060,14 +3992,6 @@
     "session.attach": {
       "params": {
         "$ref": "#/$defs/SessionAttachParams"
-      },
-      "result": {
-        "$ref": "#/$defs/SessionData"
-      }
-    },
-    "session.detach": {
-      "params": {
-        "$ref": "#/$defs/Empty"
       },
       "result": {
         "$ref": "#/$defs/SessionData"
@@ -4127,14 +4051,6 @@
       },
       "result": {
         "$ref": "#/$defs/Subscribed"
-      }
-    },
-    "stream.unsubscribe": {
-      "params": {
-        "$ref": "#/$defs/StreamUnsubscribeParams"
-      },
-      "result": {
-        "$ref": "#/$defs/Ack"
       }
     },
     "terminal.acquire": {

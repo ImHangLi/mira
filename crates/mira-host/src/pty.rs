@@ -42,7 +42,7 @@ use crate::runner::{
 /// Raw output chunks waiting for the parser (64 × 16 KiB = 1 MiB).
 const READ_CHUNK: usize = 16 * 1024;
 const PARSE_QUEUE: usize = 64;
-/// When the parse queue stays full this long, the run stops with OUTPUT_LIMIT.
+/// When the parse queue stays full this long, the run stops with stop reason `output_limit`.
 const OUTPUT_STALL: Duration = Duration::from_secs(10);
 /// Pending input writes; a full queue means the child is not reading its input.
 const INPUT_QUEUE: usize = 32;
@@ -525,7 +525,7 @@ fn spawn_thread(name: &str, f: impl FnOnce() + Send + 'static) -> bool {
 
 /// Reads raw chunks and queues them for the parser. Never drops bytes: when the queue is
 /// full it waits (the kernel then applies backpressure to the child), and a stall longer
-/// than [`OUTPUT_STALL`] reports OUTPUT_LIMIT once so the actor stops the run.
+/// than [`OUTPUT_STALL`] reports [`TerminalEvent::OutputLimit`] once so the actor stops the run.
 fn reader_loop(
     mut reader: Box<dyn Read + Send>,
     queue: smpsc::SyncSender<Vec<u8>>,

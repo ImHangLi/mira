@@ -148,10 +148,8 @@ pub enum Msg {
     Shutdown,
 }
 
-#[allow(dead_code)] // `connection` is informational; stream rules are enforced by the server.
 struct ClientEntry {
     kind: ClientKind,
-    connection: ConnectionKind,
     out: Outbound,
 }
 
@@ -501,7 +499,6 @@ impl Actor {
             id.clone(),
             ClientEntry {
                 kind: p.client_kind,
-                connection: p.connection_kind,
                 out,
             },
         );
@@ -545,15 +542,7 @@ impl Actor {
                 let res = self.describe(parse!(p));
                 r.send(res)
             }
-            Method::PathsGet => {
-                let _: Empty = parse!(p);
-                r.send(self.ok(self.paths.to_data(), ReplyMeta::default()))
-            }
             Method::SessionAttach => self.session_attach(client, parse!(p), r),
-            Method::SessionDetach => {
-                let _: Empty = parse!(p);
-                self.session_detach(client, r)
-            }
             Method::SessionOpen => self.session_open(client, parse!(p), r),
             Method::SessionKeep => self.session_keep(parse!(p), r),
             Method::SessionStop => {
@@ -587,7 +576,6 @@ impl Actor {
             Method::TerminalInputM => self.terminal_input(client, parse!(p), r),
             Method::TerminalResize => self.terminal_resize(client, parse!(p), r),
             Method::StreamSubscribe => self.subscribe(client, parse!(p), r),
-            Method::StreamUnsubscribe => self.unsubscribe(client, parse!(p), r),
             other => r.send(Err(RpcError::new(
                 RpcError::METHOD_NOT_FOUND,
                 format!("`{}` is not available in this build", other.name()),
