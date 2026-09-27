@@ -65,7 +65,8 @@ case ":$PATH:" in
   *":$dir:"*) ;;
   *)
     case "$(basename "${SHELL:-}")" in
-      zsh) rc="${ZDOTDIR:-$HOME}/.zshrc"; line="export PATH=\"$dir:\$PATH\"" ;;
+      # ~/.zshenv is read by every zsh, including the non-interactive shells agents run.
+      zsh) rc="${ZDOTDIR:-$HOME}/.zshenv"; line="export PATH=\"$dir:\$PATH\"" ;;
       bash) rc="$HOME/.bash_profile"; line="export PATH=\"$dir:\$PATH\"" ;;
       fish) rc="$HOME/.config/fish/conf.d/mira.fish"; line="fish_add_path \"$dir\"" ;;
       *) rc="" ;;
