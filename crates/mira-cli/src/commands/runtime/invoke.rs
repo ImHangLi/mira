@@ -40,7 +40,10 @@ fn final_reply(reply: PublicReply<RunRecord>) -> PublicReply<RunRecord> {
         .action_ref
         .as_ref()
         .map_or_else(|| rec.label.clone(), ToString::to_string);
+    // A plugin that exits 0 but reports `ok: false` failed by its own report, not by exit code.
+    let self_reported = rec.result.as_ref().is_some_and(|r| !r.ok);
     let exit = rec.exit.as_ref().map(|e| match (e.code, &e.signal) {
+        (Some(0), _) if self_reported => String::new(),
         (Some(c), _) => format!(" with exit {c}"),
         (None, Some(s)) => format!(" by {s}"),
         _ => String::new(),
@@ -77,9 +80,17 @@ fn final_reply(reply: PublicReply<RunRecord>) -> PublicReply<RunRecord> {
         .as_ref()
         .map(|r| format!(": {}", r.summary))
         .unwrap_or_default();
+    let by_plugin = if self_reported && rec.exit.as_ref().is_some_and(|e| e.code == Some(0)) {
+        " (reported by the plugin)"
+    } else {
+        ""
+    };
     let info = ErrorInfo::new(
         code,
-        format!("{target} {what}{}{reported}", exit.unwrap_or_default()),
+        format!(
+            "{target} {what}{}{reported}{by_plugin}",
+            exit.unwrap_or_default()
+        ),
     )
     .with_details(details)
     .with_next_action(
