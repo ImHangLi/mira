@@ -1,0 +1,18 @@
+{
+  "api": 1,
+  "id": "snake",
+  "name": "Snake",
+  "description": "Take a short break with a game of Snake.",
+  "tags": ["game", "break", "terminal"],
+  "actions": [
+    {
+      "id": "play",
+      "title": "Play Snake",
+      "description": "Open Snake and press a to attach.",
+      "mode": "process",
+      "terminal": "pty",
+      "run": {"kind": "command", "argv": ["sh", "-c", "exec python3 \"$MIRA_PLUGIN_DIR/main.py\""]},
+      "effects": ["writes-state"]
+    }
+  ]
+}
