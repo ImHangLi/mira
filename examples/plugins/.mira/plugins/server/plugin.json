@@ -1,0 +1,16 @@
+{
+  "api": 1,
+  "id": "server",
+  "name": "Server",
+  "description": "A small stand-in for a web server: it logs requests and, now and then, an error.",
+  "actions": [
+    {
+      "id": "run",
+      "title": "Web server",
+      "description": "Logs one request per second until you stop it.",
+      "mode": "process",
+      "run": {"kind": "command", "argv": ["python3", "-u", "server.py"]},
+      "cwd": ".mira/plugins/server"
+    }
+  ]
+}
