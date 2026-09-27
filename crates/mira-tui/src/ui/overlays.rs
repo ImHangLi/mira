@@ -1,5 +1,6 @@
 //! Overlays: help, the input form, command output, and the row action chooser.
 
+use mira_protocol::ids::ActionId;
 use mira_protocol::manifest::ActionMode;
 use ratatui::Frame;
 use ratatui::layout::Rect;
@@ -386,14 +387,42 @@ pub(super) fn draw_row_actions(f: &mut Frame, app: &App, t: &Theme, area: Rect) 
     else {
         return;
     };
-    let rect = centered(area, 50, choices.len() as u16 + 4);
+    let row = app
+        .view_panes
+        .get(view_ref)
+        .and_then(|p| p.selected_row_id())
+        .unwrap_or_default();
+    // The action title, when the catalog has it, and its ref.
+    let label = |c: &ActionId| {
+        let title = app
+            .items
+            .iter()
+            .find(|i| i.action_ref.plugin == view_ref.plugin && i.action_ref.action == *c)
+            .map(|i| i.title.clone());
+        match title {
+            Some(title) => format!("{title}  ({}.{c})", view_ref.plugin),
+            None => format!("{}.{c}", view_ref.plugin),
+        }
+    };
+    let w = choices
+        .iter()
+        .map(|c| cells(&label(c)) + 4)
+        .chain([cells(&row) + 18, 46])
+        .max()
+        .unwrap_or(46) as u16
+        + 4;
+    let rect = centered(area, w, choices.len() as u16 + 4);
     let w = rect.width.saturating_sub(4) as usize;
-    let mut lines = vec![Line::from(Span::styled(
-        "Run for the selected row:",
-        t.bold(),
-    ))];
+    let mut lines = vec![Line::from(vec![
+        Span::styled("Run for row ", t.bold()),
+        Span::styled(
+            display(&row),
+            t.word(Tone::Accent).add_modifier(Modifier::BOLD),
+        ),
+        Span::styled("?", t.bold()),
+    ])];
     for (i, c) in choices.iter().enumerate() {
-        let text = pad(&format!("  {}.{c}", view_ref.plugin), w);
+        let text = pad(&format!("  {}", label(c)), w);
         let st = if i == *index {
             t.selected()
         } else {

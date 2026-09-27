@@ -3,6 +3,7 @@ pub mod contract;
 pub mod ctx;
 pub mod inspect;
 pub mod payload;
+pub mod plugin_add;
 pub mod plugin_dir;
 pub mod runref;
 pub mod runtime;

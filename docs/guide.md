@@ -24,6 +24,19 @@ Open a new terminal, go to your project, and run `mira`. Without a `.mira/` fold
 
 A service starts only when you start it. It keeps running while you look at other tools. It stops when you press `s` again, or when you close the last Mira window (unless you pressed `b`).
 
+## Start with a default plugin
+
+Mira ships with a few plugins that work in any project:
+
+```sh
+mira plugin add            # list them
+mira plugin add pomodoro   # a focus timer that counts your pomodoros
+mira plugin add ports      # who's on 3000? Find and stop the process on a port
+mira plugin add snake      # a game of Snake, for the build that takes too long
+```
+
+Each one is copied to `.mira/plugins/NAME/` as ordinary files. Read them, change them, or remove them like any other plugin. In a project without `.mira/`, the first `mira plugin add` also creates `.mira/workspace.json`.
+
 ## Your first plugin
 
 A plugin is a folder in `.mira/plugins/` with a `plugin.json`. The project lists its plugins in `.mira/workspace.json`:
@@ -102,3 +115,4 @@ A plugin is plain files. To share it:
 | `mira status` | Show what is running |
 | `mira down` | Stop everything in this project |
 | `mira doctor` | Check the project and the programs it needs |
+| `mira plugin add NAME` / `mira plugin remove ID` | Add a default plugin, or remove a plugin |

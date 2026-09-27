@@ -465,6 +465,12 @@ enum StorageCommand {
 
 #[derive(Subcommand)]
 enum PluginCommand {
+    /// Add a default plugin (pomodoro, ports, snake) to this project, as ordinary files in
+    /// .mira/plugins/NAME/. Without NAME, list the default plugins.
+    Add {
+        #[arg(value_name = "NAME")]
+        name: Option<String>,
+    },
     /// Remove a plugin from .mira/workspace.json and reload; its folder stays on disk.
     /// Refuses while the plugin has active runs.
     Remove {
@@ -702,6 +708,12 @@ fn main() -> ExitCode {
             command: SkillsCommand::Export { dir, force },
         }) => commands::skills::export(&ctx, &dir, force),
         Some(Command::Reload) => commands::config::reload(&ctx),
+        Some(Command::Plugin {
+            command: PluginCommand::Add { name },
+        }) => match name {
+            Some(n) => commands::plugin_add::add(&ctx, &n),
+            None => commands::plugin_add::list(&ctx),
+        },
         Some(Command::Plugin {
             command: PluginCommand::Remove { id },
         }) => commands::config::remove_plugin(&ctx, &id),

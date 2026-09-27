@@ -257,15 +257,13 @@ impl App {
                     .get(&r)
                     .map(|p| p.row_actions.clone())
                     .unwrap_or_default();
-                match choices.len() {
-                    0 => {}
-                    1 => self.run_row_action(r, choices[0].clone()),
-                    _ => {
-                        self.modal = Modal::RowAction {
-                            view_ref: r,
-                            choices,
-                            index: 0,
-                        }
+                // Always ask first, even for one action: a row action can stop a process
+                // or delete a file, and Enter is easy to press by accident.
+                if !choices.is_empty() {
+                    self.modal = Modal::RowAction {
+                        view_ref: r,
+                        choices,
+                        index: 0,
                     }
                 }
             }

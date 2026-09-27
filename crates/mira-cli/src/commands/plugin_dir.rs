@@ -157,7 +157,7 @@ impl PluginDraft {
     }
 }
 
-fn make_temp_dir() -> Result<PathBuf, ErrorInfo> {
+pub fn make_temp_dir() -> Result<PathBuf, ErrorInfo> {
     use std::os::unix::fs::DirBuilderExt;
     let nanos = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
