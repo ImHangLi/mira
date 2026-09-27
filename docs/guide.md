@@ -44,7 +44,16 @@ In the TUI, press `+` for the same list. Each one is copied to `.mira/plugins/NA
 
 ## Your first plugin
 
-A plugin is a folder in `.mira/plugins/` with a `plugin.json`. The project lists its plugins in `.mira/workspace.json`:
+The fastest way: save a command you already use.
+
+```sh
+mira save "Unit tests" -- npm test
+mira save "Web app" --service -- npm run dev
+```
+
+Each command becomes a tool in the `tools` plugin, is checked, and shows in `mira` at once. Run `mira save` from a subfolder and the tool runs there. Inside the TUI, type `:save "Unit tests" -- npm test`.
+
+For inputs, views, schedules, or anything else, write the plugin yourself. A plugin is a folder in `.mira/plugins/` with a `plugin.json`. The project lists its plugins in `.mira/workspace.json`:
 
 ```json
 {"api": 1, "name": "My project", "plugins": ["plugins/dev"], "autostart": []}
@@ -119,5 +128,7 @@ A plugin is plain files. To share it:
 | `mira view REF` | Show a view |
 | `mira status` | Show what is running |
 | `mira down` | Stop everything in this project |
+| `mira save TITLE -- COMMAND` | Save a command as a tool (`--service` for a server) |
 | `mira doctor` | Check the project and the programs it needs |
+| `mira logs --host` | Read Mira's own log when something goes wrong |
 | `mira plugin add NAME` / `mira plugin remove ID` | Add a default plugin, or remove a plugin |

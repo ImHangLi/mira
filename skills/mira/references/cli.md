@@ -15,10 +15,12 @@ All commands accept `--project PATH`, `--json`, `--text`. `REF` is `plugin.item`
 | `stop RUN_OR_ACTION [--wait]` | TERM (or INT), then KILL after the grace period; cleanup runs once |
 | `restart ACTION [--input FILE\|-]` | stop and wait, then start with the current definition |
 | `exec --label TEXT -- ARGV...` | ad-hoc task through the managed path; not added to the catalog |
+| `save TITLE [--service] [--id ID] [--plugin ID] [--description TEXT] -- ARGV...` | saves a command as a tool in one step: adds it to the `tools` plugin, validates, and loads it; the reply names the ref. Run from a subfolder, that folder becomes the tool's `cwd` |
 | `up --background [--ttl 30m\|2h\|none]` | explicit background lease (default 2 h); run it again to set a new limit, counted from now |
 | `down [--wait]` | stop the session and its runs; no data is deleted |
 | `runs [RUN] [--action REF] [--outcome VALUE] [--limit N] [--after CURSOR]` | newest first |
 | `logs RUN_OR_ACTION [--after CURSOR] [--limit N] [--max-bytes N] [--follow] [--grep PATTERN] [--stream stdout\|stderr]` | tail by default; `--grep` keeps records that contain PATTERN (case-insensitive) in the page and with `--follow` |
+| `logs --host [--limit N] [--grep PATTERN]` | Mira's own host log: starts, stops, configuration it accepted or rejected, storage problems, crashes. Reads the file, so it works when the host is down |
 | `view VIEW [--after CURSOR] [--limit N]`, `view-action VIEW ACTION --row ROW --expected-view-revision N` | typed data; row actions refuse stale rows (`VIEW_CHANGED`) |
 | `publish VIEW --input FILE\|- [--expected-view-revision N] [--request-key K]` | write one view frame without running a plugin |
 | `validate PATH`, `apply DRAFT_DIR --expected-revision N`, `apply PLUGIN_DIR [--expected-revision N]`, `reload` | config changes (see mira-extend). A plugin folder is checked alone and, inside a project, against its `.mira`; `apply` copies an outside folder to `.mira/plugins/<id>/` and lists it in `workspace.json`. Without `--expected-revision` it uses the current revision |

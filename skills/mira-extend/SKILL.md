@@ -16,7 +16,18 @@ mira describe PLUGIN.ITEM --include-schema --json
 
 If a tool already does most of it, change that plugin (new input, new action next to it) instead of adding a near-duplicate. Tell the user which one you reused.
 
-## 2. Choose the runner
+## 2. One command? Save it in one step
+
+For a plain command, whose output is just logs, do not write JSON:
+
+```sh
+mira save "Unit tests" --json -- npm test                  # a task that ends
+mira save "Web app" --service --json -- npm run dev         # a long-running service
+```
+
+It adds a command action to the `tools` plugin (`--plugin ID` for another), validates the project, and loads it at once. The reply names the new ref (`tools.unit-tests`). Run it from a subfolder to make that folder the tool's `cwd`. Pass `--id` when the title makes a clash, and `--description` for one clear sentence. Write `plugin.json` yourself (below) only for inputs, schedules, views, or structured output.
+
+## 3. Choose the runner
 
 | Need | Use |
 |---|---|
@@ -28,13 +39,13 @@ If a tool already does most of it, change that plugin (new input, new action nex
 
 Pass argv as a list; there is no implicit shell. If you need a shell, write `["/bin/zsh", "-lc", "…"]` and never put a placeholder or user input into that string — take input from `MIRA_INPUT_FILE`.
 
-Saving a command that worked (`mira exec … -- ARGV`): turn it into a command action with a clear `title`, a `description` that says what problem it solves, the right `cwd`, and an `input_schema` for the parts that change between uses.
+Saving a command that worked (`mira exec … -- ARGV`): use `mira save TITLE -- ARGV` when nothing changes between uses. Otherwise write a command action with a clear `title`, a `description` that says what problem it solves, the right `cwd`, and an `input_schema` for the parts that change between uses.
 
 When arguments change between uses (a port, a test path), put `{input.NAME}` in `run.argv`: `["npm", "run", "dev", "--", "--port={input.port}"]`. NAME must be a top-level property of `input_schema`; the host fills in the effective input (defaults included) before it starts the command, and never splits or interprets the value. See the `serve-on-port` action in the [command template](templates/command/plugin.json). Use a small wrapper such as [with_input.py](templates/command/with_input.py) only when the arguments need logic: optional flags, lists, or computed values. `MIRA_INPUT_FILE` always holds the full input JSON.
 
 To show only part of another action's output (errors, one stream), declare a derived log view instead of writing a plugin that follows logs. The host filters the source run's log, so the TUI and `mira view` show the same lines. See [manifest](references/manifest.md#derived-log-view).
 
-## 3. Write it
+## 4. Write it
 
 Two ways to write it:
 - **Directly** (simplest, for one plugin): write the plugin folder (in `.mira/plugins/<id>/` or anywhere else), then `mira validate DIR --json` and `mira apply DIR --json`; apply copies an outside folder to `.mira/plugins/<id>/` and adds it to `.mira/workspace.json` when it is new.
@@ -50,7 +61,7 @@ Rules that matter:
 - Long-running or polling work must be an explicit `process` or a `schedule` the user enables; the host never starts it on catalog load. Use `show: "on_select"` only for PTY app pages that can open safely with default inputs, such as a timer or game; keep servers and shells on explicit start. See the [manifest](references/manifest.md#open-a-program-on-selection). Give anything that creates external resources (containers, tunnels) a `cleanup` that removes only what it created.
 - Prefer a standard view (table with row actions, log, tree) so the human can use the same tool in the TUI. Do not build a second implementation for humans.
 
-## 4. Validate, apply, prove
+## 5. Validate, apply, prove
 
 ```sh
 mira validate .mira/.drafts/<name> --json

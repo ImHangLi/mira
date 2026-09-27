@@ -97,53 +97,61 @@ pub fn apply_plugin(
     request_key: Option<String>,
 ) -> ExitCode {
     block_on(async {
-        let prepared = (|| {
-            let plugin = load_plugin_dir(dir, None).map_err(|i| i.to_error_info())?;
-            let expected = expected
-                .map(CatalogRevision::new)
-                .transpose()
-                .map_err(|e| invalid_argument(e.to_string()))?;
-            let paths = ctx.paths()?;
-            if !paths.mira_dir.join(WORKSPACE_FILE).is_file() {
-                return Err(ErrorInfo::not_setup());
-            }
-            Ok::<_, ErrorInfo>((plugin, expected, paths, parse_key(request_key)?))
-        })();
-        let (plugin, expected, paths, request_key) = match prepared {
-            Ok(v) => v,
-            Err(e) => return ctx.fail(ReplyContext::default(), e),
-        };
-        let mut client = match ctx.client(&ConnectOptions::cli()).await {
-            Ok(c) => c,
-            Err((c, e)) => return ctx.fail(c, e),
-        };
-        let expected = expected.unwrap_or(client.hello().catalog_revision);
-        let draft = match PluginDraft::build(&paths.mira_dir, &plugin).and_then(|d| {
-            d.check()?;
-            Ok(d)
-        }) {
-            Ok(d) => d,
-            Err(e) => return ctx.fail(client.context(), e),
-        };
-        let draft_dir = match AbsolutePath::from_path(draft.path()) {
-            Ok(p) => p,
-            Err(e) => return ctx.fail(client.context(), invalid_argument(e.to_string())),
-        };
-        let p = ConfigApplyParams {
-            draft_dir,
-            expected_catalog_revision: expected,
-            request_key,
-        };
-        let id = plugin.plugin.id.to_string();
-        let tools = plugin_dir::tools(&plugin);
-        match client
-            .call_with_timeout::<_, ConfigApplied>(Method::ConfigApply, &p, MAINTENANCE_TIMEOUT)
-            .await
-        {
-            Ok(r) => ctx.emit(&r, |_| format!("applied plugin `{id}` ({tools})")),
-            Err(e) => ctx.fail(client.context(), e.to_error_info()),
+        match apply_plugin_call(ctx, dir, expected, request_key).await {
+            Ok((reply, text)) => ctx.emit(&reply, |_| text),
+            Err((c, e)) => ctx.fail(c, e),
         }
     })
+}
+
+/// Validates and applies one plugin folder; the reply and its default text line.
+pub async fn apply_plugin_call(
+    ctx: &Ctx,
+    dir: &Path,
+    expected: Option<u64>,
+    request_key: Option<String>,
+) -> Result<(PublicReply<ConfigApplied>, String), (ReplyContext, ErrorInfo)> {
+    let prepared = (|| {
+        let plugin = load_plugin_dir(dir, None).map_err(|i| i.to_error_info())?;
+        let expected = expected
+            .map(CatalogRevision::new)
+            .transpose()
+            .map_err(|e| invalid_argument(e.to_string()))?;
+        let paths = ctx.paths()?;
+        if !paths.mira_dir.join(WORKSPACE_FILE).is_file() {
+            return Err(ErrorInfo::not_setup());
+        }
+        Ok::<_, ErrorInfo>((plugin, expected, paths, parse_key(request_key)?))
+    })();
+    let (plugin, expected, paths, request_key) =
+        prepared.map_err(|e| (ReplyContext::default(), e))?;
+    let mut client = ctx.client(&ConnectOptions::cli()).await?;
+    let expected = expected.unwrap_or(client.hello().catalog_revision);
+    let draft = PluginDraft::build(&paths.mira_dir, &plugin)
+        .and_then(|d| {
+            d.check()?;
+            Ok(d)
+        })
+        .map_err(|e| (client.context(), e))?;
+    let draft_dir = AbsolutePath::from_path(draft.path())
+        .map_err(|e| (client.context(), invalid_argument(e.to_string())))?;
+    let p = ConfigApplyParams {
+        draft_dir,
+        expected_catalog_revision: expected,
+        request_key,
+    };
+    let text = format!(
+        "applied plugin `{}` ({})",
+        plugin.plugin.id,
+        plugin_dir::tools(&plugin)
+    );
+    match client
+        .call_with_timeout::<_, ConfigApplied>(Method::ConfigApply, &p, MAINTENANCE_TIMEOUT)
+        .await
+    {
+        Ok(r) => Ok((r, text)),
+        Err(e) => Err((client.context(), e.to_error_info())),
+    }
 }
 
 pub fn reload(ctx: &Ctx) -> ExitCode {

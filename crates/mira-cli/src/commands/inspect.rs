@@ -534,6 +534,12 @@ pub fn doctor(ctx: &Ctx) -> ExitCode {
             ),
             Err(e) => push("host", CheckStatus::Fail, e.to_string()),
         }
+        // Where Mira's own errors go, and the command that reads them.
+        push(
+            "host_log",
+            CheckStatus::Info,
+            format!("{} (read it: mira logs --host)", paths.host_log().display()),
+        );
         if let Some(set) = &set {
             for lp in &set.plugins {
                 // (label, program, directory a relative program path resolves against)
@@ -599,6 +605,7 @@ pub fn doctor(ctx: &Ctx) -> ExitCode {
                         "host" if ok => ("Mira", "Mira is running.".to_owned()),
                         "host" => ("Mira", c.message.clone()),
                         "executable" => ("program", c.message.clone()),
+                        "host_log" => ("host log", c.message.clone()),
                         other => (other, c.message.clone()),
                     };
                     format!("[{tag}] {label:<13} {message}")

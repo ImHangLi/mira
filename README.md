@@ -38,7 +38,12 @@ curl -fsSL https://raw.githubusercontent.com/ImHangLi/mira/main/scripts/install.
 Then pick one:
 
 - **With an agent:** in your project, ask it *"Set up Mira for this repo."* Then run `mira`.
-- **By hand:** in your project, run `mira plugin add pomodoro`, then `mira`. Add your own tools with the [guide](docs/guide.md).
+- **By hand:** in your project, save a command you already use, then open Mira:
+
+  ```sh
+  mira save "Unit tests" -- npm test
+  mira
+  ```
 
 Mira is one native binary. It runs no AI, sends nothing, and makes no network calls.
 
@@ -102,7 +107,14 @@ Ask your agent *"Set up Mira for this repo."* It installs Mira, adds its skills 
 ### By hand
 
 1. Install Mira with the command in [Quick start](#quick-start).
-2. In your project, add a plugin. For example, `.mira/plugins/dev/plugin.json`:
+2. Save the commands you already use. Each one becomes a tool, is checked, and loads at once:
+
+   ```sh
+   mira save "Unit tests" -- npm test
+   mira save "Web app" --service -- npm run dev
+   ```
+
+3. Need more (inputs, views, schedules)? Write the plugin yourself. For example, `.mira/plugins/dev/plugin.json`:
 
    ```json
    {
@@ -116,13 +128,13 @@ Ask your agent *"Set up Mira for this repo."* It installs Mira, adds its skills 
    }
    ```
 
-3. List it in `.mira/workspace.json`:
+   List it in `.mira/workspace.json`:
 
    ```json
    {"api": 1, "name": "My project", "plugins": ["plugins/dev"], "autostart": []}
    ```
 
-4. Run `mira validate .mira`, then `mira`.
+   Then run `mira validate .mira`, and `mira`.
 
 A live filter over the dev server's log, with no code:
 

@@ -58,7 +58,7 @@ grep -qxF '@MIRA.md' "$f" 2>/dev/null || printf '\n@MIRA.md\n' >> "$f"
 Follow the setup reference of the mira skill (`mira/references/setup.md` in the folder from step 2). In short:
 
 1. Read the README, docs, scripts, Makefile, Compose files, and CI config. Never run project code to find out what it does.
-2. Write `.mira/workspace.json` and the plugins in `.mira/plugins/<id>/plugin.json`.
+2. Write `.mira/workspace.json` and the plugins in `.mira/plugins/<id>/plugin.json`. A plain command needs no JSON: `mira save "Unit tests" --json -- npm test` writes, checks, and loads it in one step.
 3. Run `mira validate .mira --json`. Fix each error and run it again until it passes.
 4. Run `mira reload --json` to load the new plugins.
 5. Run `mira doctor --json`, then verify one tool, for example `mira run dev.check`.
