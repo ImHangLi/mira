@@ -107,6 +107,16 @@ impl App {
         } else {
             v.insert(0, hidden("F1", "tools", Cmd::Tools));
         }
+        // When Enter already opens the logs, Tab says the same thing; keep one in the footer.
+        if v.iter()
+            .any(|b| b.footer && b.cmd == Cmd::Open && b.label == "logs")
+        {
+            for b in &mut v {
+                if b.cmd == Cmd::Focus && b.label == "logs" {
+                    b.footer = false;
+                }
+            }
+        }
         v
     }
 
