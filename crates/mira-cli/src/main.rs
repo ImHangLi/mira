@@ -129,7 +129,6 @@ enum Command {
         input: Option<String>,
     },
     /// Run a one-off command (not saved as a plugin).
-    #[command(hide = true)]
     Exec {
         #[arg(long)]
         label: String,
@@ -277,6 +276,11 @@ enum Command {
     },
     /// Load .mira again from disk; keep the old plugins if it is not valid.
     Reload,
+    /// Manage this project's plugins.
+    Plugin {
+        #[command(subcommand)]
+        command: PluginCommand,
+    },
     /// Turn an action's schedule on or off (it runs only while a session is open).
     Schedule {
         #[arg(value_name = "ACTION")]
@@ -456,6 +460,16 @@ enum StorageCommand {
         /// Only `state` is supported.
         #[arg(long, default_value = "state")]
         kind: String,
+    },
+}
+
+#[derive(Subcommand)]
+enum PluginCommand {
+    /// Remove a plugin from .mira/workspace.json and reload; its folder stays on disk.
+    /// Refuses while the plugin has active runs.
+    Remove {
+        #[arg(value_name = "PLUGIN_ID")]
+        id: String,
     },
 }
 
@@ -688,6 +702,9 @@ fn main() -> ExitCode {
             command: SkillsCommand::Export { dir, force },
         }) => commands::skills::export(&ctx, &dir, force),
         Some(Command::Reload) => commands::config::reload(&ctx),
+        Some(Command::Plugin {
+            command: PluginCommand::Remove { id },
+        }) => commands::config::remove_plugin(&ctx, &id),
         None => commands::tui::open(&ctx),
     }
 }

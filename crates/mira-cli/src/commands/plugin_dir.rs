@@ -187,8 +187,8 @@ fn copy_tree(src: &Path, dst: &Path) -> Result<(), ErrorInfo> {
     Ok(())
 }
 
-/// Adds `entry` to the top-level `plugins` array of `text`, keeping the rest of the file.
-fn add_entry(text: &str, entry: &str) -> Option<String> {
+/// The byte offsets of the `[` and `]` of the top-level `plugins` array of `text`.
+fn plugins_array(text: &str) -> Option<(usize, usize)> {
     let b = text.as_bytes();
     let (mut depth, mut i) = (0usize, 0usize);
     let mut key: Option<&str> = None;
@@ -217,17 +217,7 @@ fn add_entry(text: &str, entry: &str) -> Option<String> {
             b']' | b'}' => {
                 depth = depth.checked_sub(1)?;
                 if let (Some(o), 1, b']') = (open, depth, b[i]) {
-                    let inner = &text[o + 1..i];
-                    let quoted = serde_json::to_string(entry).ok()?;
-                    let out = if inner.trim().is_empty() {
-                        format!("{}{quoted}{}", &text[..=o], &text[i..])
-                    } else {
-                        let end = o + 1 + inner.trim_end().len();
-                        format!("{}, {quoted}{}", &text[..end], &text[end..])
-                    };
-                    let v: Value = serde_json::from_str(&out).ok()?;
-                    let last = v.get("plugins")?.as_array()?.last()?.as_str()?;
-                    return (last == entry).then_some(out);
+                    return Some((o, i));
                 }
             }
             b',' if depth == 1 => {
@@ -239,6 +229,100 @@ fn add_entry(text: &str, entry: &str) -> Option<String> {
         i += 1;
     }
     None
+}
+
+/// Adds `entry` to the top-level `plugins` array of `text`, keeping the rest of the file.
+fn add_entry(text: &str, entry: &str) -> Option<String> {
+    let (o, c) = plugins_array(text)?;
+    let inner = &text[o + 1..c];
+    let quoted = serde_json::to_string(entry).ok()?;
+    let out = if inner.trim().is_empty() {
+        format!("{}{quoted}{}", &text[..=o], &text[c..])
+    } else {
+        let end = o + 1 + inner.trim_end().len();
+        format!("{}, {quoted}{}", &text[..end], &text[end..])
+    };
+    let v: Value = serde_json::from_str(&out).ok()?;
+    let last = v.get("plugins")?.as_array()?.last()?.as_str()?;
+    (last == entry).then_some(out)
+}
+
+/// The `plugins` entries of a parsed `workspace.json`.
+pub fn entries(ws: &Value) -> Vec<String> {
+    ws.get("plugins")
+        .and_then(Value::as_array)
+        .map(|a| {
+            a.iter()
+                .filter_map(Value::as_str)
+                .map(str::to_owned)
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// The `workspace.json` entry whose folder holds the plugin `id`, read from each
+/// `plugin.json` alone, so one broken plugin does not hide the others.
+pub fn find_entry(mira_dir: &Path, entries: &[String], id: &str) -> Option<String> {
+    entries
+        .iter()
+        .find(|e| {
+            let file = mira_dir.join(e).join(PLUGIN_FILE);
+            std::fs::read_to_string(file)
+                .ok()
+                .and_then(|t| serde_json::from_str::<Value>(&t).ok())
+                .is_some_and(|v| v.get("id").and_then(Value::as_str) == Some(id))
+        })
+        .cloned()
+}
+
+/// `text` without `entry` in its top-level `plugins` array. Only that array is rewritten;
+/// when the file has an unusual shape, the whole file is written back as pretty JSON.
+pub fn remove_entry(text: &str, entry: &str) -> Result<String, ErrorInfo> {
+    let mut ws: Value = serde_json::from_str(text)
+        .map_err(|e| ErrorInfo::new(ErrorCode::SCHEMA_INVALID, format!("{WORKSPACE_FILE}: {e}")))?;
+    let Some(list) = ws.get_mut("plugins").and_then(Value::as_array_mut) else {
+        return Err(ErrorInfo::new(
+            ErrorCode::SCHEMA_INVALID,
+            format!("{WORKSPACE_FILE} has no plugins list"),
+        ));
+    };
+    list.retain(|v| v.as_str() != Some(entry));
+    let kept: Vec<String> = list
+        .iter()
+        .filter_map(|v| serde_json::to_string(v).ok())
+        .collect();
+    let in_place = plugins_array(text).and_then(|(o, c)| {
+        let multiline = text[o..c].contains('\n');
+        let items = if kept.is_empty() {
+            String::new()
+        } else if multiline {
+            // One entry per line, indented like the first entry was.
+            let indent: String = text[o + 1..c]
+                .trim_start_matches(['\r', '\n'])
+                .chars()
+                .take_while(|c| *c == ' ' || *c == '\t')
+                .collect();
+            let close: String = text[..c]
+                .rsplit('\n')
+                .next()
+                .unwrap_or("")
+                .chars()
+                .take_while(|c| *c == ' ' || *c == '\t')
+                .collect();
+            let sep = format!(",\n{indent}");
+            format!("\n{indent}{}\n{close}", kept.join(&sep))
+        } else {
+            kept.join(", ")
+        };
+        let out = format!("{}{items}{}", &text[..=o], &text[c..]);
+        (serde_json::from_str::<Value>(&out).ok()? == ws).then_some(out)
+    });
+    match in_place {
+        Some(out) => Ok(out),
+        None => serde_json::to_string_pretty(&ws)
+            .map(|s| s + "\n")
+            .map_err(|e| ErrorInfo::new(ErrorCode::INTERNAL, e.to_string())),
+    }
 }
 
 #[cfg(test)]
@@ -259,6 +343,25 @@ mod tests {
             "{\"api\": 1, \"plugins\": [\"plugins/x\"]}"
         );
         assert_eq!(add_entry("{\"api\": 1}", "plugins/x"), None);
+    }
+
+    #[test]
+    fn remove_entry_rewrites_only_the_plugins_list() {
+        let ws = "{\n  \"name\": \"t\",\n  \"plugins\": [\"plugins/dev\", \"plugins/x\"],\n  \"autostart\": []\n}\n";
+        assert_eq!(
+            remove_entry(ws, "plugins/x").unwrap(),
+            "{\n  \"name\": \"t\",\n  \"plugins\": [\"plugins/dev\"],\n  \"autostart\": []\n}\n"
+        );
+        let lines = "{\n  \"plugins\": [\n    \"plugins/a\",\n    \"plugins/b\"\n  ]\n}\n";
+        assert_eq!(
+            remove_entry(lines, "plugins/a").unwrap(),
+            "{\n  \"plugins\": [\n    \"plugins/b\"\n  ]\n}\n"
+        );
+        assert_eq!(
+            remove_entry("{\"plugins\": [\"plugins/a\"]}", "plugins/a").unwrap(),
+            "{\"plugins\": []}"
+        );
+        assert!(remove_entry("{\"api\": 1}", "plugins/a").is_err());
     }
 
     fn write(path: &Path, text: &str) {
