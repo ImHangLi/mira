@@ -27,8 +27,8 @@ All commands accept `--project PATH`, `--json`, `--text`. `REF` is `plugin.item`
 | `schedule ACTION on\|off` | persisted interval switch; runs only inside a session |
 | `artifacts [RUN]`, `artifacts read ID` | registered run outputs, bounded text reads |
 | `storage status [--all]`, `storage gc [--kind K] [--apply]`, `storage clear --plugin ID --kind state` | usage and retention; gc only plans without `--apply` |
-| `skills export DIR` | write these skills to `DIR/mira/` and `DIR/mira-extend/` (a user skills folder, never inside the current Git work tree); keeps edited files and writes `*.mira-new` next to them |
-| `doctor`, `paths`, `schema NAME` | diagnostics (including outdated exported skills), locations, JSON Schemas |
+| `skills export DIR [--force]` | copy these skills to `DIR/mira/` and `DIR/mira-extend/` (a user skills folder, never inside the current Git work tree); refuses to overwrite existing files without `--force` |
+| `doctor`, `paths`, `schema NAME` | diagnostics, locations, JSON Schemas |
 
 ## Exit codes
 

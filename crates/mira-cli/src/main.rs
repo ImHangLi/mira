@@ -461,12 +461,15 @@ enum StorageCommand {
 
 #[derive(Subcommand)]
 enum SkillsCommand {
-    /// Write `mira` and `mira-extend` into DIR (for example ~/.claude/skills or
-    /// ~/.agents/skills). Never overwrites your edits; refuses a DIR inside the current Git
-    /// work tree.
+    /// Copy `mira` and `mira-extend` into DIR (for example ~/.claude/skills or
+    /// ~/.agents/skills). Refuses to overwrite existing files without `--force` and refuses
+    /// a DIR inside the current Git work tree.
     Export {
         #[arg(value_name = "DIR")]
         dir: PathBuf,
+        /// Overwrite existing skill files.
+        #[arg(long)]
+        force: bool,
     },
 }
 
@@ -682,8 +685,8 @@ fn main() -> ExitCode {
             ),
         },
         Some(Command::Skills {
-            command: SkillsCommand::Export { dir },
-        }) => commands::skills::export(&ctx, &dir),
+            command: SkillsCommand::Export { dir, force },
+        }) => commands::skills::export(&ctx, &dir, force),
         Some(Command::Reload) => commands::config::reload(&ctx),
         None => commands::tui::open(&ctx),
     }

@@ -429,50 +429,26 @@ const SKILL_DIRS: [&str; 4] = [
     ".config/skillshare/skills",
 ];
 
-fn version_tuple(v: &str) -> Option<(u64, u64, u64)> {
-    let core = v.split(['-', '+']).next()?;
-    let mut it = core.split('.').map(|p| p.parse::<u64>().ok());
-    Some((it.next()??, it.next()??, it.next()??))
-}
-
-/// One `skills` check per exported copy that is older than this Mira; one info line when
-/// none are found.
+/// One info line naming the skill folders that hold exported Mira skills.
 fn skills_checks(push: &mut impl FnMut(&str, CheckStatus, String)) {
     let Some(home) = std::env::var_os("HOME").filter(|h| !h.is_empty()) else {
         return;
     };
     let home = PathBuf::from(home);
-    let current = version_tuple(mira_protocol::VERSION);
-    let (mut found, mut any) = (Vec::new(), false);
-    for rel in SKILL_DIRS {
-        let Some(v) = super::skills::recorded_version(&home.join(rel).join("mira")) else {
-            continue;
-        };
-        any = true;
-        let shown = format!("~/{rel}");
-        match (version_tuple(&v), current) {
-            (Some(old), Some(now)) if old < now => push(
-                "skills",
-                CheckStatus::Warn,
-                format!(
-                    "Mira skills in {shown} are from {v}; run `mira skills export {shown}` again."
-                ),
-            ),
-            _ => found.push(format!("{shown} ({v})")),
-        }
-    }
-    if !found.is_empty() {
-        push("skills", CheckStatus::Ok, found.join(", "));
-    } else if !any {
-        push(
-            "skills",
-            CheckStatus::Info,
-            "no exported Mira skills found in ~/.claude/skills, ~/.agents/skills, \
-             ~/.codex/skills, or ~/.config/skillshare/skills; see \
-             https://github.com/ImHangLi/mira/blob/main/docs/agents.md"
-                .into(),
-        );
-    }
+    let found: Vec<String> = SKILL_DIRS
+        .iter()
+        .filter(|rel| home.join(rel).join("mira/SKILL.md").is_file())
+        .map(|rel| format!("~/{rel}"))
+        .collect();
+    let message = if found.is_empty() {
+        "no exported Mira skills found in ~/.claude/skills, ~/.agents/skills, \
+         ~/.codex/skills, or ~/.config/skillshare/skills; see \
+         https://github.com/ImHangLi/mira/blob/main/docs/agents.md"
+            .into()
+    } else {
+        format!("skills found at {}", found.join(", "))
+    };
+    push("skills", CheckStatus::Info, message);
 }
 
 pub fn doctor(ctx: &Ctx) -> ExitCode {
