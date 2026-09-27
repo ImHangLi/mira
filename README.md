@@ -47,6 +47,8 @@ curl -fsSL https://raw.githubusercontent.com/ImHangLi/mira/main/scripts/install.
 
 Then ask your agent: *"Set up Mira for this repo."* Your agent follows the [setup steps](docs/agents.md), writes the plugins, and checks them. Then run `mira`.
 
+Or start with a default plugin: `mira plugin add pomodoro` (a focus timer), `ports` (who's on 3000?), or `snake` (a game, for the build that takes too long).
+
 **Setting it up yourself?** [Read the guide for people](docs/guide.md). It covers your first plugin, every kind of plugin, and how to remove and share them. See the [example plugins](examples/plugins/) and the [architecture](docs/architecture.md).
 
 ## Share a plugin

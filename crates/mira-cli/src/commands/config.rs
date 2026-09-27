@@ -90,7 +90,7 @@ fn parse_key(key: Option<String>) -> Result<Option<RequestKey>, ErrorInfo> {
 /// `mira apply PLUGIN_DIR`: adds or replaces one plugin. Without `--expected-revision` it
 /// uses the revision at connect time, so a concurrent change still fails with
 /// REVISION_CONFLICT.
-fn apply_plugin(
+pub fn apply_plugin(
     ctx: &Ctx,
     dir: &Path,
     expected: Option<u64>,

@@ -17,6 +17,7 @@ Goal: a small set of ordinary plugins that run this project's real commands, val
    1. Run `mira validate .mira --json`. Fix each error and run it again until it passes.
    2. Run `mira reload --json` to load the new plugins.
    3. Run `mira doctor --json`: `validate` checks the manifests, but only `doctor` reports executables that are not installed.
+   4. Offer the default plugins: `mira plugin add --json` lists them. Ask the user once which ones to add, with each one's name and its description in one short sentence. Add each chosen one with `mira plugin add NAME --json`. Each becomes an ordinary plugin in `.mira/plugins/NAME/`.
 
    Ask the user once whether to share `.mira/` with the team or keep it personal. Recommend sharing: the next session and the next engineer then reuse the tools. If you cannot ask, keep it personal and tell the user how to share it later.
    - **Share:** commit `.mira/workspace.json` and `.mira/plugins/`. Add ignore rules for personal and generated files to the project's `.gitignore` without rewriting it: `.mira/local.json`, `.mira/.drafts/`.

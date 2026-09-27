@@ -62,6 +62,7 @@ Follow the setup reference of the mira skill (`mira/references/setup.md` in the 
 3. Run `mira validate .mira --json`. Fix each error and run it again until it passes.
 4. Run `mira reload --json` to load the new plugins.
 5. Run `mira doctor --json`, then verify one tool, for example `mira run dev.check`.
+6. Offer the default plugins. Run `mira plugin add --json` to list them. Ask the user once which ones to add, and give each one's name and its description in one short sentence. Add each chosen one with `mira plugin add NAME --json`. They become ordinary plugins in `.mira/plugins/`.
 
 Plugins run the project's own commands. Do not add wrappers or prefixes from your own environment to them.
 
