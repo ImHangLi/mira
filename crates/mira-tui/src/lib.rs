@@ -30,6 +30,8 @@ use crate::app::{App, Io, Quit};
 use crate::ipc::{Event, Failure, Read, Tx};
 
 /// Redraws caused by stream events are merged to at most ~30 frames per second.
+/// How long a close after a signal may take before the process exits anyway.
+const FORCE_EXIT_AFTER: Duration = Duration::from_secs(3);
 const FRAME_GAP: Duration = Duration::from_millis(33);
 /// Coarse tick for clocks and countdowns when nothing else happens.
 const TICK: Duration = Duration::from_secs(1);
@@ -245,13 +247,18 @@ fn spawn_input(tx: Tx) {
     std::thread::spawn(move || {
         while let Ok(ev) = crossterm::event::read() {
             if tx.send(Event::Input(ev)).is_err() {
-                break;
+                return;
             }
         }
+        // The terminal is gone (read failed). Close as for SIGHUP, which may never arrive,
+        // so no TUI keeps running without a window.
+        let _ = tx.send(Event::Signal("terminal closed"));
     });
 }
 
-/// Window close (SIGHUP) and TERM/INT follow the same close rules as `q`.
+/// Window close (SIGHUP) and TERM/INT follow the same close rules as `q`. The close normally
+/// ends the process at once. If it does not within [`FORCE_EXIT_AFTER`], or a second signal
+/// arrives, the process exits anyway: a draw can block forever on a terminal that nobody reads.
 async fn signals(tx: Tx) {
     use tokio::signal::unix::{SignalKind, signal};
     let (Ok(mut hup), Ok(mut term), Ok(mut int)) = (
@@ -261,10 +268,30 @@ async fn signals(tx: Tx) {
     ) else {
         return;
     };
-    let name = tokio::select! {
-        _ = hup.recv() => "SIGHUP",
-        _ = term.recv() => "SIGTERM",
-        _ = int.recv() => "SIGINT",
+    let next = async |hup: &mut tokio::signal::unix::Signal,
+                      term: &mut tokio::signal::unix::Signal,
+                      int: &mut tokio::signal::unix::Signal| {
+        tokio::select! {
+            _ = hup.recv() => "SIGHUP",
+            _ = term.recv() => "SIGTERM",
+            _ = int.recv() => "SIGINT",
+        }
     };
+    let name = next(&mut hup, &mut term, &mut int).await;
     let _ = tx.send(Event::Signal(name));
+    tokio::select! {
+        _ = tokio::time::sleep(FORCE_EXIT_AFTER) => {}
+        _ = next(&mut hup, &mut term, &mut int) => {}
+    }
+    force_exit();
+}
+
+/// Restores the terminal if it still answers, then ends the process. The restore runs on
+/// its own thread because writing to a stalled terminal blocks. `process::exit` is not
+/// enough: its cleanup waits for the stdout lock, which the blocked draw holds.
+fn force_exit() -> ! {
+    std::thread::spawn(term::restore);
+    std::thread::sleep(Duration::from_millis(300));
+    let _ = rustix::process::kill_process(rustix::process::getpid(), rustix::process::Signal::KILL);
+    std::process::exit(1)
 }
