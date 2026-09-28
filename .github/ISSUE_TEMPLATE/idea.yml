@@ -1,0 +1,16 @@
+name: Idea or plugin request
+description: A feature, a default plugin, or a change you would like.
+labels: [idea]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What you are trying to do, and what gets in the way today.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Your idea
+      description: How Mira could help. A plugin sketch is welcome.

@@ -1,0 +1,32 @@
+name: Bug report
+description: Something in Mira does not work as expected.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. mira save "Tests" -- npm test
+        2. mira
+        3. ...
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Output of `mira doctor --text`
+      description: It shows your Mira version and whether the project and plugins are valid. If Mira itself failed, also paste the end of `mira logs --host`.
+      render: text
+    validations:
+      required: true
+  - type: input
+    id: terminal
+    attributes:
+      label: Terminal app and macOS version
+      placeholder: Ghostty 1.2, macOS 26.1

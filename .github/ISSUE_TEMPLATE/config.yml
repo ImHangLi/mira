@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and show-and-tell
+    url: https://github.com/ImHangLi/mira/discussions
+    about: Ask a question, or share a plugin you made.
+  - name: Security issue
+    url: https://github.com/ImHangLi/mira/security/advisories/new
+    about: Report it privately. See SECURITY.md.
