@@ -25,7 +25,7 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset=".github/assets/mira-demo-dark.gif">
-    <img src=".github/assets/mira-demo-light.gif" alt="Mira on a Next.js app. The dev server's log streams. An agent's check appears in its own section, CLAUDE CODE · Fix sign-in. Selecting Notes shows the rendered notes; a task is checked off in the editor and the page updates. The system monitor shows CPU per core, memory, network, and processes. Pomodoro starts a focus timer, and a short game of Snake plays." width="100%">
+    <img src=".github/assets/mira-demo-light.gif" alt="Mira on a Next.js app. The system monitor shows full CPU, network, and process graphs. Pomodoro starts a focus timer. Notes shows a rendered page; a task is checked off in the editor and the page updates. An agent's check sits in its own section, CLAUDE CODE · Fix sign-in, with its log. A short game of Snake plays." width="100%">
   </picture>
 </p>
 
