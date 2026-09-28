@@ -125,13 +125,15 @@ pub(super) fn draw_sidebar(f: &mut Frame, app: &mut App, t: &Theme, area: Rect) 
             if last_group.is_some() {
                 rows.push(Line::from(""));
             }
-            let (name, earlier) = group.split_once(EARLIER).unwrap_or((&group, ""));
+            // A one-off section title: the agent in the accent, then its task and count muted.
+            let (name, rest) = group.split_once(MUTED).unwrap_or((&group, ""));
             let mut header = vec![Span::styled(
                 format!(" {}", ellipsize(name, w.saturating_sub(2))),
                 t.word(Tone::AccentDeep).add_modifier(Modifier::BOLD),
             )];
-            if !earlier.is_empty() {
-                header.push(Span::styled(format!("  +{earlier}"), t.muted()));
+            let room = w.saturating_sub(cells(name) + 2);
+            if !rest.is_empty() && room > 4 {
+                header.push(Span::styled(ellipsize(rest, room), t.muted()));
             }
             rows.push(Line::from(header));
             last_group = Some(group);
@@ -198,12 +200,13 @@ pub(super) fn draw_sidebar(f: &mut Frame, app: &mut App, t: &Theme, area: Rect) 
     f.render_widget(Paragraph::new(visible), inner);
 }
 
-/// Separates a one-off section's name from its "N earlier" count in a group title.
-const EARLIER: &str = "\u{1f}+";
+/// Separates a one-off section's agent name from the muted rest of its title.
+const MUTED: char = '\u{1f}';
 
-/// Section titles for one-off runs: one per agent instance, `YOU` for runs people start.
-/// Two instances of the same agent are numbered in list order (`CLAUDE CODE · 2`), and a
-/// section that hides finished runs says how many.
+/// Section titles for one-off runs: one per agent thread, `YOU` for runs people start. A
+/// thread's title adds its task (`CLAUDE CODE · fix login`); two threads of the same agent
+/// without a task are numbered in list order (`CLAUDE CODE · 2`). A section that hides
+/// finished runs says how many.
 fn agent_titles(app: &App) -> HashMap<String, String> {
     let mut titles: HashMap<String, String> = HashMap::new();
     let mut seen: HashMap<String, usize> = HashMap::new();
@@ -211,20 +214,25 @@ fn agent_titles(app: &App) -> HashMap<String, String> {
         if titles.contains_key(o.group()) {
             continue;
         }
-        let name = o
-            .requester
-            .as_ref()
-            .map_or_else(|| "YOU".to_owned(), |r| r.name.to_uppercase());
+        // The list is newest first, so this run carries the thread's latest task.
+        let (name, task) = o.requester.as_ref().map_or(("YOU".to_owned(), None), |r| {
+            (r.name.to_uppercase(), r.task.clone())
+        });
         let n = seen.entry(name.clone()).or_default();
         *n += 1;
-        let mut title = if *n == 1 {
-            name
-        } else {
-            format!("{name} · {n}")
+        let mut rest = match task {
+            Some(task) => format!(" · {task}"),
+            None if *n > 1 => format!(" · {n}"),
+            None => String::new(),
         };
         if let Some(h) = app.oneoff_hidden.get(o.group()) {
-            title.push_str(&format!("{EARLIER}{h} earlier"));
+            rest.push_str(&format!("  +{h} earlier"));
         }
+        let title = if rest.is_empty() {
+            name
+        } else {
+            format!("{name}{MUTED}{rest}")
+        };
         titles.insert(o.group().to_owned(), title);
     }
     titles

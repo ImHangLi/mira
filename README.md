@@ -25,7 +25,7 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset=".github/assets/mira-demo-dark.gif">
-    <img src=".github/assets/mira-demo-light.gif" alt="Mira on a Next.js app. The dev server runs and its log streams. The unit tests pass. An agent's check appears under ONE-OFF RUNS. A live view shows only the server's errors. A system monitor shows CPU, memory, and disk. Selecting Pomodoro opens its timer page, and the timer starts." width="100%">
+    <img src=".github/assets/mira-demo-light.gif" alt="Mira on a Next.js app. The dev server's log streams. An agent's check appears in its own section, CLAUDE CODE · Fix sign-in. Selecting Notes shows the rendered notes; a task is checked off in the editor and the page updates. The system monitor shows CPU per core, memory, network, and processes. Pomodoro starts a focus timer, and a short game of Snake plays." width="100%">
   </picture>
 </p>
 
@@ -57,7 +57,7 @@ Mira is one native binary. It runs no AI, sends nothing, and makes no network ca
 |---|---|---|
 | Your commands | Spread over tabs and shell history | One list of tools: Enter runs a tool, `s` starts or stops it |
 | Logs | Scroll and grep by hand | Live logs per tool, and filtered views such as "only errors" |
-| Your agent's runs | Hidden in its own terminal | Shown in your view as they run, with the same logs |
+| Your agent's runs | Hidden in its own terminal | Shown in your view as they run, one section per agent |
 | A command worth keeping | Found again every session | Saved once as a plugin, reused by you and every agent |
 | Sharing a tool | Write a wiki page | Commit a plugin folder, or send a prompt that rebuilds it |
 
@@ -152,7 +152,7 @@ Mira ships four plugins that work in any project. Add one with `mira plugin add 
 
 | Plugin | What it does |
 |---|---|
-| `notes` | A Markdown page for the project's `NOTES.md`. Edit it in place, or let your agent edit the file and watch it update. |
+| `notes` | A Markdown notes page. Edit it in place, or let your agent edit `.mira/plugins/notes/notes.md` and watch it update. |
 | `system` | A live system monitor: CPU per core, memory, disk, network, and the busiest processes. |
 | `pomodoro` | A focus timer with breaks and a daily count. It notifies you when a session ends. |
 | `snake` | A game of Snake, for the build that takes too long. |

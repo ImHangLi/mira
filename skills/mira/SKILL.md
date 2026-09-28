@@ -18,9 +18,9 @@ Every command prints exactly one JSON reply with `--json` (the default without a
 
 ## Run work
 
-Run project commands through Mira, so the human sees them in the TUI: a tool when one exists, otherwise `mira exec`. Use `mira exec` only for work the human would want to watch: tests, builds, type checks, lints, migrations, scripts that change things, and servers. Run quick reads and lookups (`git status`, `ls`, `grep`, `cat`, `which`, version checks) directly. The TUI groups one-off runs by agent and shows only the newest few, so every `exec` should be worth a look.
+Run project commands through Mira, so the human sees them in the TUI: a tool when one exists, otherwise `mira exec`. Use `mira exec` only for work the human needs to see: the tests, builds, checks, migrations, and scripts that decide whether your change is right or that change their project. Run everything else directly, including quick reads and lookups (`git status`, `ls`, `grep`, `cat`, `which`, version checks) and your own exploration. If the human later wants output you did not show, run it again or paste it. The TUI shows only the newest few runs per thread, so each one should matter.
 
-Mira finds your agent's name from the process tree (Claude Code, Codex, Cursor, and others). If it shows the wrong name, set `MIRA_AGENT="Name"` in the command's environment.
+Your runs appear in one section per agent thread. Mira finds the agent from the process tree (Claude Code, Codex, Cursor, Grok, and others). Pass `--task "a few words"` that say what your thread works on, the same text on every `exec` of the thread, for example `mira exec --task "Fix login redirect" --label "Unit tests" -- npm test`. If the agent name is wrong, set `MIRA_AGENT="Name"` in the command's environment.
 
 | Need | Command |
 |---|---|
@@ -28,7 +28,7 @@ Mira finds your agent's name from the process tree (Claude Code, Codex, Cursor, 
 | Long-running service | `mira start PLUGIN.ACTION` (needs a session, see below) |
 | Stop a run | `mira stop RUN_ID_OR_ACTION [--wait]` |
 | Apply new input to a running service | `mira restart PLUGIN.ACTION [--input FILE]` |
-| Ad-hoc command, same managed path | `mira exec --label "what it does" -- ARGV...` |
+| Ad-hoc command, same managed path | `mira exec --task "thread goal" --label "what it does" -- ARGV...` |
 | Retry safely | add `--request-key KEY`; the same key returns the original run instead of repeating side effects |
 
 - `run` exits 0 on success, 5 on failure, 6 on timeout, 130 when cancelled; `error.details` has `run_id` and the child's `exit`.

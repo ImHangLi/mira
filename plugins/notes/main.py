@@ -10,7 +10,7 @@ from pathlib import Path
 
 WELCOME = """# Project notes
 
-This page shows NOTES.md in your project.
+These notes belong to this plugin: they live in notes.md in its folder.
 
 - Press **e** to edit, then **Esc** to save and read.
 - Your agent can edit the file. This page updates at once.
@@ -156,7 +156,14 @@ def markdown(text, width):
 
 class Notes:
     def __init__(self):
-        self.path = Path(os.environ.get('MIRA_WORKSPACE_ROOT') or os.getcwd()) / 'NOTES.md'
+        # The plugin's own file, next to plugin.json; NOTES_FILE points it at another file.
+        base = Path(os.environ.get('MIRA_PLUGIN_DIR') or os.getcwd())
+        self.path = base / (os.environ.get('NOTES_FILE') or 'notes.md')
+        root = Path(os.environ.get('MIRA_WORKSPACE_ROOT') or os.getcwd())
+        try:
+            self.name = str(self.path.resolve().relative_to(root.resolve()))
+        except ValueError:
+            self.name = self.path.name
         self.mode = 'read'
         self.lines = ['']
         self.original = ''
@@ -218,12 +225,20 @@ class Notes:
         temporary = None
         try:
             with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', dir=self.path.parent,
-                                             prefix='.NOTES.md-', delete=False) as stream:
+                                             prefix=f'.{self.path.name}-', delete=False) as stream:
                 temporary = stream.name
                 stream.write(self.text())
                 stream.flush()
                 os.fsync(stream.fileno())
-                stat = os.fstat(stream.fileno())
+            # Keep the file's mode; a new file gets the usual 0644 less the umask.
+            try:
+                mode = self.path.stat().st_mode & 0o777
+            except FileNotFoundError:
+                umask = os.umask(0)
+                os.umask(umask)
+                mode = 0o666 & ~umask
+            os.chmod(temporary, mode)
+            stat = os.stat(temporary)
             os.replace(temporary, self.path)
             self.stamp = (stat.st_mtime_ns, stat.st_size, stat.st_ino)
             self.saved_at = stat.st_mtime
@@ -286,12 +301,12 @@ def draw(screen, notes):
     screen.erase()
     height, width = screen.getmaxyx()
     if width < 30 or height < 8:
-        put(screen, 0, 0, 'NOTES.md')
+        put(screen, 0, 0, notes.name)
         put(screen, 1, 0, 'Make the pane larger.', curses.A_DIM)
         screen.refresh()
         return
     status = 'not saved' if notes.dirty() or notes.saved_at is None else f'saved {max(0, int(time.time() - notes.saved_at))}s ago'
-    label = f'NOTES.md  {status}'
+    label = f'{notes.name}  {status}'
     updated = time.monotonic() < notes.updated_until
     x = max(2, width - len(label) - (10 if updated else 2))
     put(screen, 0, x, label, curses.A_DIM)

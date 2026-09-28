@@ -187,9 +187,13 @@ fn oneoff_details(app: &App, t: &Theme, o: &OneOff, w: usize) -> Vec<Line<'stati
     lines
 }
 
-/// Who asked for the run: the agent's name, or `you`.
+/// Who asked for the run: the agent's name and its task, or `you`.
 fn by(o: &OneOff) -> String {
-    o.requester
-        .as_ref()
-        .map_or_else(|| "you".to_owned(), |r| r.name.clone())
+    match &o.requester {
+        Some(r) => match &r.task {
+            Some(task) => format!("{} · {task}", r.name),
+            None => r.name.clone(),
+        },
+        None => "you".to_owned(),
+    }
 }

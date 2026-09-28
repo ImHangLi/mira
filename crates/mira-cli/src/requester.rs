@@ -25,6 +25,8 @@ const AGENTS: &[(&str, &str)] = &[
     ("crush", "Crush"),
     ("qwen", "Qwen Code"),
     ("copilot", "Copilot CLI"),
+    ("grok", "Grok CLI"),
+    ("kimi", "Kimi CLI"),
 ];
 
 /// Session IDs some agents export to the commands they run.
@@ -96,7 +98,9 @@ fn ancestor_agent() -> Option<(&'static str, u32)> {
     None
 }
 
-pub fn detect() -> Option<Requester> {
+/// `task` is what the agent's thread works on (`--task`, else `MIRA_TASK`); it names the
+/// thread's section in the TUI.
+pub fn detect(task: Option<String>) -> Option<Requester> {
     let session = SESSION_VARS
         .iter()
         .find_map(|k| std::env::var(k).ok().filter(|v| !v.is_empty()));
@@ -120,6 +124,16 @@ pub fn detect() -> Option<Requester> {
         }
     };
     let id = short_id(&name, &key)?;
-    let r = Requester { name, id };
+    let task = task
+        .or_else(|| std::env::var("MIRA_TASK").ok())
+        .map(|t| {
+            t.trim()
+                .chars()
+                .filter(|c| !c.is_control())
+                .take(60)
+                .collect::<String>()
+        })
+        .filter(|t| !t.is_empty());
+    let r = Requester { name, id, task };
     r.check().ok().map(|()| r)
 }

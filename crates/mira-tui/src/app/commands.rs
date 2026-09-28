@@ -221,6 +221,9 @@ impl App {
                     } else if self.viewing.remove(&a).is_some() {
                         self.sync_pane(&a);
                         self.info(format!("showing the latest run of {a}"));
+                    } else {
+                        // Esc goes back one step everywhere: from a pane to the list.
+                        self.focus = Focus::List;
                     }
                 } else {
                     self.filter.clear();

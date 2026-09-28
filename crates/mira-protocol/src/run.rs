@@ -166,11 +166,14 @@ pub struct GitContext {
 pub struct Requester {
     pub name: String,
     pub id: String,
+    /// What the agent's thread works on, in a few words (`mira exec --task`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub task: Option<String>,
 }
 
 impl Requester {
-    /// A name of 1-48 characters without control characters, and an ID of 1-32 of
-    /// `[a-z0-9-]`.
+    /// A name of 1-48 characters without control characters, an ID of 1-32 of `[a-z0-9-]`,
+    /// and a task of 1-60 characters without control characters.
     pub fn check(&self) -> Result<(), &'static str> {
         let name_ok = !self.name.trim().is_empty()
             && self.name.chars().count() <= 48
@@ -181,11 +184,14 @@ impl Requester {
                 .id
                 .bytes()
                 .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-');
-        if name_ok && id_ok {
+        let task_ok = self.task.as_ref().is_none_or(|t| {
+            !t.trim().is_empty() && t.chars().count() <= 60 && !t.chars().any(char::is_control)
+        });
+        if name_ok && id_ok && task_ok {
             Ok(())
         } else {
             Err(
-                "requester: name must be 1-48 characters without control characters, id 1-32 of [a-z0-9-]",
+                "requester: name must be 1-48 characters and task 1-60, without control characters; id 1-32 of [a-z0-9-]",
             )
         }
     }

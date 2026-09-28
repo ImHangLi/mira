@@ -277,19 +277,23 @@ def put(screen, y, x, text, style=0):
 
 
 def box(screen, y, x, h, w, title, right=""):
-    """A rounded panel with the title in the accent. Returns the inner area."""
-    if h < 3 or w < 8:
+    """A section in Mira's style: an uppercase title in the accent, a thin rule, and muted
+    details on the right, like the sidebar's group titles. Returns the area below it."""
+    if h < 2 or w < 8:
         return y, x, 0, 0
-    dim = curses.A_DIM
-    put(screen, y, x, "╭" + "─" * (w - 2) + "╮", dim)
-    for r in range(1, h - 1):
-        put(screen, y + r, x, "│", dim)
-        put(screen, y + r, x + w - 1, "│", dim)
-    put(screen, y + h - 1, x, "╰" + "─" * (w - 2) + "╯", dim)
-    put(screen, y, x + 2, f" {title} ", STYLE["accent"] | curses.A_BOLD)
-    if right and len(right) + len(title) + 8 < w:
-        put(screen, y, x + w - len(right) - 4, f" {right} ", curses.A_DIM)
-    return y + 1, x + 2, h - 2, w - 4
+    name, _, value = title.partition(" ")
+    put(screen, y, x + 1, name.upper(), STYLE["accent"] | curses.A_BOLD)
+    col = x + 1 + len(name)
+    if value:
+        put(screen, y, col + 1, value, curses.A_BOLD)
+        col += 1 + len(value)
+    end = x + w - 1
+    if right and col + len(right) + 6 < end:
+        end -= len(right) + 1
+        put(screen, y, end + 1, right, curses.A_DIM)
+    if end - col > 3:
+        put(screen, y, col + 1, "─" * (end - col - 2), curses.A_DIM)
+    return y + 1, x + 1, h - 2, w - 2
 
 
 def meter(screen, y, x, w, v, style=None):

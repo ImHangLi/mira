@@ -93,6 +93,9 @@ fn help_lines(app: &App, t: &Theme, avail: usize) -> (Vec<Line<'static>>, usize)
     lines.extend(body);
     lines.push(Line::from(""));
     let notes = [
+        "The same keys work everywhere: Enter opens what is selected, Esc goes back one step, \
+         Tab moves between the list and the pane, [ and ] switch tabs, and Ctrl-T returns to \
+         the tools from anywhere. A program gets every key except Ctrl-T.",
         if app.mouse {
             "Mouse mode is on (m): the wheel scrolls; terminal selection needs Option/Shift."
         } else {
@@ -100,8 +103,8 @@ fn help_lines(app: &App, t: &Theme, avail: usize) -> (Vec<Line<'static>>, usize)
         },
         "Tabs: [ and ] switch Logs, History, and Output; 1, 2, 3 go straight to one. \
          H opens History; Enter there shows that run's logs.",
-        "One-off `mira exec` runs are grouped by the agent that ran them (YOU for yours), \
-         newest 5 finished per agent: Logs and Details tabs (1, 2); s stops a running one.",
+        "One-off `mira exec` runs are grouped by the agent thread that ran them (YOU for yours), \
+         newest 5 finished per thread: Logs and Details tabs (1, 2); s stops a running one.",
         ": runs one public mira command (not a shell). Forms: Tab moves, Enter runs.",
         "q and Ctrl-C close this window. When it is the last Mira window, its runs stop. \
          b keeps them running for 2h; `mira down` stops them.",

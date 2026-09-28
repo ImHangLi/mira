@@ -2,13 +2,13 @@
   "api": 1,
   "id": "notes",
   "name": "Notes",
-  "description": "A Markdown notes page for this project. Edits from you or your agent show at once.",
+  "description": "A Markdown notes page, kept in notes.md in this plugin's folder. Edits from you or your agent show at once.",
   "tags": ["notes", "markdown", "docs"],
   "actions": [
     {
       "id": "page",
       "title": "Notes",
-      "description": "Select to read the notes. Enter gives it the keys; Ctrl-T returns to tools.",
+      "description": "Select to read the notes. Enter gives it the keys; Ctrl-T returns to tools. The text is notes.md in this plugin's folder; agents edit that file.",
       "mode": "process",
       "terminal": "pty",
       "show": "on_select",

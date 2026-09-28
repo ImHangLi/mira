@@ -35,7 +35,7 @@ Mira ships with a few plugins that work in any project:
 
 ```sh
 mira plugin add            # list them
-mira plugin add notes      # a live Markdown page for NOTES.md; you or your agent edit it
+mira plugin add notes      # a live Markdown notes page; you or your agent edit it
 mira plugin add system     # a live system monitor: CPU, memory, disk, network, processes
 mira plugin add pomodoro   # a focus timer that counts your pomodoros
 mira plugin add snake      # a game of Snake, for the build that takes too long

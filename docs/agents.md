@@ -41,8 +41,9 @@ Write this exact text into `MIRA.md`:
 Mira is installed. In a repository with a `.mira/` folder, run project commands through
 Mira, so the user sees them in the Mira TUI: dev servers, tests, checks, builds, and
 scripts that change things. Use a Mira tool when one fits (`mira catalog --search WORDS`),
-otherwise `mira exec --label "what it does" -- COMMAND`. Run quick reads such as
-`git status`, `ls`, or `grep` directly, not through Mira. Read the mira skill before the first
+otherwise `mira exec --task "what this thread works on" --label "what it does" -- COMMAND`.
+Show only runs the user needs to see; run quick reads such as `git status`, `ls`, or
+`grep` directly, not through Mira. Read the mira skill before the first
 command. To add or change a tool, use the mira-extend skill. If `mira` is not found,
 use `~/.mira/bin/mira`.
 ```
