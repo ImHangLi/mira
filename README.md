@@ -1,9 +1,11 @@
 <p align="center">
-  <img src=".github/assets/mira-hero.jpg" alt="Mira" width="100%">
+  <img src=".github/assets/mira-banner.jpg" alt="Mira" width="100%">
 </p>
 
+<h3 align="center">Grow your own terminal.</h3>
+
 <p align="center">
-  <strong>Everything you run, in one terminal view that you shape and your agent reads exactly as you do.</strong>
+  The terminal you and your agent share. Every command you run becomes a tool you keep.
 </p>
 
 <p align="center">
