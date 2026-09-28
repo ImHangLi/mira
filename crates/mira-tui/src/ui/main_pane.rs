@@ -30,6 +30,10 @@ pub(super) fn draw_main(f: &mut Frame, app: &mut App, t: &Theme, area: Rect) {
             .attach
             .as_ref()
             .map_or_else(|| "Program".to_owned(), |a| app.title_of(&a.action_ref));
+        let title = match app.term.note() {
+            Some(n) => format!("{title} · {n}"),
+            None => title,
+        };
         let block = panel(
             t,
             panel_title(t, &display(&title), app.term.is_focused()),

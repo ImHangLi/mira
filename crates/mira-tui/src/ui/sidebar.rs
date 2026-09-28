@@ -1,6 +1,7 @@
 //! The tool sidebar: one-off runs, then actions and views grouped by plugin.
 
 use std::borrow::Cow;
+use std::collections::HashMap;
 
 use mira_protocol::clock;
 use ratatui::Frame;
@@ -80,6 +81,7 @@ pub(super) fn draw_sidebar(f: &mut Frame, app: &mut App, t: &Theme, area: Rect) 
         )));
     }
     let mut sel_row = 0usize;
+    let agents = agent_titles(app);
     let mut last_group: Option<String> = None;
     for (vi, &entry) in app.visible.iter().enumerate() {
         let (group, title, glyph, gstyle, flag) = match entry {
@@ -111,7 +113,7 @@ pub(super) fn draw_sidebar(f: &mut Frame, app: &mut App, t: &Theme, area: Rect) 
                 let o = &app.oneoffs[i];
                 let m = oneoff_mark(o);
                 (
-                    "ONE-OFF RUNS".to_owned(),
+                    agents.get(o.group()).cloned().unwrap_or_default(),
                     Cow::Owned(o.title()),
                     m.glyph,
                     m.style(t),
@@ -123,10 +125,15 @@ pub(super) fn draw_sidebar(f: &mut Frame, app: &mut App, t: &Theme, area: Rect) 
             if last_group.is_some() {
                 rows.push(Line::from(""));
             }
-            rows.push(Line::from(Span::styled(
-                format!(" {}", ellipsize(&group, w.saturating_sub(2))),
+            let (name, earlier) = group.split_once(EARLIER).unwrap_or((&group, ""));
+            let mut header = vec![Span::styled(
+                format!(" {}", ellipsize(name, w.saturating_sub(2))),
                 t.word(Tone::AccentDeep).add_modifier(Modifier::BOLD),
-            )));
+            )];
+            if !earlier.is_empty() {
+                header.push(Span::styled(format!("  +{earlier}"), t.muted()));
+            }
+            rows.push(Line::from(header));
             last_group = Some(group);
         }
         let selected = vi == app.selected;
@@ -189,4 +196,36 @@ pub(super) fn draw_sidebar(f: &mut Frame, app: &mut App, t: &Theme, area: Rect) 
     app.list_offset = app.list_offset.min(rows.len().saturating_sub(1));
     let visible: Vec<Line> = rows.into_iter().skip(app.list_offset).take(h).collect();
     f.render_widget(Paragraph::new(visible), inner);
+}
+
+/// Separates a one-off section's name from its "N earlier" count in a group title.
+const EARLIER: &str = "\u{1f}+";
+
+/// Section titles for one-off runs: one per agent instance, `YOU` for runs people start.
+/// Two instances of the same agent are numbered in list order (`CLAUDE CODE · 2`), and a
+/// section that hides finished runs says how many.
+fn agent_titles(app: &App) -> HashMap<String, String> {
+    let mut titles: HashMap<String, String> = HashMap::new();
+    let mut seen: HashMap<String, usize> = HashMap::new();
+    for o in &app.oneoffs {
+        if titles.contains_key(o.group()) {
+            continue;
+        }
+        let name = o
+            .requester
+            .as_ref()
+            .map_or_else(|| "YOU".to_owned(), |r| r.name.to_uppercase());
+        let n = seen.entry(name.clone()).or_default();
+        *n += 1;
+        let mut title = if *n == 1 {
+            name
+        } else {
+            format!("{name} · {n}")
+        };
+        if let Some(h) = app.oneoff_hidden.get(o.group()) {
+            title.push_str(&format!("{EARLIER}{h} earlier"));
+        }
+        titles.insert(o.group().to_owned(), title);
+    }
+    titles
 }

@@ -28,11 +28,7 @@ pub(super) fn draw_oneoff(f: &mut Frame, app: &mut App, t: &Theme, i: usize, are
     let w = inner.width as usize;
     let o = &app.oneoffs[i];
     let label = display(&o.title());
-    let source = o.source.map(enum_word).unwrap_or_default();
-    let mut how = format!("mira exec --label \"{label}\"");
-    if !source.is_empty() {
-        how.push_str(&format!(" · from {source}"));
-    }
+    let how = format!("by {}", by(o));
     let card = vec![
         Line::from(fit_spans(
             vec![
@@ -45,7 +41,10 @@ pub(super) fn draw_oneoff(f: &mut Frame, app: &mut App, t: &Theme, i: usize, are
         Line::from(Span::styled(ellipsize(&how, w), t.muted())),
         Line::from(fit_spans(oneoff_status(app, t, o), w)),
         Line::from(Span::styled(
-            ellipsize("Worked? Ask your agent to save it as a plugin.", w),
+            ellipsize(
+                "Worth keeping? Ask your agent to `mira save` it as a tool.",
+                w,
+            ),
             t.muted().add_modifier(Modifier::ITALIC),
         )),
     ];
@@ -104,6 +103,7 @@ fn oneoff_status(app: &App, t: &Theme, o: &OneOff) -> Vec<Span<'static>> {
             details.push(ago(e));
             if let Some(x) = &o.exit {
                 match (x.code, &x.signal) {
+                    (Some(0), _) => {}
                     (Some(c), _) => details.push(format!("exit {c}")),
                     (None, Some(s)) => details.push(s.to_string()),
                     _ => {}
@@ -116,7 +116,6 @@ fn oneoff_status(app: &App, t: &Theme, o: &OneOff) -> Vec<Span<'static>> {
             app.clock.hm(o.started_at)
         )),
     }
-    details.push(short_id(o.run_id.as_str()));
     let mut spans = vec![
         Span::styled(format!("{} ", mark.glyph), mark.style(t)),
         Span::styled(word, mark.word_style(t).add_modifier(Modifier::BOLD)),
@@ -144,7 +143,7 @@ fn oneoff_details(app: &App, t: &Theme, o: &OneOff, w: usize) -> Vec<Line<'stati
     let id = o.run_id.to_string();
     let mut lines = vec![
         row("label", o.title()),
-        row("run", id.clone()),
+        row("by", by(o)),
         row(
             "state",
             format!("{} {}", oneoff_mark(o).glyph, o.lifecycle.word()),
@@ -178,9 +177,6 @@ fn oneoff_details(app: &App, t: &Theme, o: &OneOff, w: usize) -> Vec<Line<'stati
     if let Some(c) = o.cleanup.as_ref().and_then(cleanup_word) {
         lines.push(row("cleanup", c));
     }
-    if let Some(s) = o.source {
-        lines.push(row("from", enum_word(s)));
-    }
     lines.push(Line::from(""));
     for hint in [
         format!("`mira logs {}` prints its output.", short_id(&id)),
@@ -189,4 +185,11 @@ fn oneoff_details(app: &App, t: &Theme, o: &OneOff, w: usize) -> Vec<Line<'stati
         lines.push(Line::from(Span::styled(ellipsize(&hint, w), t.muted())));
     }
     lines
+}
+
+/// Who asked for the run: the agent's name, or `you`.
+fn by(o: &OneOff) -> String {
+    o.requester
+        .as_ref()
+        .map_or_else(|| "you".to_owned(), |r| r.name.clone())
 }

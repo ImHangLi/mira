@@ -106,6 +106,8 @@ pub struct App {
     pub adhoc_runs: usize,
     /// One-off runs, newest first (see [`keep_oneoffs`]).
     pub oneoffs: Vec<OneOff>,
+    /// Finished one-off runs hidden per group (see [`OneOff::group`]).
+    pub oneoff_hidden: HashMap<String, usize>,
     /// A one-off run shows its Details tab instead of its logs.
     pub oneoff_details: bool,
     pub storage_warnings: Vec<Warning>,
@@ -181,6 +183,7 @@ impl App {
             active: HashMap::new(),
             adhoc_runs: 0,
             oneoffs: Vec::new(),
+            oneoff_hidden: HashMap::new(),
             oneoff_details: false,
             storage_warnings: Vec::new(),
             config_warnings: Vec::new(),

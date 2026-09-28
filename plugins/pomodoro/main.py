@@ -258,6 +258,8 @@ def main(screen):
         t.tick()
         draw(screen, t)
         key = screen.getch()
+        if key == curses.KEY_RESIZE:
+            screen.clear()  # repaint every cell; a resized terminal may keep old text
         if key == ord("q"):
             return
         if key in (10, 13, curses.KEY_ENTER) and t.state == "idle":

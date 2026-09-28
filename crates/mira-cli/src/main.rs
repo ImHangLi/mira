@@ -9,6 +9,7 @@ use mira_protocol::reply::ReplyContext;
 mod commands;
 mod human;
 mod output;
+mod requester;
 
 use output::Mode;
 
@@ -502,7 +503,7 @@ enum StorageCommand {
 
 #[derive(Subcommand)]
 enum PluginCommand {
-    /// Add a default plugin (pomodoro, ports, snake) to this project, as ordinary files in
+    /// Add a default plugin (notes, system, pomodoro, snake) to this project, as ordinary files in
     /// .mira/plugins/NAME/. Without NAME, list the default plugins.
     Add {
         #[arg(value_name = "NAME")]

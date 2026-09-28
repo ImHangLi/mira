@@ -12,7 +12,7 @@ Open a new terminal, go to your project, and run `mira`. Without a `.mira/` fold
 
 | Key | Does |
 |---|---|
-| `F1` | Return to tools from any pane, dialog, or program; release the program's input lock |
+| `Ctrl-T` | Return to tools from any pane, dialog, or program; release the program's input lock |
 | `j` / `k` | Move through the tools |
 | `Enter` | Run a task, start a service, or open a view |
 | `s` | Start or stop a service |
@@ -27,7 +27,7 @@ Open a new terminal, go to your project, and run `mira`. Without a `.mira/` fold
 
 `Shift+Esc` also returns to tools in terminals that support the enhanced keyboard protocol. `Ctrl-]` works too. Plain Esc and Tab stay available to the program while you type into it.
 
-A service starts when you start it. App pages can opt into `show: "on_select"`: selecting one opens its default screen, without giving it the keys. Pomodoro and Snake use this option. Servers keep explicit start. A process keeps running while you look at other tools. It stops when you press `s`, or when you close the last Mira window (unless you pressed `b`). After a stop or exit, select the page again or press Enter to open it again.
+A service starts when you start it. App pages can opt into `show: "on_select"`: selecting one opens its default screen, without giving it the keys. Notes, System, Pomodoro, and Snake use this option. Servers keep explicit start. A process keeps running while you look at other tools. It stops when you press `s`, or when you close the last Mira window (unless you pressed `b`). After a stop or exit, select the page again or press Enter to open it again.
 
 ## Start with a default plugin
 
@@ -35,8 +35,9 @@ Mira ships with a few plugins that work in any project:
 
 ```sh
 mira plugin add            # list them
+mira plugin add notes      # a live Markdown page for NOTES.md; you or your agent edit it
+mira plugin add system     # a live system monitor: CPU, memory, disk, network, processes
 mira plugin add pomodoro   # a focus timer that counts your pomodoros
-mira plugin add ports      # who's on 3000? Find and stop the process on a port
 mira plugin add snake      # a game of Snake, for the build that takes too long
 ```
 

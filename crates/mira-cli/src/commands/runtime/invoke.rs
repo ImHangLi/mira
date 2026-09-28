@@ -268,6 +268,7 @@ pub fn exec(ctx: &Ctx, label: String, argv: Vec<String>, request_key: Option<Str
             label,
             argv,
             client_env,
+            requester: crate::requester::detect(),
             request_key,
             foreground: true,
         };

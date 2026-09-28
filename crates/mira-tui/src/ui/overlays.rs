@@ -100,8 +100,8 @@ fn help_lines(app: &App, t: &Theme, avail: usize) -> (Vec<Line<'static>>, usize)
         },
         "Tabs: [ and ] switch Logs, History, and Output; 1, 2, 3 go straight to one. \
          H opens History; Enter there shows that run's logs.",
-        "ONE-OFF RUNS lists `mira exec` runs from any terminal: Logs and Details tabs \
-         (1, 2); s stops a running one.",
+        "One-off `mira exec` runs are grouped by the agent that ran them (YOU for yours), \
+         newest 5 finished per agent: Logs and Details tabs (1, 2); s stops a running one.",
         ": runs one public mira command (not a shell). Forms: Tab moves, Enter runs.",
         "q and Ctrl-C close this window. When it is the last Mira window, its runs stop. \
          b keeps them running for 2h; `mira down` stops them.",

@@ -71,6 +71,8 @@ pub struct ActiveRun {
 
 /// A validated invocation, ready to reserve.
 struct Prepared {
+    /// The agent that asked for a one-off run.
+    requester: Option<mira_protocol::run::Requester>,
     source: Option<RunSource>,
     action_ref: Option<ActionRef>,
     label: String,

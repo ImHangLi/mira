@@ -138,6 +138,7 @@ fn filter_ranks_the_best_match_first() {
 
 fn run(a: &str, id: &RunId, lifecycle: Lifecycle) -> RunSummary {
     RunSummary {
+        requester: None,
         run_id: id.clone(),
         action_ref: Some(a.parse().unwrap()),
         lifecycle,
@@ -243,6 +244,7 @@ fn closing_messages_name_the_runs_in_plain_words() {
 
 fn exec_run(at_ms: i64, lifecycle: Lifecycle) -> RunSummary {
     RunSummary {
+        requester: None,
         run_id: RunId::random(),
         action_ref: None,
         lifecycle,
@@ -253,7 +255,7 @@ fn exec_run(at_ms: i64, lifecycle: Lifecycle) -> RunSummary {
 }
 
 #[test]
-fn one_off_runs_keep_the_newest_ten_and_every_running_one() {
+fn one_off_runs_keep_the_newest_five_and_every_running_one() {
     let done = Lifecycle::Finished {
         outcome: mira_protocol::run::Outcome::Succeeded,
     };
@@ -269,9 +271,10 @@ fn one_off_runs_keep_the_newest_ten_and_every_running_one() {
         old.lifecycle,
         old.started_at,
     ));
-    keep_oneoffs(&mut list);
+    let hidden = keep_oneoffs(&mut list);
+    assert_eq!(hidden.get("you"), Some(&7));
     let starts: Vec<i64> = list.iter().map(|o| o.started_at.unix_ms()).collect();
-    let mut want: Vec<i64> = (2..12).rev().map(|n| 1_000 + n).collect();
+    let mut want: Vec<i64> = (7..12).rev().map(|n| 1_000 + n).collect();
     want.push(10);
     assert_eq!(starts, want, "newest first; the old running run stays");
     assert_eq!(list.last().map(|o| &o.run_id), Some(&old.run_id));
@@ -332,7 +335,7 @@ fn esc_leaves_the_view_focus() {
     assert!(
         a.bindings()
             .iter()
-            .any(|b| b.footer && b.keys == "F1" && b.label == "tools")
+            .any(|b| b.footer && b.keys == "Ctrl-T" && b.label == "back to tools")
     );
     key(&mut a, KeyCode::Esc);
     assert!(a.focus == Focus::List);

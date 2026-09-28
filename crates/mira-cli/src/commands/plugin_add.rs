@@ -24,8 +24,9 @@ macro_rules! bundled {
 }
 
 bundled! {
+    "notes" => ["plugin.json", "main.py"],
+    "system" => ["plugin.json", "main.py"],
     "pomodoro" => ["plugin.json", "main.py"],
-    "ports" => ["plugin.json", "main.py"],
     "snake" => ["plugin.json", "main.py"],
 }
 

@@ -8,7 +8,7 @@
     {
       "id": "timer",
       "title": "Pomodoro",
-      "description": "Select to see the timer. Enter gives it the keys; F1 returns to tools.",
+      "description": "Select to see the timer. Enter gives it the keys; Ctrl-T returns to tools.",
       "mode": "process",
       "terminal": "pty",
       "show": "on_select",

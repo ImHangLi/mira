@@ -147,6 +147,12 @@ impl App {
                 }
             }
             Cmd::Focus => {
+                // A program has no pane of its own to look at: Tab goes into it, like Enter.
+                if self.focus == Focus::List && self.attach_target().is_some() {
+                    self.sync_terminal();
+                    self.term.focus();
+                    return;
+                }
                 self.focus = match self.focus {
                     Focus::List => Focus::Logs,
                     Focus::Logs => Focus::List,

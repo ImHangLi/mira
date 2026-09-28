@@ -129,6 +129,7 @@ impl Actor {
         let fingerprint = storage
             .fingerprint(&json!({"input": effective, "definition_hash": action.definition_hash}));
         Ok(Prepared {
+            requester: None,
             source: None,
             action_ref: Some(p.action_ref.clone()),
             label: action.title.clone(),
@@ -167,6 +168,10 @@ impl Actor {
                     "--label must be 1-128 bytes",
                 ));
             }
+            if let Some(who) = &p.requester {
+                who.check()
+                    .map_err(|m| ErrorInfo::new(ErrorCode::INVALID_ARGUMENT, m))?;
+            }
             let mut issues = mira_protocol::Issues::default();
             let argv = Argv::parse(p.argv.clone(), "/argv", &mut issues)
                 .ok_or_else(|| issues.to_error_info())?;
@@ -175,6 +180,7 @@ impl Actor {
                 .map_err(|e| ErrorInfo::new(ErrorCode::INTERNAL, e))?;
             let fingerprint = storage.fingerprint(&json!({"exec": argv.as_slice()}));
             Ok(Prepared {
+                requester: p.requester.clone(),
                 source: None,
                 action_ref: None,
                 label: p.label.clone(),

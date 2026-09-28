@@ -18,7 +18,9 @@ Every command prints exactly one JSON reply with `--json` (the default without a
 
 ## Run work
 
-Run project commands through Mira, so the human sees them in the TUI: a tool when one exists, otherwise `mira exec`. Quick reads such as `git status` or reading a file do not need Mira.
+Run project commands through Mira, so the human sees them in the TUI: a tool when one exists, otherwise `mira exec`. Use `mira exec` only for work the human would want to watch: tests, builds, type checks, lints, migrations, scripts that change things, and servers. Run quick reads and lookups (`git status`, `ls`, `grep`, `cat`, `which`, version checks) directly. The TUI groups one-off runs by agent and shows only the newest few, so every `exec` should be worth a look.
+
+Mira finds your agent's name from the process tree (Claude Code, Codex, Cursor, and others). If it shows the wrong name, set `MIRA_AGENT="Name"` in the command's environment.
 
 | Need | Command |
 |---|---|
