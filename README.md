@@ -1,8 +1,6 @@
 <p align="center">
-  <img src=".github/assets/mira-hero.png" alt="Mira" width="100%">
+  <img src=".github/assets/mira-hero.jpg" alt="Mira" width="100%">
 </p>
-
-<h1 align="center">Mira</h1>
 
 <p align="center">
   <strong>Everything you run, in one terminal view that you shape and your agent reads exactly as you do.</strong>
