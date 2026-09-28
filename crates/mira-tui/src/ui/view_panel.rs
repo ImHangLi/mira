@@ -196,6 +196,7 @@ pub(super) fn draw_view(f: &mut Frame, app: &mut App, t: &Theme, area: Rect) {
             rule_area,
         );
     }
+    app.hits.push((body, crate::app::Hit::Pane));
     p.height = body.height as usize;
     p.width = w;
     let dim_msg = |s: String| Paragraph::new(Span::styled(s, t.muted()));

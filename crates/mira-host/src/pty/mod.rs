@@ -22,7 +22,7 @@ use std::time::{Duration, Instant as StdInstant};
 
 use mira_protocol::error::{ErrorCode, ErrorInfo};
 use mira_protocol::ids::{ClientId, RunId, ScreenRevision};
-use mira_protocol::ipc::{TerminalCursor, TerminalSnapshot, TerminalStyleRow};
+use mira_protocol::ipc::{MouseInput, TerminalCursor, TerminalSnapshot, TerminalStyleRow};
 use mira_protocol::limits::{DEFAULT_TERMINAL_COLS, DEFAULT_TERMINAL_ROWS};
 use mira_protocol::manifest::{StopSignal, TimeoutPolicy};
 use mira_protocol::run::{CleanupState, LogStream};
@@ -101,6 +101,13 @@ impl PtyHandle {
             let sc = s.parser.screen();
             (sc.bracketed_paste(), sc.application_cursor())
         })
+    }
+
+    pub fn mouse_bytes(&self, mouse: &MouseInput) -> Vec<u8> {
+        self.screen.lock().map_or_else(
+            |_| Vec::new(),
+            |s| screen::mouse_bytes(s.parser.screen(), mouse),
+        )
     }
 
     /// Queues bytes for the child without blocking the caller.
@@ -602,4 +609,26 @@ async fn supervise(
             })),
         ))
         .await;
+}
+
+pub(crate) fn key_bytes(key: &str, application_cursor: bool) -> Option<&'static [u8]> {
+    let arrow = |normal: &'static [u8], app: &'static [u8]| {
+        if application_cursor { app } else { normal }
+    };
+    Some(match key {
+        "enter" => b"\r",
+        "tab" => b"\t",
+        "escape" | "esc" => b"\x1b",
+        "backspace" => b"\x7f",
+        "delete" => b"\x1b[3~",
+        "up" => arrow(b"\x1b[A", b"\x1bOA"),
+        "down" => arrow(b"\x1b[B", b"\x1bOB"),
+        "right" => arrow(b"\x1b[C", b"\x1bOC"),
+        "left" => arrow(b"\x1b[D", b"\x1bOD"),
+        "ctrl-c" => b"\x03",
+        "ctrl-d" => b"\x04",
+        "ctrl-z" => b"\x1a",
+        "ctrl-right-bracket" | "ctrl-]" => b"\x1d",
+        _ => return None,
+    })
 }

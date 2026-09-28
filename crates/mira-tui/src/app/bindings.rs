@@ -396,7 +396,12 @@ impl App {
                 if pane.is_none_or(|p| p.anchor.is_none()) {
                     v.push(bind("Esc", "back", Cmd::Escape));
                 }
-                if let Some(p) = pane {
+                if self.oneoff_details {
+                    v.push(bind("j/k", "scroll", Cmd::Down));
+                    v.push(hidden("PgUp/PgDn", "page", Cmd::PageUp));
+                    v.push(hidden("g/Home", "first", Cmd::Top));
+                    v.push(hidden("G/End", "last", Cmd::Bottom));
+                } else if let Some(p) = pane {
                     scroll_keys(&mut v, p);
                 }
             }

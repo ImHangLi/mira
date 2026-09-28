@@ -1,6 +1,9 @@
 //! The virtual screen: a vt100 model with truthful replies to terminal queries, a
 //! revision that moves only on visible change, and style runs for snapshots.
 
+use mira_protocol::ipc::{MouseButton, MouseInput, MouseKind};
+use vt100::{MouseProtocolEncoding as Encoding, MouseProtocolMode as Mode};
+
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
@@ -166,4 +169,81 @@ pub(super) fn printable(s: String) -> String {
     } else {
         s
     }
+}
+
+/// Encodes mouse input using the modes selected by the child.
+pub(super) fn mouse_bytes(screen: &vt100::Screen, mouse: &MouseInput) -> Vec<u8> {
+    let (rows, cols) = screen.size();
+    if mouse.col >= cols || mouse.row >= rows {
+        return Vec::new();
+    }
+    let mode = screen.mouse_protocol_mode();
+    if mode == Mode::None {
+        if screen.alternate_screen() {
+            let key = match mouse.kind {
+                MouseKind::WheelUp => "up",
+                MouseKind::WheelDown => "down",
+                _ => return Vec::new(),
+            };
+            return super::key_bytes(key, screen.application_cursor())
+                .unwrap_or_default()
+                .repeat(3);
+        }
+        return Vec::new();
+    }
+    if (mouse.kind == MouseKind::Release && mode == Mode::Press)
+        || (mouse.kind == MouseKind::Drag
+            && (mode != Mode::AnyMotion
+                && (mode != Mode::ButtonMotion || mouse.button == MouseButton::None)))
+    {
+        return Vec::new();
+    }
+    let encoding = screen.mouse_protocol_encoding();
+    let mut button = match mouse.kind {
+        MouseKind::WheelUp => 64,
+        MouseKind::WheelDown => 65,
+        MouseKind::Release if encoding != Encoding::Sgr => 3,
+        _ => match mouse.button {
+            MouseButton::Left => 0,
+            MouseButton::Middle => 1,
+            MouseButton::Right => 2,
+            MouseButton::None => 3,
+        },
+    };
+    if mouse.kind == MouseKind::Drag {
+        button |= 32;
+    }
+    button |=
+        (u32::from(mouse.shift) * 4) | (u32::from(mouse.alt) * 8) | (u32::from(mouse.ctrl) * 16);
+    let x = u32::from(mouse.col) + 1;
+    let y = u32::from(mouse.row) + 1;
+    if encoding == Encoding::Sgr {
+        let end = if mouse.kind == MouseKind::Release {
+            'm'
+        } else {
+            'M'
+        };
+        return format!("\x1b[<{button};{x};{y}{end}").into_bytes();
+    }
+    let mut bytes = b"\x1b[M".to_vec();
+    for value in [button + 32, x + 32, y + 32] {
+        match encoding {
+            Encoding::Default => {
+                let Ok(byte) = u8::try_from(value) else {
+                    return Vec::new();
+                };
+                bytes.push(byte);
+            }
+            Encoding::Utf8 => {
+                if value > 2047 {
+                    return Vec::new();
+                }
+                if let Some(c) = char::from_u32(value) {
+                    bytes.extend_from_slice(c.encode_utf8(&mut [0; 4]).as_bytes());
+                }
+            }
+            Encoding::Sgr => return Vec::new(),
+        }
+    }
+    bytes
 }

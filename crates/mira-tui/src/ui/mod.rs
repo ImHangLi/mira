@@ -66,6 +66,8 @@ pub fn draw(f: &mut Frame, app: &mut App, t: &Theme) {
 }
 
 fn draw_screen(f: &mut Frame, app: &mut App, t: &Theme) {
+    app.hits.clear();
+    app.modal_rect = None;
     let area = f.area();
     if area.width < MIN_W || area.height < MIN_H {
         let msg = vec![

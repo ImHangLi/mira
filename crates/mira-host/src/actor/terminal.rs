@@ -20,7 +20,7 @@ use serde_json::{Map, Value};
 use tokio::time::Instant;
 
 use super::{Actor, Responder, reply_ok};
-use crate::pty::{PtyHandle, SnapshotRequest, TerminalEvent, WriteError};
+use crate::pty::{PtyHandle, SnapshotRequest, TerminalEvent, WriteError, key_bytes};
 
 /// Finished terminals whose last screen stays readable.
 const KEEP_EXITED: usize = 8;
@@ -51,28 +51,6 @@ pub struct TerminalEntry {
     handle: PtyHandle,
     owner: Option<ClientId>,
     started: Instant,
-}
-
-fn key_bytes(key: &str, application_cursor: bool) -> Option<&'static [u8]> {
-    let arrow = |normal: &'static [u8], app: &'static [u8]| {
-        if application_cursor { app } else { normal }
-    };
-    Some(match key {
-        "enter" => b"\r",
-        "tab" => b"\t",
-        "escape" | "esc" => b"\x1b",
-        "backspace" => b"\x7f",
-        "delete" => b"\x1b[3~",
-        "up" => arrow(b"\x1b[A", b"\x1bOA"),
-        "down" => arrow(b"\x1b[B", b"\x1bOB"),
-        "right" => arrow(b"\x1b[C", b"\x1bOC"),
-        "left" => arrow(b"\x1b[D", b"\x1bOD"),
-        "ctrl-c" => b"\x03",
-        "ctrl-d" => b"\x04",
-        "ctrl-z" => b"\x1a",
-        "ctrl-right-bracket" | "ctrl-]" => b"\x1d",
-        _ => return None,
-    })
 }
 
 /// Pasted text as a terminal sends it: line breaks become CR (no Enter is added), and the
@@ -297,6 +275,7 @@ impl Actor {
         }
         let (bracketed, app_cursor) = t.handle.modes();
         let bytes = match &p.input {
+            TerminalInput::Mouse { mouse } => t.handle.mouse_bytes(mouse),
             TerminalInput::Text { text } => text.as_bytes().to_vec(),
             TerminalInput::Paste { text } => paste_bytes(text, bracketed),
             TerminalInput::Key { key } => match key_bytes(key, app_cursor) {
@@ -309,7 +288,7 @@ impl Actor {
                 }
             },
         };
-        if bytes.is_empty() {
+        if bytes.is_empty() && !matches!(p.input, TerminalInput::Mouse { .. }) {
             return r.send(self.fail(invalid("input is empty; nothing was written")));
         }
         if bytes.len() > MAX_TERMINAL_INPUT_BYTES {
@@ -339,7 +318,13 @@ impl Actor {
             }
         }
         let before = t.handle.revision();
-        match t.handle.write(bytes) {
+        let ignored = bytes.is_empty();
+        let written = if ignored {
+            Ok(())
+        } else {
+            t.handle.write(bytes)
+        };
+        match written {
             Ok(()) => {}
             Err(WriteError::Full) => {
                 return r.send(
@@ -363,7 +348,7 @@ impl Actor {
         let screen = t.handle.clone();
         let owner = t.owner.clone();
         let ctx = self.ctx();
-        let reply_now = p.reply_now;
+        let reply_now = p.reply_now || ignored;
         tokio::spawn(async move {
             if !reply_now {
                 settle(&screen, before).await;

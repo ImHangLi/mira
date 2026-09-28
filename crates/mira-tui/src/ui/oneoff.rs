@@ -8,14 +8,14 @@ use ratatui::style::Modifier;
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Padding, Paragraph};
 
-use crate::app::{App, Focus, OneOff};
+use crate::app::{App, Focus, Hit, OneOff};
 use crate::logs::display;
 use crate::theme::{Theme, Tone};
 
 use super::log_panel::{draw_records, log_bar};
 use super::marks::oneoff_mark;
 use super::text::{ago, cleanup_word, ellipsize, enum_word, fit_spans, short_id};
-use super::widgets::{chip, panel, panel_title, tabs_line};
+use super::widgets::{chip, panel, panel_title, tab_hits, tabs_line};
 
 /// The main pane of a one-off `mira exec` run: a card like a tool's, then its logs or
 /// the details of the run.
@@ -66,9 +66,18 @@ pub(super) fn draw_oneoff(f: &mut Frame, app: &mut App, t: &Theme, i: usize, are
         );
     }
     let labels = ["Logs", "Details"];
+    app.hits.push((body, Hit::Pane));
+    app.pane_height = body.height as usize;
+    tab_hits(app, &labels, tabs_area);
     if app.oneoff_details {
+        app.output_top = app
+            .output_top
+            .min(details.len().saturating_sub(body.height as usize));
         f.render_widget(Paragraph::new(tabs_line(t, &labels, 1, "", w)), tabs_area);
-        f.render_widget(Paragraph::new(details), body);
+        f.render_widget(
+            Paragraph::new(details.into_iter().skip(app.output_top).collect::<Vec<_>>()),
+            body,
+        );
         return;
     }
     let clock = app.clock;

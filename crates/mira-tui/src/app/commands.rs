@@ -27,9 +27,9 @@ impl App {
                 self.mouse = !self.mouse;
                 self.mouse_changed = Some(self.mouse);
                 self.info(if self.mouse {
-                    "mouse mode on: the wheel scrolls; hold Option (or Shift) for terminal selection"
+                    "mouse on: hold Shift to select text (Option in Terminal.app and iTerm2)"
                 } else {
-                    "mouse mode off: the terminal's own selection works"
+                    "mouse off: select text with the terminal; m turns the mouse on"
                 });
             }
             Cmd::Schedule => {
@@ -368,23 +368,43 @@ impl App {
                 if n == 0 {
                     return;
                 }
-                let page = 10;
+                self.list_manual = false;
+                let page = self.list_height.saturating_sub(1).max(1);
+                let row = self
+                    .list_rows
+                    .get(self.selected)
+                    .copied()
+                    .unwrap_or(self.selected);
+                let page_up = self
+                    .list_rows
+                    .iter()
+                    .rposition(|&r| r <= row.saturating_sub(page))
+                    .unwrap_or(0);
+                let page_down = self
+                    .list_rows
+                    .iter()
+                    .position(|&r| r >= row.saturating_add(page))
+                    .unwrap_or(n - 1);
                 self.selected = match cmd {
                     Cmd::Up => self.selected.saturating_sub(1),
                     Cmd::Down => (self.selected + 1).min(n - 1),
-                    Cmd::PageUp => self.selected.saturating_sub(page),
-                    Cmd::PageDown => (self.selected + page).min(n - 1),
+                    Cmd::PageUp => page_up,
+                    Cmd::PageDown => page_down,
                     Cmd::Top => 0,
                     _ => n - 1,
                 };
                 self.on_select();
             }
-            Focus::Logs if self.tab == Tab::Output && self.selected_oneoff().is_none() => {
+            Focus::Logs
+                if (self.tab == Tab::Output && self.selected_oneoff().is_none())
+                    || (self.selected_oneoff().is_some() && self.oneoff_details) =>
+            {
+                let page = self.pane_height.saturating_sub(1).max(1);
                 self.output_top = match cmd {
                     Cmd::Up => self.output_top.saturating_sub(1),
                     Cmd::Down => self.output_top + 1,
-                    Cmd::PageUp => self.output_top.saturating_sub(10),
-                    Cmd::PageDown => self.output_top + 10,
+                    Cmd::PageUp => self.output_top.saturating_sub(page),
+                    Cmd::PageDown => self.output_top.saturating_add(page),
                     Cmd::Top => 0,
                     // Drawing clamps this to the last page.
                     _ => usize::MAX / 2,

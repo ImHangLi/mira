@@ -9,7 +9,7 @@ use ratatui::style::Modifier;
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Padding, Paragraph};
 
-use crate::app::{App, Focus, Inputs, Intent, Item, Modal, Tab};
+use crate::app::{App, Focus, Hit, Inputs, Intent, Item, Modal, Tab};
 use crate::logs::display;
 use crate::theme::{Theme, Tone};
 
@@ -20,7 +20,7 @@ use super::oneoff::draw_oneoff;
 use super::output_tab::draw_output_tab;
 use super::text::{ago, cleanup_word, ellipsize, enum_word, fit_spans, wrap};
 use super::view_panel::draw_view;
-use super::widgets::{chip, empty_card, panel, panel_title, tab_bar};
+use super::widgets::{chip, empty_card, panel, panel_title, tab_bar, tab_hits};
 
 pub(super) fn draw_main(f: &mut Frame, app: &mut App, t: &Theme, area: Rect) {
     // The selected interactive program shows its live screen here.
@@ -41,7 +41,7 @@ pub(super) fn draw_main(f: &mut Frame, app: &mut App, t: &Theme, area: Rect) {
         );
         let inner = block.inner(area);
         f.render_widget(block, area);
-        crate::terminal::draw(f, &mut app.term, inner, t.mode.enabled());
+        crate::terminal::draw(f, &mut app.term, &mut app.hits, inner, t.mode.enabled());
         return;
     }
     if let Some(i) = app.selected_oneoff_index() {
@@ -146,6 +146,9 @@ pub(super) fn draw_main(f: &mut Frame, app: &mut App, t: &Theme, area: Rect) {
             rule_area,
         );
     }
+    app.hits.push((body, Hit::Pane));
+    app.pane_height = body.height as usize;
+    tab_hits(app, &Tab::ALL.map(Tab::label), tabs_area);
     match shown {
         Tab::Logs => draw_logs(f, app, t, &a, tabs_area, body),
         Tab::History => {

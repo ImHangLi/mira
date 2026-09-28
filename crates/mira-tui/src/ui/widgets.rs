@@ -6,7 +6,7 @@ use ratatui::style::Modifier;
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, BorderType, Padding, Paragraph};
 
-use crate::app::Tab;
+use crate::app::{App, Hit, Tab};
 use crate::logs::{cells, display};
 use crate::theme::{Theme, Tone};
 
@@ -115,4 +115,14 @@ pub(super) fn right_info(
         spans.push(Span::styled(info, t.muted()));
     }
     Line::from(spans)
+}
+
+pub(super) fn tab_hits(app: &mut App, labels: &[&str], area: Rect) {
+    let mut x = area.x;
+    for (i, label) in labels.iter().enumerate() {
+        let width = (cells(label) as u16 + 2).min(area.right().saturating_sub(x));
+        app.hits
+            .push((Rect::new(x, area.y, width, area.height), Hit::Tab(i)));
+        x = x.saturating_add(width + 2);
+    }
 }

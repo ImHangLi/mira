@@ -11,7 +11,9 @@
 use std::collections::HashSet;
 use std::time::Duration;
 
-use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
+use crossterm::event::{
+    KeyCode, KeyEvent, KeyEventKind, KeyModifiers, MouseButton as Button, MouseEventKind as Kind,
+};
 use mira_client::{Client, connect};
 use mira_protocol::error::{ErrorCode, ErrorInfo};
 use mira_protocol::ids::{ActionRef, RunId, ScreenRevision};
@@ -284,6 +286,41 @@ impl Terminals {
         }
     }
 
+    pub fn mouse(&mut self, event: crossterm::event::MouseEvent, rect: Rect) {
+        if !self.is_focused() || !rect.contains((event.column, event.row).into()) {
+            return;
+        }
+        let (kind, button) = match event.kind {
+            Kind::Down(b) => (MouseKind::Press, b),
+            Kind::Up(b) => (MouseKind::Release, b),
+            Kind::Drag(b) => (MouseKind::Drag, b),
+            Kind::ScrollUp => (MouseKind::WheelUp, Button::Left),
+            Kind::ScrollDown => (MouseKind::WheelDown, Button::Left),
+            _ => return,
+        };
+        let button = match event.kind {
+            Kind::ScrollUp | Kind::ScrollDown => MouseButton::None,
+            _ => match button {
+                Button::Left => MouseButton::Left,
+                Button::Middle => MouseButton::Middle,
+                Button::Right => MouseButton::Right,
+            },
+        };
+        // The worker checks ownership after a queued focus request has completed.
+        if let Some(a) = self.attach.as_ref() {
+            let mouse = MouseInput {
+                kind,
+                button,
+                col: event.column - rect.x,
+                row: event.row - rect.y,
+                shift: event.modifiers.contains(KeyModifiers::SHIFT),
+                alt: event.modifiers.contains(KeyModifiers::ALT),
+                ctrl: event.modifiers.contains(KeyModifiers::CONTROL),
+            };
+            let _ = a.tx.send(Command::Input(TerminalInput::Mouse { mouse }));
+        }
+    }
+
     pub fn paste(&mut self, text: String) {
         if self.writer()
             && let Some(a) = self.attach.as_ref()
@@ -459,7 +496,13 @@ fn styled_line<'a>(text: &'a str, runs: &[TerminalStyleRun], use_color: bool) ->
 }
 
 /// Draws the program, with an extra note only for pending input or errors.
-pub fn draw(f: &mut Frame, term: &mut Terminals, area: Rect, use_color: bool) {
+pub fn draw(
+    f: &mut Frame,
+    term: &mut Terminals,
+    hits: &mut Vec<(Rect, crate::app::Hit)>,
+    area: Rect,
+    use_color: bool,
+) {
     debug_panic();
     let Some(a) = term.attach.as_mut() else {
         return;
@@ -468,6 +511,7 @@ pub fn draw(f: &mut Frame, term: &mut Terminals, area: Rect, use_color: bool) {
     // it (a note row would shift the screen and resize the program twice). Notes go in the
     // panel title; see `Terminals::note`.
     let screen = area;
+    hits.push((screen, crate::app::Hit::Program));
     a.want = Some((
         screen.width.clamp(1, MAX_TERMINAL_COLS),
         screen.height.clamp(1, MAX_TERMINAL_ROWS),

@@ -9,8 +9,8 @@ use std::time::{Duration, Instant};
 
 use crossterm::cursor::{Hide, Show};
 use crossterm::event::{
-    DisableBracketedPaste, DisableMouseCapture, EnableBracketedPaste, EnableMouseCapture,
-    KeyboardEnhancementFlags, PopKeyboardEnhancementFlags, PushKeyboardEnhancementFlags,
+    DisableBracketedPaste, DisableMouseCapture, EnableBracketedPaste, KeyboardEnhancementFlags,
+    PopKeyboardEnhancementFlags, PushKeyboardEnhancementFlags,
 };
 use crossterm::execute;
 use crossterm::terminal::{
@@ -128,14 +128,18 @@ fn has_device_attributes(buf: &[u8]) -> bool {
         })
 }
 
-/// Application mouse mode; off by default so the terminal's own selection works.
+/// Application mouse capture; Shift or Option bypasses it for terminal selection. Only
+/// clicks, drags, and the wheel are reported (modes 1000 and 1002, SGR encoding 1006), not
+/// plain pointer movement, which would redraw the screen on every move.
 pub fn set_mouse(on: bool) {
+    use std::io::Write;
     let mut out = std::io::stdout();
     let _ = if on {
-        execute!(out, EnableMouseCapture)
+        out.write_all(b"\x1b[?1000h\x1b[?1002h\x1b[?1006h")
     } else {
         execute!(out, DisableMouseCapture)
     };
+    let _ = out.flush();
 }
 
 /// Asks the terminal for a desktop notification (OSC 9). Ghostty, iTerm2, and WezTerm show

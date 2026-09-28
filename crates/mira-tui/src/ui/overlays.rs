@@ -97,7 +97,7 @@ fn help_lines(app: &App, t: &Theme, avail: usize) -> (Vec<Line<'static>>, usize)
          Tab moves between the list and the pane, [ and ] switch tabs, and Ctrl-T returns to \
          the tools from anywhere. A program gets every key except Ctrl-T.",
         if app.mouse {
-            "Mouse mode is on (m): the wheel scrolls; terminal selection needs Option/Shift."
+            "Mouse is on (m turns it off): hold Shift to select text (Option in Terminal.app and iTerm2)."
         } else {
             "Mouse mode is off (m turns it on): your terminal's own text selection works."
         },
@@ -140,6 +140,7 @@ pub(super) fn draw_help(f: &mut Frame, app: &mut App, t: &Theme, area: Rect) {
     let w = (content_w + 4).min(area.width.saturating_sub(4) as usize) as u16;
     let h = (lines.len() + 2).min(area.height.saturating_sub(2) as usize) as u16;
     let rect = centered(area, w, h);
+    app.modal_rect = Some(rect);
     let rows = h.saturating_sub(2) as usize;
     let max = lines.len().saturating_sub(rows);
     let top = match &mut app.modal {
@@ -327,13 +328,15 @@ pub(super) fn draw_form(f: &mut Frame, app: &App, t: &Theme, area: Rect) {
     );
 }
 
-pub(super) fn draw_output(f: &mut Frame, app: &App, t: &Theme, area: Rect) {
-    let Modal::Output(o) = &app.modal else {
-        return;
-    };
+pub(super) fn draw_output(f: &mut Frame, app: &mut App, t: &Theme, area: Rect) {
     let rect = centered(area, 100, area.height.saturating_sub(2));
+    app.modal_rect = Some(rect);
     let w = rect.width.saturating_sub(4) as usize;
     let h = rect.height.saturating_sub(2) as usize;
+    let Modal::Output(o) = &mut app.modal else {
+        return;
+    };
+    o.top = o.top.min(o.lines.len().saturating_sub(h));
     let lines: Vec<Line> = o
         .lines
         .iter()
