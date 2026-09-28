@@ -37,11 +37,13 @@ flowchart TD
   cli --> protocol
 ```
 
+The CLI update command replaces installer-owned binaries and refreshes recorded skill exports. The TUI checks releases on a background worker; the host does not make update requests.
+
 The graph has no cycles. `mira-protocol` depends on no other Mira crate. The TUI and the CLI reach the host only through `mira-client`. `mira-cli` links `mira-host` only to run it as `mira __host`.
 
 | Crate | Owns |
 |---|---|
-| `mira-protocol` | The contract: IDs, manifests, MIPC/1 and MPP/1 messages, run and view types, errors, limits, and the generated JSON Schemas in `schemas/`. Also the small rules both sides share: catalog ranking and clock text. |
+| `mira-protocol` | The contract: IDs, manifests, MIPC/1 and MPP/1 messages, run and view types, errors, limits, and the generated JSON Schemas in `schemas/`. Also the small rules both sides share: catalog ranking, clock text, and release versions and cache files. |
 | `mira-host` | The per-workspace host: the socket, the workspace actor, the process and PTY runners, run logs, and storage. |
 | `mira-client` | A typed MIPC/1 client, shared by the CLI and the TUI. It finds or starts the host. |
 | `mira-tui` | The human TUI: a projection of host state. It holds presentation state only. |

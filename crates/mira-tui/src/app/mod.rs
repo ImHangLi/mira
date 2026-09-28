@@ -69,6 +69,7 @@ pub enum Hit {
 }
 
 pub struct App {
+    pub update_available: Option<String>,
     /// Clickable regions of the last frame; later ones are on top.
     pub hits: Vec<(ratatui::layout::Rect, Hit)>,
     /// The open Help or Output box, so a click outside it closes it.
@@ -175,6 +176,7 @@ impl App {
         let branch = crate::git::head_label(std::path::Path::new(&root));
         let mouse = std::env::var("MIRA_MOUSE").as_deref() != Ok("0");
         Self {
+            update_available: None,
             workspace_name: workspace_name(&root),
             branch,
             branch_at: Instant::now(),

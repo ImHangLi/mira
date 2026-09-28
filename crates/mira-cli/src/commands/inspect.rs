@@ -457,6 +457,13 @@ pub fn doctor(ctx: &Ctx) -> ExitCode {
                 message,
             })
         };
+        let latest = mira_protocol::update::Cache::read()
+            .map_or("unknown (not checked)".to_owned(), |c| c.latest);
+        push(
+            "version",
+            CheckStatus::Info,
+            format!("running {}; latest known {latest}", mira_protocol::VERSION),
+        );
         let selected = match ctx.select() {
             Ok(s) => s,
             Err(e) => return ctx.fail(ReplyContext::default(), e),

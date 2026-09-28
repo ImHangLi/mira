@@ -32,8 +32,28 @@ All commands accept `--project PATH`, `--json`, `--text`. `REF` is `plugin.item`
 | `schedule ACTION on\|off` | persisted interval switch; runs only inside a session |
 | `artifacts [RUN]`, `artifacts read ID` | registered run outputs, bounded text reads |
 | `storage status [--all]`, `storage gc [--kind K] [--apply]`, `storage clear --plugin ID --kind state` | usage and retention; gc only plans without `--apply` |
-| `skills export DIR [--force]` | copy these skills to `DIR/mira/` and `DIR/mira-extend/` (a user skills folder, never inside the current Git work tree); refuses to overwrite existing files without `--force` |
+| `skills export DIR... [--force]` | copy these skills to `DIR/mira/` and `DIR/mira-extend/` (a user skills folder, never inside the current Git work tree); refuses to overwrite existing files without `--force`; records each target for updates |
+| `update [--check\|--rollback]` | install the latest release; `--check` only reports availability and refreshes the cache (exit 0 either way); `--rollback` swaps the installed and previous binaries |
 | `doctor`, `paths`, `schema NAME` | diagnostics, locations, JSON Schemas |
+
+## Updates
+
+`mira update` requires an installer-owned binary beside `.mira-installed`. It verifies
+the SHA-256 checksum and binary version before replacement, keeps `mira.previous`, and
+re-exports skills to recorded targets. If a target is under `~/.config/skillshare/` and
+Skillshare is installed, it runs `skillshare sync -g`. Skill failures are warnings.
+Rollback changes the binary only.
+
+The reply includes release notes and project host PIDs, roots, and stop commands using
+`mira.previous`. Open windows keep the old version until closed; hosts switch once their
+work stops and their sessions end. Open windows or background leases can keep a host alive.
+`mira doctor` reports the running and cached latest versions without a network call.
+
+The TUI checks for a release at startup if its cache is at least 24 hours old. A non-empty
+`MIRA_NO_UPDATE_CHECK` or a set `CI` disables the check and notice. Manual `update --check`
+still works. `update-check.json` is in `~/Library/Caches/Mira/`; `skills-targets.json` is in
+`~/Library/Application Support/Mira/`. With `MIRA_DATA_HOME`, they use its `cache/` and
+`state/` folders instead.
 
 ## Exit codes
 

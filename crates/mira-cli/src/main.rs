@@ -87,6 +87,13 @@ enum Command {
     Paths,
     /// Check the project, plugins, and required programs.
     Doctor,
+    /// Update the installed binary, check for a release, or restore the previous binary.
+    Update {
+        #[arg(long, conflicts_with = "rollback")]
+        check: bool,
+        #[arg(long)]
+        rollback: bool,
+    },
     /// Run a task and wait for the result (--no-wait needs a session).
     Run {
         #[arg(value_name = "ACTION")]
@@ -526,8 +533,8 @@ enum SkillsCommand {
     /// ~/.agents/skills). Refuses to overwrite existing files without `--force` and refuses
     /// a DIR inside the current Git work tree.
     Export {
-        #[arg(value_name = "DIR")]
-        dir: PathBuf,
+        #[arg(value_name = "DIR", required = true, num_args = 1..)]
+        dir: Vec<PathBuf>,
         /// Overwrite existing skill files.
         #[arg(long)]
         force: bool,
@@ -738,6 +745,9 @@ fn main() -> ExitCode {
                 },
         }) => commands::payload::read(&ctx, token, pointer, offset, max_bytes),
         Some(Command::Paths) => commands::inspect::paths(&ctx),
+        Some(Command::Update { check, rollback }) => {
+            commands::update::update(&ctx, check, rollback)
+        }
         Some(Command::Doctor) => commands::inspect::doctor(&ctx),
         Some(Command::Host { root }) => match mira_protocol::ids::AbsolutePath::from_path(&root) {
             Ok(root) => ExitCode::from(mira_host::run(root)),

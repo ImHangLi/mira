@@ -30,6 +30,23 @@ Open a new terminal, go to your project, and run `mira`. Without a `.mira/` fold
 
 A service starts when you start it. App pages can opt into `show: "on_select"`: selecting one opens its default screen, without giving it the keys. Notes, System, Pomodoro, and Snake use this option. Servers keep explicit start. A process keeps running while you look at other tools. It stops when you press `s`, or when you close the last Mira window (unless you pressed `b`). After a stop or exit, select the page again or press Enter to open it again.
 
+## Update
+
+Run `mira update` to install the latest release and refresh the skills you exported with
+`mira skills export`. It checks the download checksum and keeps `mira.previous` beside
+the installed binary. `mira update --rollback` swaps the two binaries.
+
+Use `mira update --check` to check the latest version without installing it. The TUI
+checks once a day in the background and shows a notice when an update is available.
+Set `MIRA_NO_UPDATE_CHECK=1` to turn off this check; it is also off when `CI` is set.
+`mira doctor` shows the running version and the latest version in the local cache.
+
+Close and reopen Mira windows to use the new version. Project hosts switch after their
+work stops and their sessions end. An open window or background lease can keep a host
+alive. The update reply lists existing hosts and the command to stop each one with
+`mira.previous`. Skill export or Skillshare sync failures appear as warnings; they do
+not undo the binary update.
+
 ## Start with a default plugin
 
 Mira ships with a few plugins that work in any project:
