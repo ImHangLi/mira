@@ -1,12 +1,17 @@
 //! The key router: modal keys first, then normal keys mapped to bound commands.
 
-use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
+use std::time::{Duration, Instant};
+
+use crossterm::event::{
+    KeyCode, KeyEvent, KeyEventKind, KeyModifiers, MouseButton, MouseEventKind,
+};
+use ratatui::layout::Position;
 
 use crate::clip;
 use crate::cmdbar;
 use crate::form::{Form, Outcome};
 
-use super::{App, Cmd, Focus, Modal, Tab};
+use super::{App, Cmd, Focus, Hit, Modal, Tab};
 
 impl App {
     pub fn key(&mut self, k: KeyEvent) {
@@ -14,6 +19,9 @@ impl App {
             return;
         }
         let ctrl = k.modifiers.contains(KeyModifiers::CONTROL);
+        let modal_page = self
+            .modal_rect
+            .map_or(1, |r| r.height.saturating_sub(3).max(1) as usize);
         // Back to the tools from anywhere. Ctrl-T ("tools") is easy to type; function keys
         // are avoided because many people use them for dictation.
         if (ctrl && k.code == KeyCode::Char('t'))
@@ -109,15 +117,18 @@ impl App {
                 let Modal::Output(o) = &mut self.modal else {
                     return;
                 };
+                let max = o.lines.len().saturating_sub(modal_page + 1);
                 match k.code {
                     KeyCode::Esc | KeyCode::Char('q') | KeyCode::Enter => self.modal = Modal::None,
                     KeyCode::Char('c') if ctrl => self.modal = Modal::None,
-                    KeyCode::Char('j') | KeyCode::Down => {
-                        o.top = (o.top + 1).min(o.lines.len().saturating_sub(1))
-                    }
+                    KeyCode::Char('j') | KeyCode::Down => o.top = (o.top + 1).min(max),
                     KeyCode::Char('k') | KeyCode::Up => o.top = o.top.saturating_sub(1),
-                    KeyCode::PageDown => o.top = (o.top + 10).min(o.lines.len().saturating_sub(1)),
-                    KeyCode::PageUp => o.top = o.top.saturating_sub(10),
+                    KeyCode::PageDown => o.top = (o.top + modal_page).min(max),
+                    KeyCode::Char('d') if ctrl => o.top = (o.top + modal_page).min(max),
+                    KeyCode::Char('u') if ctrl => o.top = o.top.saturating_sub(modal_page),
+                    KeyCode::PageUp => o.top = o.top.saturating_sub(modal_page),
+                    KeyCode::Home => o.top = 0,
+                    KeyCode::End => o.top = max,
                     KeyCode::Char('y') => {
                         let n = o.lines.len();
                         clip::copy(o.text.clone(), n, self.io.events.clone());
@@ -228,6 +239,22 @@ impl App {
                         *index = (*index + 1).min(n.saturating_sub(1))
                     }
                     KeyCode::Char('k') | KeyCode::Up => *index = index.saturating_sub(1),
+                    KeyCode::PageUp => {
+                        *index = index.saturating_sub(self.pane_height.saturating_sub(2).max(1))
+                    }
+                    KeyCode::PageDown => {
+                        *index = (*index + self.pane_height.saturating_sub(2).max(1))
+                            .min(n.saturating_sub(1))
+                    }
+                    KeyCode::Home => *index = 0,
+                    KeyCode::End => *index = n.saturating_sub(1),
+                    KeyCode::Char('u') if ctrl => {
+                        *index = index.saturating_sub(self.pane_height.saturating_sub(2).max(1))
+                    }
+                    KeyCode::Char('d') if ctrl => {
+                        *index = (*index + self.pane_height.saturating_sub(2).max(1))
+                            .min(n.saturating_sub(1))
+                    }
                     KeyCode::Enter if !repeat && n > 0 => {
                         if let Modal::History {
                             action_ref,
@@ -255,8 +282,10 @@ impl App {
                     KeyCode::Char('c') if ctrl => self.modal = Modal::None,
                     KeyCode::Char('j') | KeyCode::Down => *top = (*top + 1).min(*max),
                     KeyCode::Char('k') | KeyCode::Up => *top = top.saturating_sub(1),
-                    KeyCode::PageDown | KeyCode::Char(' ') => *top = (*top + 10).min(*max),
-                    KeyCode::PageUp => *top = top.saturating_sub(10),
+                    KeyCode::Char('d') if ctrl => *top = (*top + modal_page).min(*max),
+                    KeyCode::Char('u') if ctrl => *top = top.saturating_sub(modal_page),
+                    KeyCode::PageDown | KeyCode::Char(' ') => *top = (*top + modal_page).min(*max),
+                    KeyCode::PageUp => *top = top.saturating_sub(modal_page),
                     KeyCode::Char('g') | KeyCode::Home => *top = 0,
                     KeyCode::Char('G') | KeyCode::End => *top = *max,
                     _ => {}
@@ -388,19 +417,137 @@ impl App {
 }
 
 impl App {
-    /// Mouse mode: the wheel scrolls whatever has the focus.
     pub fn mouse_event(&mut self, m: crossterm::event::MouseEvent) {
-        use crossterm::event::MouseEventKind;
-        if !self.mouse || !matches!(self.modal, Modal::None) {
+        // Plain pointer movement is reported too; nothing here reacts to it.
+        if !self.mouse || m.kind == MouseEventKind::Moved {
             return;
         }
-        let cmd = match m.kind {
-            MouseEventKind::ScrollDown => Cmd::Down,
-            MouseEventKind::ScrollUp => Cmd::Up,
-            _ => return,
+        let point = Position::new(m.column, m.row);
+        let delta = match m.kind {
+            MouseEventKind::ScrollUp => -3,
+            MouseEventKind::ScrollDown => 3,
+            _ => 0,
         };
-        for _ in 0..3 {
-            self.exec(cmd);
+        let click = m.kind == MouseEventKind::Down(MouseButton::Left);
+        match &mut self.modal {
+            Modal::Help { top, max } => {
+                *top = top.saturating_add_signed(delta).min(*max);
+            }
+            Modal::Output(o) => {
+                let height = self
+                    .modal_rect
+                    .map_or(1, |r| r.height.saturating_sub(2) as usize);
+                o.top = o
+                    .top
+                    .saturating_add_signed(delta)
+                    .min(o.lines.len().saturating_sub(height));
+            }
+            Modal::None | Modal::History { .. } => {}
+            _ => return,
+        }
+        if matches!(self.modal, Modal::Help { .. } | Modal::Output(_)) {
+            if click && self.modal_rect.is_some_and(|r| !r.contains(point)) {
+                self.modal = Modal::None;
+            }
+            return;
+        }
+        let hit = self
+            .hits
+            .iter()
+            .rev()
+            .find(|(r, _)| r.contains(point))
+            .copied();
+        let Some((rect, hit)) = hit else { return };
+        if delta != 0 {
+            match hit {
+                Hit::Sidebar | Hit::Entry(_) => {
+                    self.list_manual = true;
+                    self.list_offset = self.list_offset.saturating_add_signed(delta);
+                }
+                Hit::Pane => {
+                    if let Modal::History { runs, index, .. } = &mut self.modal {
+                        *index = index
+                            .saturating_add_signed(delta)
+                            .min(runs.as_ref().map_or(0, |r| r.len().saturating_sub(1)));
+                    } else if !self.wheel_logs(delta) {
+                        let focus = self.focus;
+                        self.focus = Focus::Logs;
+                        for _ in 0..3 {
+                            self.exec(if delta < 0 { Cmd::Up } else { Cmd::Down });
+                        }
+                        self.focus = focus;
+                    }
+                }
+                Hit::Program => {
+                    if !self.term.is_focused() {
+                        self.sync_terminal();
+                        self.term.focus();
+                    }
+                    self.term.mouse(m, rect);
+                }
+                _ => {}
+            }
+        } else if click {
+            match hit {
+                Hit::Entry(i) => {
+                    if self.term.is_focused() {
+                        self.return_to_tools();
+                    }
+                    let double = self.last_click.is_some_and(|(last, at)| {
+                        last == i && at.elapsed() <= Duration::from_millis(400)
+                    });
+                    self.last_click = if double {
+                        None
+                    } else {
+                        Some((i, Instant::now()))
+                    };
+                    self.modal = Modal::None;
+                    self.selected = i;
+                    self.on_select();
+                    self.focus = Focus::List;
+                    if double {
+                        self.exec(Cmd::Open);
+                    }
+                }
+                Hit::Tab(i) => self.exec(Cmd::GoTab(i as u8)),
+                Hit::Pane => {
+                    if self.term.is_focused() {
+                        self.return_to_tools();
+                    }
+                    self.focus = Focus::Logs;
+                }
+                Hit::Key(cmd) => {
+                    if matches!(self.modal, Modal::History { .. }) {
+                        let code = match cmd {
+                            Cmd::Down => Some(KeyCode::Down),
+                            Cmd::Open => Some(KeyCode::Enter),
+                            Cmd::Escape => Some(KeyCode::Esc),
+                            _ => None,
+                        };
+                        if let Some(code) = code {
+                            self.key(KeyEvent::new(code, KeyModifiers::NONE));
+                        } else {
+                            self.exec(cmd);
+                        }
+                    } else {
+                        self.exec(cmd);
+                    }
+                }
+                Hit::Program => {
+                    if self.term.is_focused() {
+                        self.term.mouse(m, rect);
+                    } else {
+                        self.sync_terminal();
+                        self.term.focus();
+                    }
+                }
+                Hit::Sidebar => {}
+            }
+            if !matches!(hit, Hit::Entry(_)) {
+                self.last_click = None;
+            }
+        } else if matches!(hit, Hit::Program) && self.term.is_focused() {
+            self.term.mouse(m, rect);
         }
     }
 
@@ -416,5 +563,32 @@ impl App {
             }
             _ => {}
         }
+    }
+
+    /// The wheel over a log pane moves the view, not the line cursor, like a GUI log
+    /// viewer; scrolling back to the end follows new lines again. Returns false when the
+    /// pane under the pointer is not a log (Output, Details, and views scroll by keys).
+    fn wheel_logs(&mut self, delta: isize) -> bool {
+        let text_pane = (self.tab == Tab::Output && self.selected_oneoff().is_none())
+            || (self.selected_oneoff().is_some() && self.oneoff_details)
+            || self.selected_view().is_some();
+        if text_pane {
+            return false;
+        }
+        let Some(p) = self.selected_pane_mut() else {
+            return false;
+        };
+        if delta > 0 && !p.is_pinned() {
+            return true;
+        }
+        p.page(delta);
+        if delta > 0
+            && p.visible()
+                .last()
+                .is_some_and(|(i, _)| i + 1 >= p.records.len())
+        {
+            p.follow();
+        }
+        true
     }
 }

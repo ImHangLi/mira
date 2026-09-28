@@ -1286,6 +1286,67 @@
       ],
       "type": "string"
     },
+    "MouseButton": {
+      "enum": [
+        "left",
+        "middle",
+        "right",
+        "none"
+      ],
+      "type": "string"
+    },
+    "MouseInput": {
+      "additionalProperties": false,
+      "properties": {
+        "alt": {
+          "type": "boolean"
+        },
+        "button": {
+          "$ref": "#/$defs/MouseButton"
+        },
+        "col": {
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "ctrl": {
+          "type": "boolean"
+        },
+        "kind": {
+          "$ref": "#/$defs/MouseKind"
+        },
+        "row": {
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "shift": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "kind",
+        "button",
+        "col",
+        "row",
+        "shift",
+        "alt",
+        "ctrl"
+      ],
+      "type": "object"
+    },
+    "MouseKind": {
+      "enum": [
+        "press",
+        "release",
+        "drag",
+        "wheel_up",
+        "wheel_down"
+      ],
+      "type": "string"
+    },
     "NextAction": {
       "additionalProperties": false,
       "description": "A suggested follow-up command. Never executed automatically.",
@@ -3278,6 +3339,24 @@
           "required": [
             "kind",
             "text"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "A mouse event in zero-based cells within the program screen.",
+          "properties": {
+            "kind": {
+              "const": "mouse",
+              "type": "string"
+            },
+            "mouse": {
+              "$ref": "#/$defs/MouseInput"
+            }
+          },
+          "required": [
+            "kind",
+            "mouse"
           ],
           "type": "object"
         }

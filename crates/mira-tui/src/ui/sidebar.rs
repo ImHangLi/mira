@@ -10,7 +10,7 @@ use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::Paragraph;
 
-use crate::app::{App, Entry, Focus};
+use crate::app::{App, Entry, Focus, Hit};
 use crate::logs::{cells, display};
 use crate::theme::{Theme, Tone};
 
@@ -19,6 +19,8 @@ use super::text::ellipsize;
 use super::widgets::{panel, panel_title};
 
 pub(super) fn draw_sidebar(f: &mut Frame, app: &mut App, t: &Theme, area: Rect) {
+    app.hits.push((area, Hit::Sidebar));
+    app.list_rows.clear();
     // The list gives the focus away while a program in the main pane takes the keys.
     let focus = app.focus == Focus::List && !app.term.is_focused();
     let total = app.items.len() + app.views.len();
@@ -62,6 +64,7 @@ pub(super) fn draw_sidebar(f: &mut Frame, app: &mut App, t: &Theme, area: Rect) 
     } else {
         inner
     };
+    app.list_height = inner.height as usize;
     let w = inner.width as usize;
     if total == 0 && app.oneoffs.is_empty() {
         let msg = if app.catalog_error.is_some() {
@@ -186,16 +189,30 @@ pub(super) fn draw_sidebar(f: &mut Frame, app: &mut App, t: &Theme, area: Rect) 
                 Span::raw(" "),
             ])
         };
+        app.list_rows.push(rows.len());
         rows.push(line);
     }
     let h = inner.height as usize;
-    if sel_row < app.list_offset {
+    if !app.list_manual && sel_row < app.list_offset {
         // Show the group header above the first item of a group when possible.
         app.list_offset = sel_row.saturating_sub(1);
-    } else if sel_row >= app.list_offset + h {
+    } else if !app.list_manual && sel_row >= app.list_offset + h {
         app.list_offset = sel_row + 1 - h;
     }
-    app.list_offset = app.list_offset.min(rows.len().saturating_sub(1));
+    app.list_offset = app.list_offset.min(rows.len().saturating_sub(h));
+    for (i, &row) in app.list_rows.iter().enumerate() {
+        if row >= app.list_offset && row < app.list_offset + h {
+            app.hits.push((
+                Rect::new(
+                    inner.x,
+                    inner.y + (row - app.list_offset) as u16,
+                    inner.width,
+                    1,
+                ),
+                Hit::Entry(i),
+            ));
+        }
+    }
     let visible: Vec<Line> = rows.into_iter().skip(app.list_offset).take(h).collect();
     f.render_widget(Paragraph::new(visible), inner);
 }

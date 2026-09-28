@@ -170,6 +170,7 @@ Each one becomes ordinary files in `.mira/plugins/NAME/`. Read them, change them
 | `/` | Search the tools |
 | `:` | Run a `mira` command, for example `:plugin add system` |
 | `?` | Show every key that works here |
+| Mouse | Click to select, double-click to open, wheel scrolls what is under the pointer; hold Shift to select text (`m` turns the mouse off). |
 
 The footer shows the keys for what you have selected, most useful first.
 

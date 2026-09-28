@@ -24,6 +24,7 @@ Open a new terminal, go to your project, and run `mira`. Without a `.mira/` fold
 | `:` | Run a `mira` command, for example `:exec --label "disk usage" -- du -sh .` |
 | `b` | Keep services running after you close the window |
 | `?` | Show every key |
+| Mouse | Click to select, double-click to open, wheel scrolls what is under the pointer; hold Shift to select text (`m` turns the mouse off). |
 
 `Shift+Esc` also returns to tools in terminals that support the enhanced keyboard protocol. `Ctrl-]` works too. Plain Esc and Tab stay available to the program while you type into it.
 

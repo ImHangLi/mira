@@ -57,7 +57,32 @@ pub struct Io {
     pub paths: mira_protocol::paths::WorkspacePaths,
 }
 
+/// What a mouse click or wheel lands on, recorded while drawing.
+#[derive(Clone, Copy)]
+pub enum Hit {
+    Entry(usize),
+    Sidebar,
+    Tab(usize),
+    Pane,
+    Program,
+    Key(Cmd),
+}
+
 pub struct App {
+    /// Clickable regions of the last frame; later ones are on top.
+    pub hits: Vec<(ratatui::layout::Rect, Hit)>,
+    /// The open Help or Output box, so a click outside it closes it.
+    pub modal_rect: Option<ratatui::layout::Rect>,
+    /// The wheel scrolled the list: keep `list_offset` until a key moves the selection.
+    pub list_manual: bool,
+    /// Rows the list shows, for PageUp and PageDown.
+    pub list_height: usize,
+    /// Drawn row of each visible entry, including group headings and gaps.
+    pub list_rows: Vec<usize>,
+    /// Rows the main pane shows, for PageUp and PageDown.
+    pub pane_height: usize,
+    /// The last clicked entry and when, to detect a double click.
+    pub last_click: Option<(usize, Instant)>,
     pub root: String,
     /// `name` from `.mira/workspace.json`, for the header.
     pub workspace_name: Option<String>,
@@ -148,6 +173,7 @@ pub struct App {
 impl App {
     pub fn new(root: String, clock: LocalClock, io: Io) -> Self {
         let branch = crate::git::head_label(std::path::Path::new(&root));
+        let mouse = std::env::var("MIRA_MOUSE").as_deref() != Ok("0");
         Self {
             workspace_name: workspace_name(&root),
             branch,
@@ -162,8 +188,15 @@ impl App {
             view_panes: HashMap::new(),
             schedules: Vec::new(),
             last_inputs: HashMap::new(),
-            mouse: false,
-            mouse_changed: None,
+            mouse,
+            mouse_changed: Some(mouse),
+            hits: Vec::new(),
+            modal_rect: None,
+            list_manual: false,
+            list_height: 1,
+            list_rows: Vec::new(),
+            pane_height: 1,
+            last_click: None,
             notifications: Vec::new(),
             defaults: Vec::new(),
             catalog_revision: None,

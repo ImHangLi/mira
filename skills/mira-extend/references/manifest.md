@@ -5,7 +5,7 @@ Strict JSON: unknown fields, duplicate keys, and `null` for optional fields are 
 ## `.mira/workspace.json`
 
 ```json
-{"api": 1, "name": "My Project", "plugins": ["plugins/dev"], "autostart": [], "ui": {"mouse": false}, "meta": {}}
+{"api": 1, "name": "My Project", "plugins": ["plugins/dev"], "autostart": [], "meta": {}}
 ```
 
 `plugins` are paths relative to `.mira` (or absolute). `autostart` lists process actions started when a human opens a new TUI session; leave it empty unless the user asks.

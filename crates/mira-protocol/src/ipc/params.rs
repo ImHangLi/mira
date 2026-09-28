@@ -440,6 +440,39 @@ pub enum TerminalInput {
     Key { key: String },
     /// Bracketed paste when the child enabled it.
     Paste { text: String },
+    /// A mouse event in zero-based cells within the program screen.
+    Mouse { mouse: MouseInput },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum MouseKind {
+    Press,
+    Release,
+    Drag,
+    WheelUp,
+    WheelDown,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum MouseButton {
+    Left,
+    Middle,
+    Right,
+    None,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct MouseInput {
+    pub kind: MouseKind,
+    pub button: MouseButton,
+    pub col: u16,
+    pub row: u16,
+    pub shift: bool,
+    pub alt: bool,
+    pub ctrl: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]

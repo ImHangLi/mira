@@ -6,7 +6,7 @@ use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::Paragraph;
 
-use crate::app::{App, Binding, Cmd, Modal};
+use crate::app::{App, Binding, Cmd, Hit, Modal};
 use crate::logs::{cells, display};
 use crate::theme::{Theme, Tone};
 
@@ -150,7 +150,7 @@ fn rank(cmd: Cmd) -> u8 {
     }
 }
 
-pub(super) fn draw_footer(f: &mut Frame, app: &App, t: &Theme, area: Rect) {
+pub(super) fn draw_footer(f: &mut Frame, app: &mut App, t: &Theme, area: Rect) {
     let w = area.width as usize;
     let mut all: Vec<Binding> = app.bindings().into_iter().filter(|b| b.footer).collect();
     all.sort_by_key(|b| rank(b.cmd));
@@ -187,6 +187,18 @@ pub(super) fn draw_footer(f: &mut Frame, app: &App, t: &Theme, area: Rect) {
             spans.push(Span::raw("  "));
         }
         first = false;
+        let x = line_cells(&spans);
+        let width = cells(b.keys)
+            + 2
+            + if b.label.is_empty() {
+                0
+            } else {
+                1 + cells(&b.label)
+            };
+        app.hits.push((
+            Rect::new(area.x + x as u16, area.y, width as u16, area.height),
+            Hit::Key(b.cmd),
+        ));
         spans.push(key_chip(t, b.keys));
         if !b.label.is_empty() {
             spans.push(Span::styled(format!(" {}", b.label), t.muted()));
@@ -194,6 +206,18 @@ pub(super) fn draw_footer(f: &mut Frame, app: &App, t: &Theme, area: Rect) {
     }
     let gap = w.saturating_sub(line_cells(&spans) + rw);
     spans.push(Span::raw(" ".repeat(gap)));
+    if let Some(b) = help {
+        let x = line_cells(&spans).min(w);
+        app.hits.push((
+            Rect::new(
+                area.x + x as u16,
+                area.y,
+                rw.saturating_sub(1).min(w - x) as u16,
+                area.height,
+            ),
+            Hit::Key(b.cmd),
+        ));
+    }
     spans.extend(right);
     f.render_widget(Paragraph::new(Line::from(fit_spans(spans, w))), area);
 }
