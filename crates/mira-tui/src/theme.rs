@@ -185,20 +185,24 @@ impl Tone {
         use Background::*;
         Some(match (self, bg) {
             (Tone::Ink, _) => (0x1C, 0x1C, 0x1C),
-            (Tone::Accent, Light) => (0xBA, 0x3B, 0x0C),
-            (Tone::AccentDeep, Light) => (0xA8, 0x4C, 0x28),
-            (Tone::Sky, Light) => (0x30, 0x6A, 0xA0),
-            (Tone::Leaf, Light) => (0x3A, 0x73, 0x43),
-            (Tone::Amber, Light) => (0x88, 0x60, 0x18),
-            (Tone::Rose, Light) => (0xC2, 0x2E, 0x2A),
-            (Tone::Muted, Light) => (0x5F, 0x5F, 0x5F),
+            // "Meadow": the light tones come from the daylight painting (terracotta, moss, sky,
+            // leaf, ochre, brick, and olive gray).
+            (Tone::Accent, Light) => (0xB0, 0x42, 0x16),
+            (Tone::AccentDeep, Light) => (0x3E, 0x5E, 0x28),
+            (Tone::Sky, Light) => (0x0A, 0x5F, 0xA8),
+            (Tone::Leaf, Light) => (0x3A, 0x6B, 0x22),
+            (Tone::Amber, Light) => (0x85, 0x5F, 0x1C),
+            (Tone::Rose, Light) => (0xAE, 0x3C, 0x27),
+            (Tone::Muted, Light) => (0x5A, 0x5E, 0x4C),
+            // The dark tones come from the blue-hour version of the painting: terracotta,
+            // lamplit gold, dusk blue, moonlit green, amber, warm rose, and blue gray.
             (Tone::Accent, Dark) => (0xF2, 0x6B, 0x3A),
-            (Tone::AccentDeep, Dark) => (0xD7, 0x7A, 0x56),
-            (Tone::Sky, Dark) => (0x5C, 0x97, 0xCE),
-            (Tone::Leaf, Dark) => (0x52, 0xA3, 0x5E),
-            (Tone::Amber, Dark) => (0xD9, 0x9A, 0x2B),
-            (Tone::Rose, Dark) => (0xE0, 0x71, 0x6D),
-            (Tone::Muted, Dark) => (0x9A, 0x9A, 0x9A),
+            (Tone::AccentDeep, Dark) => (0xD8, 0xAE, 0x78),
+            (Tone::Sky, Dark) => (0x7F, 0xA6, 0xE0),
+            (Tone::Leaf, Dark) => (0x86, 0xB3, 0x6C),
+            (Tone::Amber, Dark) => (0xE2, 0xB0, 0x5A),
+            (Tone::Rose, Dark) => (0xE8, 0x7E, 0x6E),
+            (Tone::Muted, Dark) => (0x9C, 0xA4, 0xA8),
             // Marks that pass 3:1 on light and dark backgrounds alike.
             (Tone::Accent, Unknown) => (0xEC, 0x4A, 0x10),
             (Tone::AccentDeep, Unknown) => (0xC8, 0x5A, 0x30),
@@ -216,18 +220,19 @@ impl Tone {
         use Background::*;
         Some(match (self, bg) {
             (Tone::Ink, _) => 234,
-            (Tone::Accent | Tone::AccentDeep, Light) => 94,
+            (Tone::Accent, Light) => 94,
+            (Tone::AccentDeep, Light) => 58,
             (Tone::Sky, Light) => 25,
             (Tone::Leaf, Light) => 22,
-            (Tone::Amber, Light) => 58,
+            (Tone::Amber, Light) => 94,
             (Tone::Rose, Light) => 124,
             (Tone::Muted, Light) => 59,
             (Tone::Accent, Dark) => 209,
-            (Tone::AccentDeep, Dark) => 173,
-            (Tone::Sky, Dark) => 68,
-            (Tone::Leaf, Dark) => 71,
-            (Tone::Amber, Dark) => 172,
-            (Tone::Rose, Dark) => 167,
+            (Tone::AccentDeep, Dark) => 180,
+            (Tone::Sky, Dark) => 110,
+            (Tone::Leaf, Dark) => 107,
+            (Tone::Amber, Dark) => 179,
+            (Tone::Rose, Dark) => 174,
             (Tone::Muted, Dark) => 247,
             (Tone::Accent | Tone::AccentDeep, Unknown) => 166,
             (Tone::Sky, Unknown) => 67,
@@ -360,9 +365,10 @@ impl Theme {
         }
     }
 
-    /// The selected row of a focused list.
+    /// The selected row of a focused list: the sky of the painting, so it stands apart
+    /// from the terracotta of key chips and marks.
     pub fn selected(&self) -> Style {
-        self.chip(Tone::Accent)
+        self.chip(Tone::Sky)
     }
 
     /// Panel borders: accent when the panel has the focus, dim otherwise.

@@ -252,7 +252,7 @@ def init_palette():
         curses.use_default_colors()
         if curses.COLORS >= 256:
             for n, fg, bg in ((1, 166, -1), (2, 65, -1), (3, 234, 209), (4, 136, -1),
-                              (5, 67, -1), (6, 234, 180)):
+                              (5, 67, -1), (6, 234, 110)):
                 curses.init_pair(n, fg, bg)
             STYLE.update(accent=curses.color_pair(1), leaf=curses.color_pair(2),
                          chip=curses.color_pair(3) | curses.A_BOLD, ochre=curses.color_pair(4),
