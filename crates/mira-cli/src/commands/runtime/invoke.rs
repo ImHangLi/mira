@@ -253,7 +253,13 @@ pub fn start(
     })
 }
 
-pub fn exec(ctx: &Ctx, label: String, argv: Vec<String>, request_key: Option<String>) -> ExitCode {
+pub fn exec(
+    ctx: &Ctx,
+    label: String,
+    argv: Vec<String>,
+    request_key: Option<String>,
+    task: Option<String>,
+) -> ExitCode {
     block_on(async {
         let prepared = (|| Ok::<_, ErrorInfo>((parse_key(request_key)?, env()?)))();
         let (request_key, client_env) = match prepared {
@@ -268,6 +274,7 @@ pub fn exec(ctx: &Ctx, label: String, argv: Vec<String>, request_key: Option<Str
             label,
             argv,
             client_env,
+            requester: crate::requester::detect(task),
             request_key,
             foreground: true,
         };

@@ -173,6 +173,7 @@ impl Actor {
             },
             git: git_context(self.paths.root.as_path()),
             note: None,
+            requester: prep.requester.clone(),
             provenance: None,
         };
         let cap = self

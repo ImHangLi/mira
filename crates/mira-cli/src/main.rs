@@ -9,6 +9,7 @@ use mira_protocol::reply::ReplyContext;
 mod commands;
 mod human;
 mod output;
+mod requester;
 
 use output::Mode;
 
@@ -156,6 +157,9 @@ enum Command {
     Exec {
         #[arg(long)]
         label: String,
+        /// What your thread works on, in a few words; names your section in the TUI.
+        #[arg(long, value_name = "TEXT")]
+        task: Option<String>,
         #[arg(long, value_name = "KEY")]
         request_key: Option<String>,
         #[arg(last = true, required = true, value_name = "ARGV")]
@@ -502,7 +506,7 @@ enum StorageCommand {
 
 #[derive(Subcommand)]
 enum PluginCommand {
-    /// Add a default plugin (pomodoro, ports, snake) to this project, as ordinary files in
+    /// Add a default plugin (notes, system, pomodoro, snake) to this project, as ordinary files in
     /// .mira/plugins/NAME/. Without NAME, list the default plugins.
     Add {
         #[arg(value_name = "NAME")]
@@ -625,9 +629,10 @@ fn main() -> ExitCode {
         }
         Some(Command::Exec {
             label,
+            task,
             request_key,
             argv,
-        }) => commands::runtime::exec(&ctx, label, argv, request_key),
+        }) => commands::runtime::exec(&ctx, label, argv, request_key, task),
         Some(Command::Up { background, ttl }) => commands::runtime::up(&ctx, background, &ttl),
         Some(Command::Down { wait }) => commands::runtime::down(&ctx, wait),
         Some(Command::Runs {

@@ -1,0 +1,19 @@
+{
+  "api": 1,
+  "id": "system",
+  "name": "System",
+  "description": "A live system monitor: CPU, memory, disk, network, and the busiest processes.",
+  "tags": ["system", "cpu", "memory", "processes", "monitor"],
+  "actions": [
+    {
+      "id": "monitor",
+      "title": "System monitor",
+      "description": "Select to see CPU, memory, disk, network, and processes. Enter gives it the keys; Ctrl-T returns to tools.",
+      "mode": "process",
+      "terminal": "pty",
+      "show": "on_select",
+      "run": {"kind": "command", "argv": ["sh", "-c", "exec python3 \"$MIRA_PLUGIN_DIR/main.py\""]},
+      "effects": ["read-files"]
+    }
+  ]
+}

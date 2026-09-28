@@ -98,14 +98,14 @@ impl App {
             // One key back from anywhere; other keys that also go back stay in help only.
             for b in &mut v {
                 if matches!(b.cmd, Cmd::Focus | Cmd::Escape | Cmd::Detach)
-                    && matches!(b.label.as_str(), "tools" | "back" | "back to the tools")
+                    && matches!(b.label.as_str(), "tools" | "back" | "back to tools")
                 {
                     b.footer = false;
                 }
             }
-            v.insert(0, bind("F1", "tools", Cmd::Tools));
+            v.insert(0, bind("Ctrl-T", "back to tools", Cmd::Tools));
         } else {
-            v.insert(0, hidden("F1", "tools", Cmd::Tools));
+            v.insert(0, hidden("Ctrl-T", "back to tools", Cmd::Tools));
         }
         // When Enter already opens the logs, Tab says the same thing; keep one in the footer.
         if v.iter()
@@ -300,7 +300,11 @@ impl App {
             v.push(hidden("x", "remove plugin", Cmd::Remove));
         }
         if self.selected_item().is_some() {
-            v.push(hidden("[ ]", "previous or next tab", Cmd::NextTab));
+            if self.term.is_open() {
+                v.push(hidden("[ ]", "switch tab", Cmd::NextTab));
+            } else {
+                v.push(bind("[ ]", "switch tab", Cmd::NextTab));
+            }
             v.push(hidden(
                 "1 2 3",
                 "Logs, History, or Output tab",
@@ -311,7 +315,11 @@ impl App {
             } else {
                 "tools"
             };
-            v.push(bind("Tab", to, Cmd::Focus));
+            if self.term.is_open() {
+                v.push(hidden("Tab", "go to the program", Cmd::Focus));
+            } else {
+                v.push(bind("Tab", to, Cmd::Focus));
+            }
         }
         if self.focus == Focus::Logs
             && let Some(p) = pane
@@ -393,7 +401,7 @@ impl App {
                 }
             }
         }
-        v.push(hidden("[ ]", "previous or next tab", Cmd::NextTab));
+        v.push(bind("[ ]", "switch tab", Cmd::NextTab));
         v.push(hidden("1 2", "Logs or Details tab", Cmd::GoTab(0)));
         let to = if self.focus == Focus::List {
             "logs"
@@ -414,7 +422,7 @@ impl App {
     fn global_bindings(&self, v: &mut Vec<Binding>) {
         v.push(hidden(
             "Shift-Esc",
-            "back to the tools (also Ctrl-])",
+            "back to tools (also Ctrl-])",
             Cmd::Tools,
         ));
         if self.focus == Focus::List && !self.filter.is_empty() && self.selected_view().is_some() {

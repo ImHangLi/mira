@@ -208,6 +208,9 @@ pub struct ActionExecParams {
     pub label: String,
     pub argv: Vec<String>,
     pub client_env: ClientEnv,
+    /// The agent that asks, when the CLI recognized one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub requester: Option<crate::run::Requester>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",

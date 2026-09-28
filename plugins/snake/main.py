@@ -215,6 +215,8 @@ def main(screen):
             game = Game(board_size(screen))
         fits = draw(screen, game, best, warning)
         key = screen.getch()
+        if key == curses.KEY_RESIZE:
+            screen.clear()  # repaint every cell; a resized terminal may keep old text
         if key == ord("q"):
             return
         if key == ord("r") and game.over:

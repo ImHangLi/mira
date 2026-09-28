@@ -4,7 +4,7 @@
 //! One attach opens its own control connection (the input lock belongs to it, so closing it
 //! always releases the lock) and its own stream connection subscribed to `terminal` events
 //! for the run. While attached as the writer every key goes to the program, Esc and Ctrl-C
-//! included; F1, Shift-Esc, and Ctrl-] return to Mira. When another client holds the lock the screen is
+//! included; Ctrl-T, Shift-Esc, and Ctrl-] return to the tools. When another client holds the lock the screen is
 //! shown read-only. Scrollback is not part of this view: history is the run's log panel in
 //! Mira, and scrolling it never sends anything to the program.
 
@@ -151,6 +151,22 @@ impl Terminals {
         self.attach.as_ref().map(|a| &a.run_id)
     }
 
+    /// Something the person should know about the shown program, for the panel title. Short
+    /// steps such as connecting or taking input are not shown: they pass before a frame.
+    pub fn note(&self) -> Option<String> {
+        let a = self.attach.as_ref()?;
+        if a.snapshot.as_ref().is_some_and(|s| s.exited) {
+            return Some("exited".into());
+        }
+        if let Some(e) = &a.error {
+            return Some(e.clone());
+        }
+        match &a.ownership {
+            Ownership::ReadOnly(why) => Some(format!("read-only: {why}")),
+            _ => None,
+        }
+    }
+
     /// Sends keys to the shown program.
     pub fn focus(&mut self) {
         if let Some(a) = self.attach.as_mut() {
@@ -291,7 +307,7 @@ impl Terminals {
             if !exited && matches!(a.ownership, Ownership::ReadOnly(_)) {
                 v.push(bind("a", "take input", Cmd::Attach));
             }
-            v.push(bind("Esc/q", "back to the tools", Cmd::Detach));
+            v.push(bind("Esc/q", "back to tools", Cmd::Detach));
         }
         Some(v)
     }
@@ -448,42 +464,10 @@ pub fn draw(f: &mut Frame, term: &mut Terminals, area: Rect, use_color: bool) {
     let Some(a) = term.attach.as_mut() else {
         return;
     };
-    // A line above the screen only when something needs saying; the panel title and the
-    // footer carry the normal state and keys.
-    let exited = a.snapshot.as_ref().is_some_and(|s| s.exited);
-    let mut note = if exited {
-        Some("The program exited. This is its last screen.".to_owned())
-    } else {
-        match (&a.ownership, a.focused) {
-            (Ownership::Connecting, _) => Some("Connecting...".to_owned()),
-            (Ownership::Viewer, true) => Some("Taking input...".to_owned()),
-            (Ownership::ReadOnly(why), _) => Some(format!("Read-only: {why}. Enter tries again.")),
-            _ => None,
-        }
-    };
-    if let Some(e) = &a.error {
-        note = Some(match note {
-            Some(n) => format!("{n} {e}"),
-            None => e.clone(),
-        });
-    }
-    let screen = match note {
-        Some(n) => {
-            f.render_widget(
-                Paragraph::new(Line::from(Span::styled(
-                    n,
-                    Style::default().add_modifier(Modifier::DIM),
-                ))),
-                Rect { height: 1, ..area },
-            );
-            Rect {
-                y: area.y + 1,
-                height: area.height.saturating_sub(1),
-                ..area
-            }
-        }
-        None => area,
-    };
+    // The program keeps the whole area, so taking or releasing input never moves or resizes
+    // it (a note row would shift the screen and resize the program twice). Notes go in the
+    // panel title; see `Terminals::note`.
+    let screen = area;
     a.want = Some((
         screen.width.clamp(1, MAX_TERMINAL_COLS),
         screen.height.clamp(1, MAX_TERMINAL_ROWS),
@@ -512,7 +496,7 @@ pub fn draw(f: &mut Frame, term: &mut Terminals, area: Rect, use_color: bool) {
         })
         .collect();
     f.render_widget(Paragraph::new(lines), screen);
-    let writer = a.ownership == Ownership::Writer && !exited;
+    let writer = a.ownership == Ownership::Writer && !s.exited;
     if writer && s.cursor.visible && s.cursor.row < screen.height && s.cursor.col < screen.width {
         f.set_cursor_position((screen.x + s.cursor.col, screen.y + s.cursor.row));
     }

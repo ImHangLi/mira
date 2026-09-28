@@ -1,6 +1,7 @@
 //! The tool sidebar: one-off runs, then actions and views grouped by plugin.
 
 use std::borrow::Cow;
+use std::collections::HashMap;
 
 use mira_protocol::clock;
 use ratatui::Frame;
@@ -80,6 +81,7 @@ pub(super) fn draw_sidebar(f: &mut Frame, app: &mut App, t: &Theme, area: Rect) 
         )));
     }
     let mut sel_row = 0usize;
+    let agents = agent_titles(app);
     let mut last_group: Option<String> = None;
     for (vi, &entry) in app.visible.iter().enumerate() {
         let (group, title, glyph, gstyle, flag) = match entry {
@@ -111,7 +113,7 @@ pub(super) fn draw_sidebar(f: &mut Frame, app: &mut App, t: &Theme, area: Rect) 
                 let o = &app.oneoffs[i];
                 let m = oneoff_mark(o);
                 (
-                    "ONE-OFF RUNS".to_owned(),
+                    agents.get(o.group()).cloned().unwrap_or_default(),
                     Cow::Owned(o.title()),
                     m.glyph,
                     m.style(t),
@@ -123,10 +125,17 @@ pub(super) fn draw_sidebar(f: &mut Frame, app: &mut App, t: &Theme, area: Rect) 
             if last_group.is_some() {
                 rows.push(Line::from(""));
             }
-            rows.push(Line::from(Span::styled(
-                format!(" {}", ellipsize(&group, w.saturating_sub(2))),
+            // A one-off section title: the agent in the accent, then its task and count muted.
+            let (name, rest) = group.split_once(MUTED).unwrap_or((&group, ""));
+            let mut header = vec![Span::styled(
+                format!(" {}", ellipsize(name, w.saturating_sub(2))),
                 t.word(Tone::AccentDeep).add_modifier(Modifier::BOLD),
-            )));
+            )];
+            let room = w.saturating_sub(cells(name) + 2);
+            if !rest.is_empty() && room > 4 {
+                header.push(Span::styled(ellipsize(rest, room), t.muted()));
+            }
+            rows.push(Line::from(header));
             last_group = Some(group);
         }
         let selected = vi == app.selected;
@@ -189,4 +198,42 @@ pub(super) fn draw_sidebar(f: &mut Frame, app: &mut App, t: &Theme, area: Rect) 
     app.list_offset = app.list_offset.min(rows.len().saturating_sub(1));
     let visible: Vec<Line> = rows.into_iter().skip(app.list_offset).take(h).collect();
     f.render_widget(Paragraph::new(visible), inner);
+}
+
+/// Separates a one-off section's agent name from the muted rest of its title.
+const MUTED: char = '\u{1f}';
+
+/// Section titles for one-off runs: one per agent thread, `YOU` for runs people start. A
+/// thread's title adds its task (`CLAUDE CODE · fix login`); two threads of the same agent
+/// without a task are numbered in list order (`CLAUDE CODE · 2`). A section that hides
+/// finished runs says how many.
+fn agent_titles(app: &App) -> HashMap<String, String> {
+    let mut titles: HashMap<String, String> = HashMap::new();
+    let mut seen: HashMap<String, usize> = HashMap::new();
+    for o in &app.oneoffs {
+        if titles.contains_key(o.group()) {
+            continue;
+        }
+        // The list is newest first, so this run carries the thread's latest task.
+        let (name, task) = o.requester.as_ref().map_or(("YOU".to_owned(), None), |r| {
+            (r.name.to_uppercase(), r.task.clone())
+        });
+        let n = seen.entry(name.clone()).or_default();
+        *n += 1;
+        let mut rest = match task {
+            Some(task) => format!(" · {task}"),
+            None if *n > 1 => format!(" · {n}"),
+            None => String::new(),
+        };
+        if let Some(h) = app.oneoff_hidden.get(o.group()) {
+            rest.push_str(&format!("  +{h} earlier"));
+        }
+        let title = if rest.is_empty() {
+            name
+        } else {
+            format!("{name}{MUTED}{rest}")
+        };
+        titles.insert(o.group().to_owned(), title);
+    }
+    titles
 }

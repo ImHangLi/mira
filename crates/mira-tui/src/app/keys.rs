@@ -14,7 +14,9 @@ impl App {
             return;
         }
         let ctrl = k.modifiers.contains(KeyModifiers::CONTROL);
-        if k.code == KeyCode::F(1)
+        // Back to the tools from anywhere. Ctrl-T ("tools") is easy to type; function keys
+        // are avoided because many people use them for dictation.
+        if (ctrl && k.code == KeyCode::Char('t'))
             || (k.code == KeyCode::Esc && k.modifiers.contains(KeyModifiers::SHIFT))
             || (ctrl && matches!(k.code, KeyCode::Char(']') | KeyCode::Char('5')))
         {

@@ -25,7 +25,7 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset=".github/assets/mira-demo-dark.gif">
-    <img src=".github/assets/mira-demo-light.gif" alt="Mira on a Next.js app. The dev server runs and its log streams. The unit tests pass. An agent's check appears under ONE-OFF RUNS. A live view shows only the server's errors. A system monitor shows CPU, memory, and disk. Selecting Pomodoro opens its timer page, and the timer starts." width="100%">
+    <img src=".github/assets/mira-demo-light.gif" alt="Mira on a Next.js app. The dev server's log streams. An agent's check appears in its own section, CLAUDE CODE · Fix sign-in. Selecting Notes shows the rendered notes; a task is checked off in the editor and the page updates. The system monitor shows CPU per core, memory, network, and processes. Pomodoro starts a focus timer, and a short game of Snake plays." width="100%">
   </picture>
 </p>
 
@@ -57,7 +57,7 @@ Mira is one native binary. It runs no AI, sends nothing, and makes no network ca
 |---|---|---|
 | Your commands | Spread over tabs and shell history | One list of tools: Enter runs a tool, `s` starts or stops it |
 | Logs | Scroll and grep by hand | Live logs per tool, and filtered views such as "only errors" |
-| Your agent's runs | Hidden in its own terminal | Shown in your view as they run, with the same logs |
+| Your agent's runs | Hidden in its own terminal | Shown in your view as they run, one section per agent |
 | A command worth keeping | Found again every session | Saved once as a plugin, reused by you and every agent |
 | Sharing a tool | Write a wiki page | Commit a plugin folder, or send a prompt that rebuilds it |
 
@@ -66,7 +66,7 @@ Mira is one native binary. It runs no AI, sends nothing, and makes no network ca
 - **One place for everything you run.** Dev servers, tests, checks, `top`, a Docker log with only the errors. Services keep running while you look at other tools.
 - **Built entirely from plugins.** A plugin is a folder with a `plugin.json`. A log filter is six lines of JSON. A dev server is one command. A timer, a table, or a whole terminal program is a plugin too.
 - **Your agent sees what you see, natively.** Agents use the same `mira` CLI with `--json`. No MCP server, no extra protocol. Their runs show up in your view while they happen.
-- **Programs live inside Mira.** Select Pomodoro, Snake, or `top` and its screen opens in the main pane. Press Enter to type into it and **F1** to go back to your tools.
+- **Programs live inside Mira.** Select Pomodoro, Snake, or the system monitor and its screen opens in the main pane. Press Enter to type into it and **Ctrl-T** to go back to your tools.
 - **Not only for code.** A focus timer, a scheduled check, a morning update: anything you run in a terminal.
 
 ## How it works
@@ -148,12 +148,13 @@ The [guide](docs/guide.md) covers every kind of plugin: tables, schedules, termi
 
 ## Default plugins
 
-Mira ships three plugins that work in any project. Add one with `mira plugin add NAME`, or press `+` in the TUI.
+Mira ships four plugins that work in any project. Add one with `mira plugin add NAME`, or press `+` in the TUI.
 
 | Plugin | What it does |
 |---|---|
+| `notes` | A Markdown notes page. Edit it in place, or let your agent edit `.mira/plugins/notes/notes.md` and watch it update. |
+| `system` | A live system monitor: CPU per core, memory, disk, network, and the busiest processes. |
 | `pomodoro` | A focus timer with breaks and a daily count. It notifies you when a session ends. |
-| `ports` | *Who's on 3000?* Lists the processes that listen on a port, and stops one after you confirm. |
 | `snake` | A game of Snake, for the build that takes too long. |
 
 Each one becomes ordinary files in `.mira/plugins/NAME/`. Read them, change them, or remove them with `x`.
@@ -165,9 +166,9 @@ Each one becomes ordinary files in `.mira/plugins/NAME/`. Read them, change them
 | `j` / `k` | Move through the tools |
 | `Enter` | Run a task, start a service, open a view, or type into a program |
 | `s` | Start or stop the selected tool |
-| **`F1`** | Back to the tools from anywhere (also `Shift-Esc` and `Ctrl-]`) |
+| **`Ctrl-T`** | Back to the tools from anywhere (also `Shift-Esc` and `Ctrl-]`) |
 | `/` | Search the tools |
-| `:` | Run a `mira` command, for example `:plugin add ports` |
+| `:` | Run a `mira` command, for example `:plugin add system` |
 | `?` | Show every key that works here |
 
 The footer shows the keys for what you have selected, most useful first.

@@ -168,15 +168,23 @@ impl App {
                 }
                 None => {
                     let _ = self.io.read.send(Read::RunGet(r.run_id.clone()));
-                    self.oneoffs
-                        .push(OneOff::new(r.run_id, r.lifecycle, r.started_at));
+                    let mut o = OneOff::new(r.run_id, r.lifecycle, r.started_at);
+                    o.requester = r.requester;
+                    self.oneoffs.push(o);
                     changed = true;
                 }
             }
         }
         if changed {
-            keep_oneoffs(&mut self.oneoffs);
+            self.keep_oneoffs();
             self.relist(keep);
+        }
+    }
+
+    /// Trims the one-off runs; a dropped run is gone, so its group's hidden count grows.
+    fn keep_oneoffs(&mut self) {
+        for (group, n) in keep_oneoffs(&mut self.oneoffs) {
+            *self.oneoff_hidden.entry(group).or_default() += n;
         }
     }
 
@@ -205,7 +213,7 @@ impl App {
         let mut o = OneOff::new(rec.run_id.clone(), rec.lifecycle, rec.started_at);
         o.apply(rec);
         self.oneoffs.push(o);
-        keep_oneoffs(&mut self.oneoffs);
+        self.keep_oneoffs();
         self.relist(keep);
     }
 

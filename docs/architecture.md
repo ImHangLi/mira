@@ -99,7 +99,7 @@ The UI never waits on IPC. Requests go to worker tasks, and their results come b
 | `crates/` | The five crates above. |
 | `schemas/` | JSON Schemas generated from `mira-protocol`. `scripts/check-contract.sh` fails when they drift. |
 | `skills/` | The agent skills that `mira skills export` copies: `mira` (use tools) and `mira-extend` (write plugins). |
-| `plugins/` | The default plugins that `mira plugin add NAME` copies into a project: `pomodoro`, `ports`, and `snake`. Built into the binary like the skills. |
+| `plugins/` | The default plugins that `mira plugin add NAME` copies into a project: `notes`, `system`, `pomodoro`, and `snake`. Built into the binary like the skills. |
 | `examples/plugins/` | A workspace of example plugins: a command with inputs, a table with a row action, a service, a derived log view, and a routine. |
 | `tests/fixtures/` | The workspace the tests run on, and invalid manifests the validator must reject. |
 | `scripts/` | The installer, the release packager, and the contract check. |

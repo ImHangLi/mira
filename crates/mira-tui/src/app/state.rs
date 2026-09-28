@@ -1,5 +1,6 @@
 //! Presentation state types: list entries, one-off runs, tabs, focus, modals, and notices.
 
+use std::collections::HashMap;
 use std::time::Instant;
 
 use mira_protocol::ids::{ActionId, ActionRef, Digest, ItemRef, RunId, ViewRef};
@@ -12,7 +13,7 @@ use crate::form::Form;
 use crate::logs::LogPane;
 
 /// One-off (`mira exec`) runs listed besides the ones still running.
-const ONEOFF_KEEP: usize = 10;
+const ONEOFF_KEEP: usize = 5;
 
 pub struct Item {
     pub action_ref: ActionRef,
@@ -67,6 +68,8 @@ pub struct OneOff {
     pub exit: Option<ExitInfo>,
     pub cleanup: Option<CleanupState>,
     pub source: Option<mira_protocol::run::RunSource>,
+    /// The agent that asked for the run; `None` for a person.
+    pub requester: Option<mira_protocol::run::Requester>,
     /// A stop was sent and not answered yet.
     pub stopping: bool,
     /// The log panel, made when the run is first selected.
@@ -84,6 +87,7 @@ impl OneOff {
             exit: None,
             cleanup: None,
             source: None,
+            requester: None,
             stopping: false,
             pane: None,
         }
@@ -104,22 +108,49 @@ impl OneOff {
         self.exit = rec.exit.clone();
         self.cleanup = Some(rec.cleanup.clone());
         self.source = Some(rec.source);
+        self.requester = rec.requester.clone();
+    }
+
+    /// Runs of one agent instance share a group; runs people start share `you`.
+    pub fn group(&self) -> &str {
+        self.requester.as_ref().map_or("you", |r| r.id.as_str())
     }
 }
 
-/// Orders one-off runs newest first and keeps the newest [`ONEOFF_KEEP`] plus every run
-/// that is still active.
-pub fn keep_oneoffs(list: &mut Vec<OneOff>) {
+/// Orders one-off runs by group (the group with the newest run first), newest first within
+/// a group, and keeps every active run plus the newest [`ONEOFF_KEEP`] finished runs of each
+/// group. Returns how many finished runs each group hides.
+pub fn keep_oneoffs(list: &mut Vec<OneOff>) -> HashMap<String, usize> {
+    let mut newest: HashMap<String, Timestamp> = HashMap::new();
+    for o in list.iter() {
+        let e = newest.entry(o.group().to_owned()).or_insert(o.started_at);
+        if o.started_at > *e {
+            *e = o.started_at;
+        }
+    }
     list.sort_by(|a, b| {
-        b.started_at
-            .cmp(&a.started_at)
+        let (ga, gb) = (&newest[a.group()], &newest[b.group()]);
+        gb.cmp(ga)
+            .then_with(|| a.group().cmp(b.group()))
+            .then_with(|| b.started_at.cmp(&a.started_at))
             .then_with(|| b.run_id.cmp(&a.run_id))
     });
-    let mut n = 0;
+    let mut shown: HashMap<String, usize> = HashMap::new();
+    let mut hidden: HashMap<String, usize> = HashMap::new();
     list.retain(|o| {
-        n += 1;
-        n <= ONEOFF_KEEP || o.lifecycle.is_active()
+        if o.lifecycle.is_active() {
+            return true;
+        }
+        let n = shown.entry(o.group().to_owned()).or_default();
+        *n += 1;
+        if *n <= ONEOFF_KEEP {
+            true
+        } else {
+            *hidden.entry(o.group().to_owned()).or_default() += 1;
+            false
+        }
     });
+    hidden
 }
 
 pub enum Inputs {

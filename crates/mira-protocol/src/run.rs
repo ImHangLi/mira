@@ -158,6 +158,45 @@ pub struct GitContext {
     pub branch: Option<String>,
 }
 
+/// Who asked for a one-off run: an agent the CLI recognized, or a name it gave with
+/// `MIRA_AGENT`. `id` groups the runs of one agent instance (a session or a process); it is a
+/// short hash, never an environment value.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct Requester {
+    pub name: String,
+    pub id: String,
+    /// What the agent's thread works on, in a few words (`mira exec --task`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub task: Option<String>,
+}
+
+impl Requester {
+    /// A name of 1-48 characters without control characters, an ID of 1-32 of `[a-z0-9-]`,
+    /// and a task of 1-60 characters without control characters.
+    pub fn check(&self) -> Result<(), &'static str> {
+        let name_ok = !self.name.trim().is_empty()
+            && self.name.chars().count() <= 48
+            && !self.name.chars().any(char::is_control);
+        let id_ok = !self.id.is_empty()
+            && self.id.len() <= 32
+            && self
+                .id
+                .bytes()
+                .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-');
+        let task_ok = self.task.as_ref().is_none_or(|t| {
+            !t.trim().is_empty() && t.chars().count() <= 60 && !t.chars().any(char::is_control)
+        });
+        if name_ok && id_ok && task_ok {
+            Ok(())
+        } else {
+            Err(
+                "requester: name must be 1-48 characters and task 1-60, without control characters; id 1-32 of [a-z0-9-]",
+            )
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct RunRecord {
@@ -187,6 +226,9 @@ pub struct RunRecord {
     /// never stored; absent only in stored records.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub provenance: Option<RunProvenance>,
+    /// The agent that asked for a one-off run, when known.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub requester: Option<Requester>,
 }
 
 /// Read-time provenance of a run: a success only proves that one execution, and a
@@ -209,6 +251,9 @@ pub struct RunProvenance {
 #[serde(deny_unknown_fields)]
 pub struct RunSummary {
     pub run_id: RunId,
+    /// The agent that asked for a one-off run, when known.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub requester: Option<Requester>,
     pub action_ref: Option<ActionRef>,
     pub lifecycle: Lifecycle,
     pub reported_health: ReportedHealth,
@@ -220,6 +265,7 @@ impl From<&RunRecord> for RunSummary {
     fn from(r: &RunRecord) -> Self {
         Self {
             run_id: r.run_id.clone(),
+            requester: r.requester.clone(),
             action_ref: r.action_ref.clone(),
             lifecycle: r.lifecycle,
             reported_health: r.reported_health.clone(),
