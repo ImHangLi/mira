@@ -117,6 +117,17 @@
         },
         "request_key": {
           "$ref": "#/$defs/RequestKey"
+        },
+        "requester": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Requester"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The agent that asks, when the CLI recognized one."
         }
       },
       "required": [
@@ -1653,6 +1664,30 @@
       "pattern": "^[^\\u0000]{1,128}$",
       "type": "string"
     },
+    "Requester": {
+      "additionalProperties": false,
+      "description": "Who asked for a one-off run: an agent the CLI recognized, or a name it gave with\n`MIRA_AGENT`. `id` groups the runs of one agent instance (a session or a process); it is a\nshort hash, never an environment value.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "task": {
+          "description": "What the agent's thread works on, in a few words (`mira exec --task`).",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "name",
+        "id"
+      ],
+      "type": "object"
+    },
     "Row": {
       "additionalProperties": false,
       "properties": {
@@ -1976,6 +2011,17 @@
         "reported_health": {
           "$ref": "#/$defs/ReportedHealth"
         },
+        "requester": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Requester"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The agent that asked for a one-off run, when known."
+        },
         "result": {
           "anyOf": [
             {
@@ -2118,6 +2164,17 @@
         },
         "reported_health": {
           "$ref": "#/$defs/ReportedHealth"
+        },
+        "requester": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Requester"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The agent that asked for a one-off run, when known."
         },
         "run_id": {
           "$ref": "#/$defs/RunId"
