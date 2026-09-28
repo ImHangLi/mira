@@ -30,24 +30,29 @@ fn home() -> PathBuf {
         .unwrap_or_else(|| PathBuf::from("/"))
 }
 
+/// Per-user state, logs, and cache bases, independent of a workspace.
+pub fn user_bases() -> (PathBuf, PathBuf, PathBuf) {
+    match std::env::var_os("MIRA_DATA_HOME") {
+        Some(d) => {
+            let d = PathBuf::from(d);
+            (d.join("state"), d.join("logs"), d.join("cache"))
+        }
+        None => {
+            let lib = home().join("Library");
+            (
+                lib.join("Application Support/Mira"),
+                lib.join("Logs/Mira"),
+                lib.join("Caches/Mira"),
+            )
+        }
+    }
+}
+
 impl WorkspacePaths {
     pub fn new(root: AbsolutePath) -> Self {
         let id = WorkspaceId::for_root(&root);
         let wid = id.as_str();
-        let (state_base, logs_base, cache_base) = match std::env::var_os("MIRA_DATA_HOME") {
-            Some(d) => {
-                let d = PathBuf::from(d);
-                (d.join("state"), d.join("logs"), d.join("cache"))
-            }
-            None => {
-                let lib = home().join("Library");
-                (
-                    lib.join("Application Support/Mira"),
-                    lib.join("Logs/Mira"),
-                    lib.join("Caches/Mira"),
-                )
-            }
-        };
+        let (state_base, logs_base, cache_base) = user_bases();
         let runtime_dir = std::env::var_os("MIRA_RUNTIME_DIR")
             .map(PathBuf::from)
             .unwrap_or_else(|| PathBuf::from(format!("/tmp/mira-{}", current_uid())));

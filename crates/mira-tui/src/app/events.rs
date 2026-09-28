@@ -14,6 +14,10 @@ impl App {
         // A busy event stream can starve the idle tick; its checks are rate-limited.
         self.tick();
         match ev {
+            Event::LatestVersion(latest) => {
+                self.update_available =
+                    mira_protocol::update::newer(&latest, mira_protocol::VERSION).then_some(latest);
+            }
             Event::Input(crossterm::event::Event::Key(k)) => self.key(k),
             Event::Input(crossterm::event::Event::Paste(t)) => {
                 if self.term.is_focused() {

@@ -45,7 +45,9 @@ Then pick one:
   mira
   ```
 
-Mira is one native binary. It runs no AI, sends nothing, and makes no network calls.
+Mira is one native binary. It runs no AI and sends nothing about your projects. Its only automatic network call is a once-a-day check for a new version. Turn it off with `MIRA_NO_UPDATE_CHECK=1`.
+
+Update with `mira update`. Restore the previous binary with `mira update --rollback`.
 
 ## Why Mira
 

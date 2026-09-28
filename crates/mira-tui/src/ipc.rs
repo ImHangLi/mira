@@ -97,6 +97,7 @@ pub struct LogChunk {
 }
 
 pub enum Event {
+    LatestVersion(String),
     Input(crossterm::event::Event),
     Frame(Box<StreamFrame>),
     StreamReset,

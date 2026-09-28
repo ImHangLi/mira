@@ -16,6 +16,7 @@ mod term;
 mod terminal;
 mod theme;
 mod ui;
+mod update;
 mod views;
 
 use std::time::{Duration, Instant};
@@ -119,6 +120,7 @@ async fn serve(
     ));
     tokio::spawn(ipc::stream_worker(paths.clone(), stream, tx.clone()));
     tokio::spawn(signals(tx.clone()));
+    update::start(tx.clone());
 
     let mut app = App::new(
         paths.root.to_string(),

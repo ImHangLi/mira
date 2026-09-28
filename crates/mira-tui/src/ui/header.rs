@@ -75,7 +75,27 @@ fn session_spans(app: &App, t: &Theme) -> Vec<Span<'static>> {
 
 pub(super) fn draw_header(f: &mut Frame, app: &App, t: &Theme, area: Rect) {
     let w = area.width as usize;
-    let right = session_spans(app, t);
+    let mut right = session_spans(app, t);
+    if let Some(latest) = &app.update_available {
+        let notice = vec![
+            Span::styled(" · ", t.muted()),
+            Span::styled(latest.clone(), t.word(Tone::Accent)),
+            Span::styled(" available · mira update", t.muted()),
+        ];
+        // Keep room for the workspace and branch; omit the notice before other fields.
+        let name = app.workspace_name.as_deref().unwrap_or(&app.root);
+        let left = 10
+            + cells(name).min(32)
+            + app
+                .branch
+                .as_deref()
+                .map_or(0, |b| cells(b).min(BRANCH_MAX) + 4)
+            + cells(&short_root(&app.root, 40))
+            + 2;
+        if left + line_cells(&right) + line_cells(&notice) < w {
+            right.extend(notice);
+        }
+    }
     let rw = line_cells(&right) + 1;
     let brand = " ◆ mira";
     let root = app.root.trim_end_matches('/');

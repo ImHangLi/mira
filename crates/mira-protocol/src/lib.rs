@@ -22,6 +22,7 @@ pub mod schemas;
 pub mod strict_json;
 pub mod template;
 pub mod time;
+pub mod update;
 pub mod view;
 pub mod workspace;
 
