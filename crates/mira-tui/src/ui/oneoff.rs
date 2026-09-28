@@ -187,13 +187,13 @@ fn oneoff_details(app: &App, t: &Theme, o: &OneOff, w: usize) -> Vec<Line<'stati
     lines
 }
 
-/// Who asked for the run: the agent's name and its task, or `you`.
+/// Who asked for the run: the agent's name and its task, or `You`.
 fn by(o: &OneOff) -> String {
     match &o.requester {
         Some(r) => match &r.task {
             Some(task) => format!("{} · {task}", r.name),
             None => r.name.clone(),
         },
-        None => "you".to_owned(),
+        None => "an agent or person (not recorded before Mira 0.14)".to_owned(),
     }
 }

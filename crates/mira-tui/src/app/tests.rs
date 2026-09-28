@@ -272,7 +272,7 @@ fn one_off_runs_keep_the_newest_five_and_every_running_one() {
         old.started_at,
     ));
     let hidden = keep_oneoffs(&mut list);
-    assert_eq!(hidden.get("you"), Some(&7));
+    assert_eq!(hidden.get("earlier"), Some(&7));
     let starts: Vec<i64> = list.iter().map(|o| o.started_at.unix_ms()).collect();
     let mut want: Vec<i64> = (7..12).rev().map(|n| 1_000 + n).collect();
     want.push(10);

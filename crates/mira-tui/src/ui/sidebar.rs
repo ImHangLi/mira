@@ -203,7 +203,8 @@ pub(super) fn draw_sidebar(f: &mut Frame, app: &mut App, t: &Theme, area: Rect) 
 /// Separates a one-off section's agent name from the muted rest of its title.
 const MUTED: char = '\u{1f}';
 
-/// Section titles for one-off runs: one per agent thread, `YOU` for runs people start. A
+/// Section titles for one-off runs: one per agent thread, `YOU` for runs people start, and
+/// `EARLIER RUNS` for runs recorded before Mira 0.14, which do not say who started them. A
 /// thread's title adds its task (`CLAUDE CODE · fix login`); two threads of the same agent
 /// without a task are numbered in list order (`CLAUDE CODE · 2`). A section that hides
 /// finished runs says how many.
@@ -215,9 +216,12 @@ fn agent_titles(app: &App) -> HashMap<String, String> {
             continue;
         }
         // The list is newest first, so this run carries the thread's latest task.
-        let (name, task) = o.requester.as_ref().map_or(("YOU".to_owned(), None), |r| {
-            (r.name.to_uppercase(), r.task.clone())
-        });
+        let (name, task) = o
+            .requester
+            .as_ref()
+            .map_or(("EARLIER RUNS".to_owned(), None), |r| {
+                (r.name.to_uppercase(), r.task.clone())
+            });
         let n = seen.entry(name.clone()).or_default();
         *n += 1;
         let mut rest = match task {
