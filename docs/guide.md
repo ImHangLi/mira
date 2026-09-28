@@ -28,7 +28,9 @@ Open a new terminal, go to your project, and run `mira`. Without a `.mira/` fold
 
 `Shift+Esc` also returns to tools in terminals that support the enhanced keyboard protocol. `Ctrl-]` works too. Plain Esc and Tab stay available to the program while you type into it.
 
-A service starts when you start it. App pages can opt into `show: "on_select"`: selecting one opens its default screen, without giving it the keys. Notes, System, Pomodoro, and Snake use this option. Servers keep explicit start. A process keeps running while you look at other tools. It stops when you press `s`, or when you close the last Mira window (unless you pressed `b`). After a stop or exit, select the page again or press Enter to open it again.
+A service starts when you start it. It keeps running while you look at other tools. It stops when you press `s`, or when you close the last Mira window (unless you pressed `b`).
+
+An app page (`show: "on_select"`) is a program that is simply there, such as Notes, System, Pomodoro, and Snake. Its row shows `▣` and no run state or time, and it has no start or stop key. Selecting it opens its screen, without giving it the keys. It keeps running while you look at other tools, so a timer keeps counting. Press `r` to reload it. After it exits, select it again or press Enter to open it again.
 
 ## Update
 

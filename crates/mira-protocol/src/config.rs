@@ -296,7 +296,10 @@ impl ConfigSet {
                     tags: p.tags.clone(),
                     enabled: p.enabled,
                     definition_hash: a.definition_hash.clone(),
-                    item: CatalogItemKind::Action { mode: a.mode },
+                    item: CatalogItemKind::Action {
+                        mode: a.mode,
+                        show: a.show,
+                    },
                 });
             }
             for v in &p.views {

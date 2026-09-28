@@ -169,7 +169,7 @@ pub fn catalog(ctx: &Ctx, args: CatalogArgs) -> ExitCode {
                         .iter()
                         .map(|i| {
                             let kind = match &i.item {
-                                CatalogItemKind::Action { mode } => mode_text(*mode).to_owned(),
+                                CatalogItemKind::Action { mode, .. } => mode_text(*mode).to_owned(),
                                 CatalogItemKind::View { view_kind } => {
                                     format!("{} view", words(view_kind))
                                 }

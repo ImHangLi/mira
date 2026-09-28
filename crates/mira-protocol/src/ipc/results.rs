@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::ids::*;
 use crate::manifest::{
-    ActionMode, JsonObject, Persistence, TerminalMode, TimeoutWire, ViewKind, present,
+    ActionMode, JsonObject, Persistence, ShowPolicy, TerminalMode, TimeoutWire, ViewKind, present,
 };
 use crate::mpp::ArtifactOwnership;
 use crate::reply::WorkspaceRef;
@@ -100,7 +100,7 @@ pub struct StatusData {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum CatalogItemKind {
-    Action { mode: ActionMode },
+    Action { mode: ActionMode, show: ShowPolicy },
     View { view_kind: ViewKind },
 }
 
@@ -140,7 +140,7 @@ pub struct ActionDescription {
     pub mode: ActionMode,
     pub runner: String,
     pub terminal: TerminalMode,
-    pub show: crate::manifest::ShowPolicy,
+    pub show: ShowPolicy,
     pub timeout: TimeoutWire,
     pub cwd: String,
     /// Names only; values are never described.

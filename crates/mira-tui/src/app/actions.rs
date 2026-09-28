@@ -43,9 +43,10 @@ impl App {
         }
     }
 
-    /// The `s` action: start/run when idle, stop when active; `None` while stopping.
+    /// The `s` action: start/run when idle, stop when active; `None` while stopping. An app
+    /// page has no `s`: selecting it opens it, and `r` reloads it.
     pub(super) fn toggle_intent(&self, item: &Item) -> Option<Intent> {
-        if !self.can_act(item) {
+        if !self.can_act(item) || item.is_page() {
             return None;
         }
         match self.active.get(&item.action_ref) {
@@ -61,6 +62,7 @@ impl App {
         }
         match self.active.get(&item.action_ref) {
             Some(r) => !matches!(r.lifecycle, Lifecycle::Stopping { .. }),
+            None if item.is_page() => true,
             None => item.mode == ActionMode::Task && self.last.contains_key(&item.action_ref),
         }
     }
@@ -210,7 +212,7 @@ impl App {
         let key = (a.clone(), item.definition_hash.clone());
         if self.auto_opened.as_ref() == Some(&key)
             || !self.can_act(item)
-            || !self.term.opens_on_select(&a)
+            || !item.is_page()
             || self.inputs.get(&a).is_none_or(|(hash, input)| {
                 *hash != item.definition_hash
                     || matches!(input, Inputs::Loading | Inputs::Unknown(_))

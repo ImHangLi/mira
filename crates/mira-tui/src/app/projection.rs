@@ -40,12 +40,13 @@ impl App {
                 order.push(p);
             }
             match i.item {
-                CatalogItemKind::Action { mode } => self.items.push(Item {
+                CatalogItemKind::Action { mode, show } => self.items.push(Item {
                     action_ref: i.item_ref.as_action(),
                     title: i.title,
                     description: i.description,
                     tags: i.tags,
                     mode,
+                    show,
                     enabled: i.enabled,
                     definition_hash: i.definition_hash,
                 }),

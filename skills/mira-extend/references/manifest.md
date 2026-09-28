@@ -46,7 +46,7 @@ The child receives `MIRA_WORKSPACE_ROOT`, `MIRA_PLUGIN_DIR`, `MIRA_STATE_DIR`, `
 
 Use `"show": "on_select"` for an app page, such as a timer or game, whose initial screen is safe to open without input. The TUI starts it through the host when selected in an active session. It reuses an existing run and leaves the keys with Mira. Enter takes the input lock; Ctrl-T returns to tools and releases it. An idle screen is fitted to the pane with a temporary input lock. If another client holds the lock, that client's size stays in use.
 
-The program keeps running when another tool is selected. It stops with the session or an explicit stop. An exit, stop, or failed start is not retried while the same tool remains selected; select it again or start it explicitly to retry. Searching does not start intermediate matches. Opening a page uses the schema's defaults and never opens an input form.
+The TUI shows the page without run state or time, and without a start or stop key; `r` reloads it. The program keeps running when another tool is selected. It stops with the session or an explicit `mira stop`. An exit, stop, or failed start is not retried while the same tool remains selected; select it again, press Enter, or press `r` to retry. Searching does not start intermediate matches. Opening a page uses the schema's defaults and never opens an input form.
 
 Keep `on_run` for servers, shells, and commands with startup effects that require an explicit start. The host and CLI do not act on `show`; the TUI applies it to its selected page, including after a catalog reload.
 
