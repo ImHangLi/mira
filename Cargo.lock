@@ -934,7 +934,7 @@ dependencies = [
 
 [[package]]
 name = "mira-cli"
-version = "0.16.0"
+version = "0.17.0"
 dependencies = [
  "clap",
  "mira-client",
@@ -948,7 +948,7 @@ dependencies = [
 
 [[package]]
 name = "mira-client"
-version = "0.16.0"
+version = "0.17.0"
 dependencies = [
  "mira-protocol",
  "serde",
@@ -959,7 +959,7 @@ dependencies = [
 
 [[package]]
 name = "mira-host"
-version = "0.16.0"
+version = "0.17.0"
 dependencies = [
  "base64",
  "dotenvy",
@@ -982,7 +982,7 @@ dependencies = [
 
 [[package]]
 name = "mira-protocol"
-version = "0.16.0"
+version = "0.17.0"
 dependencies = [
  "base64",
  "hex",
@@ -1001,7 +1001,7 @@ dependencies = [
 
 [[package]]
 name = "mira-tui"
-version = "0.16.0"
+version = "0.17.0"
 dependencies = [
  "crossterm",
  "mira-client",
