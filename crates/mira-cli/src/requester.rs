@@ -1,7 +1,8 @@
 //! Which agent runs this `mira` command, so the TUI can group one-off runs per agent.
 //!
 //! The name comes from `MIRA_AGENT`, or from the nearest ancestor process that is a known
-//! agent CLI (Claude Code, Codex, …). The ID tells two instances of the same agent apart: a
+//! agent CLI (Claude Code, Codex, …). When no agent is found, a person runs it: `You`.
+//! The ID tells two instances of the same agent apart: a
 //! session ID the agent exports, else the agent's process ID. Only a short hash of it is sent,
 //! never an environment value.
 
@@ -28,6 +29,10 @@ const AGENTS: &[(&str, &str)] = &[
     ("grok", "Grok CLI"),
     ("kimi", "Kimi CLI"),
 ];
+
+/// The requester of a run that a person starts; all of them share one section.
+const PERSON: &str = "You";
+const PERSON_ID: &str = "you";
 
 /// Session IDs some agents export to the commands they run.
 const SESSION_VARS: &[&str] = &[
@@ -98,6 +103,7 @@ fn ancestor_agent() -> Option<(&'static str, u32)> {
     None
 }
 
+/// Always `Some` for a valid requester: an agent, or [`PERSON`] when no agent is found.
 /// `task` is what the agent's thread works on (`--task`, else `MIRA_TASK`); it names the
 /// thread's section in the TUI.
 pub fn detect(task: Option<String>) -> Option<Requester> {
@@ -118,12 +124,17 @@ pub fn detect(task: Option<String>) -> Option<Requester> {
             let key = session.unwrap_or_else(|| std::os::unix::process::parent_id().to_string());
             (name, key)
         }
-        None => {
-            let (name, pid) = ancestor_agent()?;
-            (name.to_owned(), session.unwrap_or_else(|| pid.to_string()))
-        }
+        None => match ancestor_agent() {
+            Some((name, pid)) => (name.to_owned(), session.unwrap_or_else(|| pid.to_string())),
+            // No agent: a person runs it, from a shell or the TUI's command bar.
+            None => (PERSON.to_owned(), String::new()),
+        },
     };
-    let id = short_id(&name, &key)?;
+    let id = if name == PERSON && key.is_empty() {
+        PERSON_ID.to_owned()
+    } else {
+        short_id(&name, &key)?
+    };
     let task = task
         .or_else(|| std::env::var("MIRA_TASK").ok())
         .map(|t| {

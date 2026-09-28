@@ -111,9 +111,10 @@ impl OneOff {
         self.requester = rec.requester.clone();
     }
 
-    /// Runs of one agent instance share a group; runs people start share `you`.
+    /// Runs of one agent thread share a group, and so do runs people start (`you`). Runs
+    /// recorded before Mira 0.14 do not say who started them: they share `earlier`.
     pub fn group(&self) -> &str {
-        self.requester.as_ref().map_or("you", |r| r.id.as_str())
+        self.requester.as_ref().map_or("earlier", |r| r.id.as_str())
     }
 }
 
