@@ -1,7 +1,7 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use mira_protocol::clock::LocalClock;
 use mira_protocol::ids::{ActionRef, Digest, RunId, ViewRef};
-use mira_protocol::manifest::{ActionMode, JsonObject, ViewKind};
+use mira_protocol::manifest::{ActionMode, JsonObject, ShowPolicy, ViewKind};
 use mira_protocol::run::{Lifecycle, RunSummary};
 use mira_protocol::time::Timestamp;
 
@@ -58,6 +58,7 @@ fn add_action(a: &mut App, r: &str, title: &str, tags: &[&str], description: &st
         description: description.into(),
         tags: tags.iter().map(|t| (*t).to_owned()).collect(),
         mode: ActionMode::Task,
+        show: ShowPolicy::OnRun,
         enabled: true,
         definition_hash: Digest::of_bytes(r.as_bytes()),
     });

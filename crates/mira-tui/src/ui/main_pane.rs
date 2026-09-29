@@ -97,6 +97,7 @@ pub(super) fn draw_main(f: &mut Frame, app: &mut App, t: &Theme, area: Rect) {
         chip(
             t,
             match item.mode {
+                _ if item.is_page() => "page",
                 ActionMode::Process => "service",
                 ActionMode::Task => "task",
             },
@@ -181,7 +182,20 @@ fn status_spans(app: &App, t: &Theme, item: &Item) -> Vec<Span<'static>> {
         ]
     };
     let mut details: Vec<String> = Vec::new();
-    let mut spans = if let Some(i) = app.pending.get(a) {
+    let mut spans = if item.is_page() && item.enabled {
+        // An app page has no run state: its screen shows here while it is open.
+        if app.pending.contains_key(a) || app.active.contains_key(a) {
+            head("opening…".into())
+        } else {
+            if let Some(c) = app.last.get(a).and_then(|l| l.exit.as_ref()?.code)
+                && c != 0
+            {
+                details.push(format!("exit {c}"));
+            }
+            details.push("Enter opens it".into());
+            head("closed".into())
+        }
+    } else if let Some(i) = app.pending.get(a) {
         head(match i {
             Intent::Stop => "stopping…".into(),
             _ => "starting…".into(),

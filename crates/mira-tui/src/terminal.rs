@@ -19,7 +19,7 @@ use mira_protocol::error::{ErrorCode, ErrorInfo};
 use mira_protocol::ids::{ActionRef, RunId, ScreenRevision};
 use mira_protocol::ipc::*;
 use mira_protocol::limits::{MAX_REPLY_BUDGET_BYTES, MAX_TERMINAL_COLS, MAX_TERMINAL_ROWS};
-use mira_protocol::manifest::{ShowPolicy, TerminalMode};
+use mira_protocol::manifest::TerminalMode;
 use mira_protocol::paths::WorkspacePaths;
 use ratatui::Frame;
 use ratatui::layout::Rect;
@@ -94,7 +94,6 @@ pub struct Attach {
 pub struct Terminals {
     paths: WorkspacePaths,
     pty: HashSet<ActionRef>,
-    on_select: HashSet<ActionRef>,
     id: AttachmentId,
     pub attach: Option<Attach>,
 }
@@ -104,7 +103,6 @@ impl Terminals {
         Self {
             paths,
             pty: HashSet::new(),
-            on_select: HashSet::new(),
             id: AttachmentId(0),
             attach: None,
         }
@@ -112,31 +110,21 @@ impl Terminals {
 
     /// Learns from `item.describe` whether an action runs in a PTY.
     pub fn note_described(&mut self, a: &ActionRef, res: &Result<Box<ItemDescription>, ErrorInfo>) {
-        self.on_select.remove(a);
-        if let Ok(d) = res {
-            if d.action
-                .as_ref()
-                .is_some_and(|x| x.show == ShowPolicy::OnSelect)
-            {
-                self.on_select.insert(a.clone());
-            }
-            if d.action
-                .as_ref()
-                .is_some_and(|x| x.terminal == TerminalMode::Pty)
-            {
-                self.pty.insert(a.clone());
-            } else {
-                self.pty.remove(a);
-            }
+        let Ok(d) = res else {
+            return;
+        };
+        if d.action
+            .as_ref()
+            .is_some_and(|x| x.terminal == TerminalMode::Pty)
+        {
+            self.pty.insert(a.clone());
+        } else {
+            self.pty.remove(a);
         }
     }
 
     pub fn is_pty(&self, a: &ActionRef) -> bool {
         self.pty.contains(a)
-    }
-
-    pub fn opens_on_select(&self, a: &ActionRef) -> bool {
-        self.on_select.contains(a)
     }
 
     pub fn is_open(&self) -> bool {

@@ -146,12 +146,13 @@ impl App {
                     v.push(bind("Ctrl-U", "clear", Cmd::Escape));
                 }
                 if !f.pending {
-                    // Only a process restarts; a task runs again.
-                    let process = self
-                        .item(&f.action_ref)
-                        .is_some_and(|i| i.mode == ActionMode::Process);
+                    // Only a process restarts; a task runs again; an app page reloads.
+                    let item = self.item(&f.action_ref);
                     let w = match f.intent {
-                        Intent::Restart if process => "restart",
+                        Intent::Restart if item.is_some_and(|i| i.is_page()) => "reload",
+                        Intent::Restart if item.is_some_and(|i| i.mode == ActionMode::Process) => {
+                            "restart"
+                        }
                         _ => "run",
                     };
                     v.push(bind("Enter", w, Cmd::Open));
@@ -251,6 +252,7 @@ impl App {
             let on_screen = self.attach_target().is_some();
             match self.open_kind(item) {
                 _ if on_screen => v.push(bind("Enter", "use the program", Cmd::Open)),
+                Some(OpenKind::Start) if item.is_page() => v.push(bind("Enter", "open", Cmd::Open)),
                 Some(OpenKind::Start) => v.push(bind("Enter", start_word(item), Cmd::Open)),
                 Some(OpenKind::Logs) if self.focus == Focus::List => {
                     v.push(bind("Enter", "logs", Cmd::Open))
@@ -277,7 +279,9 @@ impl App {
                 None => {}
             }
             if self.restart_ok(item) {
-                let w = if item.mode == ActionMode::Process {
+                let w = if item.is_page() {
+                    "reload"
+                } else if item.mode == ActionMode::Process {
                     "restart"
                 } else {
                     "rerun"

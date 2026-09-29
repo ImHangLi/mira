@@ -24,6 +24,14 @@ pub(super) fn life_mark(l: Lifecycle) -> Mark {
 }
 
 pub(super) fn item_mark(app: &App, item: &Item) -> Mark {
+    // An app page shows what it is, not whether its program runs.
+    if item.is_page() {
+        return if item.enabled {
+            Mark::new(if theme::ascii() { "::" } else { "▣" }, "page", None)
+        } else {
+            theme::DISABLED
+        };
+    }
     if let Some(i) = app.pending.get(&item.action_ref) {
         return match i {
             Intent::Stop => theme::STOPPING,
@@ -91,11 +99,15 @@ pub(super) fn view_tone(app: &App, v: &ViewItem) -> Option<Tone> {
 }
 
 /// When the entry last changed: the active run's start, the last run's end, or a view's
-/// recorded time.
+/// recorded time. An app page has no time.
 pub(super) fn entry_time(app: &App, e: Entry) -> Option<Timestamp> {
     match e {
         Entry::Action(i) => {
-            let a = &app.items.get(i)?.action_ref;
+            let item = app.items.get(i)?;
+            if item.is_page() {
+                return None;
+            }
+            let a = &item.action_ref;
             app.active
                 .get(a)
                 .map(|r| r.started_at)

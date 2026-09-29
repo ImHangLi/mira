@@ -109,8 +109,8 @@ fn help_lines(app: &App, t: &Theme, avail: usize) -> (Vec<Line<'static>>, usize)
         "q and Ctrl-C close this window. When it is the last Mira window, its runs stop. \
          b keeps them running for 2h; `mira down` stops them.",
         "Marks: ● running · ✓ ok · ✗ failed · ◐ starting or stopping · ○ not run yet · \
-         ‖ disabled · ■ stopped. ASCII mode (MIRA_ASCII=1, or a locale that is not UTF-8) \
-         shows them as * v x ~ o - =.",
+         ‖ disabled · ■ stopped · ▣ app page. ASCII mode (MIRA_ASCII=1, or a locale that is not \
+         UTF-8) shows them as * v x ~ o - = ::.",
         "Screen reader: `mira status` prints the same state as plain text; `--json` adds \
          structure.",
         "If a crash leaves the terminal in raw mode, type `reset` and press Enter.",
@@ -307,14 +307,10 @@ pub(super) fn draw_form(f: &mut Frame, app: &App, t: &Theme, area: Rect) {
         shown.push(Line::from(""));
     }
     shown.extend(foot);
+    let item = app.item(&form.action_ref);
     let verb = match form.intent {
-        Intent::Restart
-            if app
-                .item(&form.action_ref)
-                .is_some_and(|i| i.mode == ActionMode::Process) =>
-        {
-            "Restart"
-        }
+        Intent::Restart if item.is_some_and(|i| i.is_page()) => "Reload",
+        Intent::Restart if item.is_some_and(|i| i.mode == ActionMode::Process) => "Restart",
         Intent::Restart => "Run again",
         _ => "Run",
     };

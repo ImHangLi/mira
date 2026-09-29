@@ -341,11 +341,15 @@
             },
             "mode": {
               "$ref": "#/$defs/ActionMode"
+            },
+            "show": {
+              "$ref": "#/$defs/ShowPolicy"
             }
           },
           "required": [
             "kind",
-            "mode"
+            "mode",
+            "show"
           ],
           "type": "object"
         },

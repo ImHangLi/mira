@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::time::Instant;
 
 use mira_protocol::ids::{ActionId, ActionRef, Digest, ItemRef, RunId, ViewRef};
-use mira_protocol::manifest::{ActionMode, JsonObject, ViewKind};
+use mira_protocol::manifest::{ActionMode, JsonObject, ShowPolicy, ViewKind};
 use mira_protocol::run::{CleanupState, ExitInfo, Lifecycle, RunRecord, RunResult};
 use mira_protocol::time::Timestamp;
 
@@ -21,8 +21,17 @@ pub struct Item {
     pub description: String,
     pub tags: Vec<String>,
     pub mode: ActionMode,
+    pub show: ShowPolicy,
     pub enabled: bool,
     pub definition_hash: Digest,
+}
+
+impl Item {
+    /// An app page (`show: "on_select"`), such as a timer or a game: it opens when selected
+    /// and has no run state to show, start, or stop.
+    pub fn is_page(&self) -> bool {
+        self.show == ShowPolicy::OnSelect
+    }
 }
 
 pub struct ViewItem {
