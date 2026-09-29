@@ -307,14 +307,10 @@ pub(super) fn draw_form(f: &mut Frame, app: &App, t: &Theme, area: Rect) {
         shown.push(Line::from(""));
     }
     shown.extend(foot);
+    let item = app.item(&form.action_ref);
     let verb = match form.intent {
-        Intent::Restart
-            if app
-                .item(&form.action_ref)
-                .is_some_and(|i| i.mode == ActionMode::Process) =>
-        {
-            "Restart"
-        }
+        Intent::Restart if item.is_some_and(|i| i.is_page()) => "Reload",
+        Intent::Restart if item.is_some_and(|i| i.mode == ActionMode::Process) => "Restart",
         Intent::Restart => "Run again",
         _ => "Run",
     };

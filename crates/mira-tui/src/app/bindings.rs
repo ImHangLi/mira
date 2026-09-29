@@ -146,12 +146,13 @@ impl App {
                     v.push(bind("Ctrl-U", "clear", Cmd::Escape));
                 }
                 if !f.pending {
-                    // Only a process restarts; a task runs again.
-                    let process = self
-                        .item(&f.action_ref)
-                        .is_some_and(|i| i.mode == ActionMode::Process);
+                    // Only a process restarts; a task runs again; an app page reloads.
+                    let item = self.item(&f.action_ref);
                     let w = match f.intent {
-                        Intent::Restart if process => "restart",
+                        Intent::Restart if item.is_some_and(|i| i.is_page()) => "reload",
+                        Intent::Restart if item.is_some_and(|i| i.mode == ActionMode::Process) => {
+                            "restart"
+                        }
                         _ => "run",
                     };
                     v.push(bind("Enter", w, Cmd::Open));
