@@ -189,6 +189,13 @@ enum Command {
         #[arg(long)]
         wait: bool,
     },
+    /// Remove Mira from this project: stop its work, then delete .mira/ and the project's
+    /// run history, logs, and cache. Without --yes, only show what it deletes.
+    Remove {
+        /// Stop the work and delete the files.
+        #[arg(long)]
+        yes: bool,
+    },
     /// List recent runs, or show one run.
     Runs {
         /// Show one run: its ID or a unique prefix of it (such as r_fb60aacf).
@@ -642,6 +649,7 @@ fn main() -> ExitCode {
         }) => commands::runtime::exec(&ctx, label, argv, request_key, task),
         Some(Command::Up { background, ttl }) => commands::runtime::up(&ctx, background, &ttl),
         Some(Command::Down { wait }) => commands::runtime::down(&ctx, wait),
+        Some(Command::Remove { yes }) => commands::remove::remove(&ctx, yes),
         Some(Command::Runs {
             run,
             action,

@@ -40,36 +40,6 @@ To only filter another action's log (for example, errors), a [derived log view](
 
 `"$MIRA_BIN" --project="$MIRA_WORKSPACE_ROOT" logs --follow --json [--grep=TEXT] REF` prints one JSON object per line: first `{"type":"ready",...}`, then `{"type":"log","data":{"run_id":"r_…","records":[{"log_seq","recorded_at","stream","level","text",...}]}}` for new records, and it exits after `{"type":"end",...}` or when the run ends. A line with `"ok": false` is an error reply instead (for example, the action never ran). Pass values as `--flag=value` and check REF, so input never becomes an option.
 
-## Minimal Python pattern
+## Example
 
-```python
-import json, sys
-
-req = json.loads(sys.stdin.readline())
-
-
-def emit(frame):
-    print(json.dumps({"api": 1, **frame}), flush=True)
-
-
-rows = [{"id": "1", "values": {"name": "example", "count": 3}}]
-emit({
-    "type": "view",
-    "view_id": "items",
-    "op": "replace",
-    "data": {
-        "kind": "table",
-        "columns": [
-            {"id": "name", "label": "Name", "type": "text"},
-            {"id": "count", "label": "Count", "type": "number"},
-        ],
-        "rows": rows,
-    },
-})
-emit({
-    "type": "result",
-    "ok": True,
-    "summary": f"{len(rows)} item(s)",
-    "data": {"items": len(rows)},
-})
-```
+[templates/structured/main.py](../templates/structured/main.py) reads the invocation, publishes a table, and ends with a `result` frame for success and for failure. Start from it.

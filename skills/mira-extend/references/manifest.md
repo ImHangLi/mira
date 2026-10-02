@@ -40,26 +40,24 @@ Strict JSON: unknown fields, duplicate keys, and `null` for optional fields are 
 | `schedule` | tasks only: `{"every_ms": ≥1000, "params": {...}, "run_on_start": false}`; off until the user enables it |
 | `effects` | descriptive tags such as `read-files`, `writes-state`, `network` |
 
-The child receives `MIRA_WORKSPACE_ROOT`, `MIRA_PLUGIN_DIR`, `MIRA_STATE_DIR`, `MIRA_CACHE_DIR`, `MIRA_ARTIFACT_DIR`, `MIRA_RUN_ID`, `MIRA_INPUT_FILE` (effective input JSON), `MIRA_CONFIG_FILE`. To call Mira from a plugin, run `"$MIRA_BIN"`: it is the running `mira`, and the host also passes its own `MIRA_DATA_HOME` and `MIRA_RUNTIME_DIR` when they are set, so the call reaches the same host.
+The child receives `MIRA_WORKSPACE_ROOT`, `MIRA_PLUGIN_DIR`, `MIRA_STATE_DIR`, `MIRA_CACHE_DIR`, `MIRA_ARTIFACT_DIR`, `MIRA_RUN_ID`, `MIRA_INPUT_FILE` (the effective input JSON), and `MIRA_CONFIG_FILE`. To call Mira from a plugin, run `"$MIRA_BIN"`: it reaches the same host.
 
 ### Open a program on selection
 
-Use `"show": "on_select"` for an app page, such as a timer or game, whose initial screen is safe to open without input. The TUI starts it through the host when selected in an active session. It reuses an existing run and leaves the keys with Mira. Enter takes the input lock; Ctrl-T returns to tools and releases it. An idle screen is fitted to the pane with a temporary input lock. If another client holds the lock, that client's size stays in use.
+`"show": "on_select"` makes an app page, such as a timer or a game: the TUI opens it when the human selects it, with the schema's default inputs and no input form. The page shows no run state and no start or stop key; `r` reloads it. The program keeps running while the human looks at other tools, and stops with the session or with `mira stop`.
 
-The TUI shows the page without run state or time, and without a start or stop key; `r` reloads it. The program keeps running when another tool is selected. It stops with the session or an explicit `mira stop`. An exit, stop, or failed start is not retried while the same tool remains selected; select it again, press Enter, or press `r` to retry. Searching does not start intermediate matches. Opening a page uses the schema's defaults and never opens an input form.
-
-Keep `on_run` for servers, shells, and commands with startup effects that require an explicit start. The host and CLI do not act on `show`; the TUI applies it to its selected page, including after a catalog reload.
+Keep `on_run` for servers, shells, and commands whose start has effects. Only the TUI acts on `show`; the host and the CLI do not.
 
 ### Argv placeholders
 
-In a command action's `run.argv`, `{input.NAME}` becomes the effective input value (after schema defaults): a string as it is, a number or boolean in its JSON text form (`8080`, `true`). A placeholder can be a whole argument (`"{input.port}"`) or part of one (`"--port={input.port}"`). No shell is involved, so a value is never split or interpreted.
+In a command action's `run.argv`, `{input.NAME}` becomes the effective input value, after schema defaults: a string as it is, a number or boolean as its JSON text (`8080`, `true`). It can be a whole argument (`"{input.port}"`) or part of one (`"--port={input.port}"`). There is no shell, so a value is never split or interpreted.
 
-- NAME must be a top-level property of `input_schema`; validation rejects other names.
+- NAME must be a top-level property of `input_schema`.
 - A missing, `null`, object, or array value fails the run with `SCHEMA_INVALID` before anything starts.
-- Only arguments that contain `{input.` are templated. In them, `{{` and `}}` are literal braces; other arguments (for example `--format={{.Names}}`) pass unchanged.
+- Only arguments that contain `{input.` are templated. In them, write `{{` and `}}` for literal braces.
 - `cwd`, `env`, `cleanup`, and a plugin `entry` are never templated.
 
-Use a wrapper script that reads `MIRA_INPUT_FILE` when arguments need logic (optional flags, lists).
+For optional flags, lists, or computed values, use a wrapper script that reads `MIRA_INPUT_FILE`.
 
 ## View
 
@@ -78,10 +76,10 @@ A log view with `source` shows another action's log lines, filtered by the host;
 }
 ```
 
-- `logs` (required) is `PLUGIN.ACTION` of any plugin in the workspace. Validation of the whole `.mira` rejects a ref that is not an action in the catalog, and `source` on other kinds.
+- `logs` (required) is the `PLUGIN.ACTION` of any plugin in the workspace.
 - `grep` (optional) keeps lines that contain the text, ignoring case. `stream` (optional) is `stdout` or `stderr`.
-- The view follows the action's current run, or its latest run when none is active. It starts from that run's newest 2000 log lines, keeps at most `view_log_items` (1000 by default), and updates as new lines arrive.
-- Freshness is `current` while the source run is live and `historical` after it ends. Plugins and `mira publish` cannot write it; `persistence` does not apply.
+- The view follows the action's current run, or its latest run. It keeps at most 1000 lines.
+- Plugins and `mira publish` cannot write it, and `persistence` does not apply.
 
 ## `.mira/local.json` (personal, not committed)
 
