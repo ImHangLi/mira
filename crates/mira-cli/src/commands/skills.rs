@@ -37,7 +37,7 @@ bundled! {
 }
 
 /// The skill folders `export` writes under DIR.
-const SKILLS: [&str; 2] = ["mira", "mira-extend"];
+pub(super) const SKILLS: [&str; 2] = ["mira", "mira-extend"];
 
 #[derive(Serialize)]
 pub struct Report {

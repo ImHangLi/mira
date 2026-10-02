@@ -190,9 +190,17 @@ enum Command {
         wait: bool,
     },
     /// Remove Mira from this project: stop its work, then delete .mira/ and the project's
-    /// run history, logs, and cache. Without --yes, only show what it deletes.
+    /// run history, logs, and cache. It shows what it deletes and asks you to type yes.
     Remove {
-        /// Stop the work and delete the files.
+        /// Do not ask. Without a terminal, nothing is deleted unless this is set.
+        #[arg(long)]
+        yes: bool,
+    },
+    /// Uninstall Mira from this machine: stop every project, then delete the program, its
+    /// data, the agent skills and notes, and the PATH line. Project .mira/ folders stay.
+    /// It shows what it deletes and asks you to type yes.
+    Uninstall {
+        /// Do not ask. Without a terminal, nothing is deleted unless this is set.
         #[arg(long)]
         yes: bool,
     },
@@ -650,6 +658,7 @@ fn main() -> ExitCode {
         Some(Command::Up { background, ttl }) => commands::runtime::up(&ctx, background, &ttl),
         Some(Command::Down { wait }) => commands::runtime::down(&ctx, wait),
         Some(Command::Remove { yes }) => commands::remove::remove(&ctx, yes),
+        Some(Command::Uninstall { yes }) => commands::uninstall::uninstall(&ctx, yes),
         Some(Command::Runs {
             run,
             action,

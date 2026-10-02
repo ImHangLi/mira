@@ -93,4 +93,4 @@ else
   esac
 fi
 echo "Next: ask your agent to set up Mira. Agents start here: https://github.com/ImHangLi/mira/blob/main/docs/agents.md"
-echo "Uninstall: rm \"$dir/mira\" \"$marker\", and remove the Mira line from your shell profile (project .mira files and workspace data are kept)."
+echo "Uninstall: mira uninstall"

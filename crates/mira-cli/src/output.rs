@@ -25,6 +25,19 @@ impl Mode {
     }
 }
 
+/// True when a person can answer a question: text output, and a terminal on both ends.
+pub fn interactive(mode: Mode) -> bool {
+    mode == Mode::Text && std::io::stdin().is_terminal() && std::io::stdout().is_terminal()
+}
+
+/// Asks the person to type `yes`. Any other answer, or a closed input, is a no.
+pub fn confirm(prompt: &str) -> bool {
+    print!("{prompt}");
+    let _ = std::io::stdout().flush();
+    let mut answer = String::new();
+    std::io::stdin().read_line(&mut answer).is_ok() && answer.trim() == "yes"
+}
+
 /// Prints a reply and returns its fixed exit code.
 pub fn emit<T: Serialize>(
     mode: Mode,

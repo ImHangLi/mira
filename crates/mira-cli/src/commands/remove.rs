@@ -1,7 +1,7 @@
 //! `mira remove`: take Mira out of one project. It stops the project's work, then deletes
 //! `.mira/` and the project's data outside the repository. The binary and skills stay.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::time::Duration;
 
@@ -13,6 +13,7 @@ use mira_protocol::reply::{PublicReply, ReplyContext, ReplyMeta, WorkspaceRef};
 use serde::Serialize;
 
 use super::ctx::{Ctx, block_on};
+use crate::output;
 
 const POLL: Duration = Duration::from_millis(100);
 const STOP_WAIT: Duration = Duration::from_secs(30);
@@ -29,26 +30,35 @@ struct Report {
 }
 
 impl Report {
-    fn text(&self) -> String {
-        let list = self
-            .paths
+    fn list(&self) -> String {
+        self.paths
             .iter()
-            .map(|p| format!("  {}", p.display()))
-            .collect::<Vec<_>>()
-            .join("\n");
+            .map(|p| format!("\n  {}", p.display()))
+            .collect()
+    }
+
+    fn plan(&self) -> String {
+        format!(
+            "This stops {} run(s) and deletes:{}",
+            self.active_runs,
+            self.list()
+        )
+    }
+
+    fn text(&self) -> String {
         if self.paths.is_empty() {
             "Mira is not set up in this project. Nothing to remove.".into()
         } else if self.removed {
             format!(
-                "Removed Mira from this project ({} run(s) stopped):\n{list}\n\
+                "Removed Mira from this project ({} run(s) stopped):{}\n\
                  The mira program and your agent skills stay installed.",
-                self.active_runs
+                self.active_runs,
+                self.list()
             )
         } else {
             format!(
-                "This stops {} run(s) and deletes:\n{list}\n\
-                 Nothing was deleted. Run `mira remove --yes` to do it.",
-                self.active_runs
+                "{}\nNothing was deleted. Run `mira remove --yes` to do it.",
+                self.plan()
             )
         }
     }
@@ -119,6 +129,15 @@ async fn stop_host(paths: &WorkspacePaths, yes: bool) -> Result<usize, ErrorInfo
     Ok(runs)
 }
 
+/// Deletes a file or a folder. A link is removed as a link; its target stays.
+pub(super) fn delete(p: &Path) -> std::io::Result<()> {
+    if p.symlink_metadata()?.is_dir() {
+        std::fs::remove_dir_all(p)
+    } else {
+        std::fs::remove_file(p)
+    }
+}
+
 pub fn remove(ctx: &Ctx, yes: bool) -> ExitCode {
     block_on(async {
         let paths = match ctx.paths() {
@@ -148,19 +167,27 @@ pub fn remove(ctx: &Ctx, yes: bool) -> ExitCode {
                 .cloned()
                 .collect(),
         };
+        // A person at a terminal sees the plan and types yes; other callers pass --yes.
+        let mut yes = yes;
+        if !yes && !report.paths.is_empty() && output::interactive(ctx.mode) {
+            match stop_host(&paths, false).await {
+                Ok(runs) => report.active_runs = runs,
+                Err(e) => return ctx.fail(cx, e),
+            }
+            println!("{}", report.plan());
+            if !output::confirm("Type yes to remove Mira from this project: ") {
+                println!("Nothing was deleted.");
+                return ExitCode::SUCCESS;
+            }
+            yes = true;
+        }
         match stop_host(&paths, yes).await {
             Ok(runs) => report.active_runs = runs,
             Err(e) => return ctx.fail(cx, e),
         }
         if yes && !report.paths.is_empty() {
             for p in &report.paths {
-                // A link is removed as a link; its target stays.
-                let res = if p.symlink_metadata().is_ok_and(|m| m.is_dir()) {
-                    std::fs::remove_dir_all(p)
-                } else {
-                    std::fs::remove_file(p)
-                };
-                if let Err(e) = res {
+                if let Err(e) = delete(p) {
                     let msg = format!("cannot delete {}: {e}", p.display());
                     return ctx.fail(cx, ErrorInfo::new(ErrorCode::INTERNAL, msg));
                 }

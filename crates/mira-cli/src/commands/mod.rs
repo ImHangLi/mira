@@ -16,5 +16,6 @@ pub mod skills;
 pub mod storage;
 pub mod terminal;
 pub mod tui;
+pub mod uninstall;
 pub mod update;
 pub mod views;
