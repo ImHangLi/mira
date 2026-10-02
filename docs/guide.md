@@ -129,6 +129,12 @@ It shows under ONE-OFF RUNS in the TUI. If you run it often, make it a tool.
 
 In the TUI, select any tool of the plugin and press `x`, then confirm. From a shell: `mira plugin remove ID`. Both remove the plugin from `.mira/workspace.json` and keep its folder, so you can add it back later.
 
+## Remove Mira from a project
+
+Run `mira remove` in the project. It shows what it stops and deletes: `.mira/` and the project's run history, logs, and cache. Nothing is deleted until you run `mira remove --yes`. Close the project's Mira windows first.
+
+The `mira` program, your agent skills, and your other projects stay as they are.
+
 ## Share a plugin
 
 A plugin is plain files. To share it:
@@ -153,3 +159,4 @@ A plugin is plain files. To share it:
 | `mira doctor` | Check the project and the programs it needs |
 | `mira logs --host` | Read Mira's own log when something goes wrong |
 | `mira plugin add NAME` / `mira plugin remove ID` | Add a default plugin, or remove a plugin |
+| `mira remove` | Remove Mira from this project (`--yes` to delete) |

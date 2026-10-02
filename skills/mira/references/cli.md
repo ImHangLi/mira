@@ -1,76 +1,77 @@
 # CLI reference
 
-All commands accept `--project PATH`, `--json`, `--text`. `REF` is `plugin.item`; `RUN` is a run ID (`r_…`) or a unique prefix of one, such as `r_fb60aacf`; `logs`, `stop`, `terminal`, and `input` also take an action ref.
+All commands accept `--project PATH`, `--json`, and `--text`. `REF` is `plugin.item`. `RUN` is a run ID (`r_…`) or a unique prefix of one; `logs`, `stop`, `terminal`, and `input` also take an action ref.
 
 `mira --help` does not list `apply`, `view-action`, `artifacts`, `payload`, `storage`, `paths`, and `schema`, but they work as shown here.
 
 | Command | Notes |
 |---|---|
-| `mira` | TUI for humans (needs a TTY; otherwise `TTY_REQUIRED`) |
-| `status` | session, controller count, background expiry, active runs, warnings |
-| `catalog [--search TEXT] [--if-revision N --if-workspace W] [--limit N] [--after CURSOR] [--max-bytes N]` | bounded tool list, paged by cursor |
-| `describe REF [--include-schema]` | purpose, runner, cwd, env names (never values), effects, invoke hint |
-| `run ACTION [--input FILE\|-] [--no-wait] [--request-key K]` | task; waits unless `--no-wait` (needs a session) |
-| `start ACTION [--input FILE\|-] [--request-key K]` | process; reuses the same running instance |
+| `mira` | the TUI for humans (needs a TTY) |
+| `status` | session, active runs, warnings |
+| `catalog [--search TEXT] [--limit N] [--after CURSOR] [--if-revision N --if-workspace W]` | the tool list, paged by cursor. With `--if-revision`, `meta.not_modified: true` means your copy of that workspace and query is still valid |
+| `describe REF [--include-schema]` | purpose, runner, cwd, env names (never values), how to invoke |
+| `run ACTION [--input FILE\|-] [--no-wait] [--request-key K]` | a task; waits unless `--no-wait` (needs a session) |
+| `start ACTION [--input FILE\|-] [--request-key K]` | a process; reuses the running instance |
 | `stop RUN_OR_ACTION [--wait]` | TERM (or INT), then KILL after the grace period; cleanup runs once |
-| `restart ACTION [--input FILE\|-]` | stop and wait, then start with the current definition |
-| `exec --label TEXT -- ARGV...` | ad-hoc task through the managed path; not added to the catalog |
-| `save TITLE [--service] [--id ID] [--plugin ID] [--description TEXT] -- ARGV...` | saves a command as a tool in one step: adds it to the `tools` plugin, validates, and loads it; the reply names the ref. Run from a subfolder, that folder becomes the tool's `cwd` |
-| `up --background [--ttl 30m\|2h\|none]` | explicit background lease (default 2 h); run it again to set a new limit, counted from now |
-| `down [--wait]` | stop the session and its runs; no data is deleted |
+| `restart ACTION [--input FILE\|-]` | stop, wait, then start with the current definition |
+| `exec --task TEXT --label TEXT -- ARGV...` | a one-off command; not added to the catalog |
+| `save TITLE [--service] [--id ID] [--plugin ID] [--description TEXT] -- ARGV...` | save a command as a tool in the `tools` plugin, validated and loaded. From a subfolder, that folder is the tool's `cwd` |
+| `up --background [--ttl 30m\|2h\|none]` | keep work running without the TUI (default 2 h); run it again to set a new limit from now |
+| `down [--wait]` | stop the session and its runs; deletes no data |
 | `runs [RUN] [--action REF] [--outcome VALUE] [--limit N] [--after CURSOR]` | newest first |
-| `logs RUN_OR_ACTION [--after CURSOR] [--limit N] [--max-bytes N] [--follow] [--grep PATTERN] [--stream stdout\|stderr]` | tail by default; `--grep` keeps records that contain PATTERN (case-insensitive) in the page and with `--follow` |
-| `logs --host [--limit N] [--grep PATTERN]` | Mira's own host log: starts, stops, configuration it accepted or rejected, storage problems, crashes. Reads the file, so it works when the host is down |
-| `view VIEW [--after CURSOR] [--limit N]`, `view-action VIEW ACTION --row ROW --expected-view-revision N` | typed data; row actions refuse stale rows (`VIEW_CHANGED`) |
-| `publish VIEW --input FILE\|- [--expected-view-revision N] [--request-key K]` | write one view frame without running a plugin |
-| `validate PATH`, `apply DRAFT_DIR --expected-revision N`, `apply PLUGIN_DIR [--expected-revision N]`, `reload` | config changes (see mira-extend). A plugin folder is checked alone and, inside a project, against its `.mira`; `apply` copies an outside folder to `.mira/plugins/<id>/` and lists it in `workspace.json`. Without `--expected-revision` it uses the current revision |
-| `notify --title TITLE MESSAGE [--run RUN]` | a desktop notification from a running program, for example a timer in a PTY; the run defaults to `MIRA_RUN_ID` |
-| `plugin add [NAME]` | without NAME, lists the default plugins that ship with Mira; with NAME, copies one to `.mira/plugins/NAME/` and loads it (creates a minimal `workspace.json` if there is none). Refuses a plugin that the project already has |
-| `plugin remove PLUGIN_ID` | removes the plugin's entry from `.mira/workspace.json` and reloads; the plugin folder stays on disk. `BUSY` while the plugin has active runs (stop them first); `NOT_FOUND` for an unknown ID. People use `x` in the TUI |
-| `payload read TOKEN [--pointer P] [--offset N] [--max-bytes N]` | continue reading a large result or view in ≤16 KiB chunks; `PAYLOAD_GONE` = cleaned up |
-| `terminal RUN`, `input RUN --text TEXT \| --key KEY [--expected-screen-revision N]` | PTY screen and serial input (keys: enter, tab, escape, backspace, up/down/left/right, ctrl-c, ctrl-d, ctrl-z) |
-| `schedule ACTION on\|off` | persisted interval switch; runs only inside a session |
-| `artifacts [RUN]`, `artifacts read ID` | registered run outputs, bounded text reads |
-| `storage status [--all]`, `storage gc [--kind K] [--apply]`, `storage clear --plugin ID --kind state` | usage and retention; gc only plans without `--apply` |
-| `skills export DIR... [--force]` | copy these skills to `DIR/mira/` and `DIR/mira-extend/` (a user skills folder, never inside the current Git work tree); refuses to overwrite existing files without `--force`; records each target for updates |
-| `update [--check\|--rollback]` | install the latest release; `--check` only reports availability and refreshes the cache (exit 0 either way); `--rollback` swaps the installed and previous binaries |
-| `doctor`, `paths`, `schema NAME` | diagnostics, locations, JSON Schemas |
+| `logs RUN_OR_ACTION [--after CURSOR] [--limit N] [--follow] [--grep PATTERN] [--stream stdout\|stderr]` | the end of the log by default; `--grep` ignores case |
+| `logs --host [--limit N] [--grep PATTERN]` | Mira's own log: rejected configuration, storage problems, crashes. Works when the host is down |
+| `view VIEW [--after CURSOR] [--limit N]` | typed data |
+| `view-action VIEW ACTION --row ROW --expected-view-revision N` | a table row action; refuses a changed table (`VIEW_CHANGED`) |
+| `publish VIEW --input FILE\|- [--expected-view-revision N] [--request-key K]` | write one view frame without a plugin run; needs no session |
+| `validate PATH` | check a `.mira`, a draft, or a plugin folder; runs nothing |
+| `apply DIR [--expected-revision N]` | apply a draft of `.mira`, or copy a plugin folder to `.mira/plugins/<id>/` and list it in `workspace.json` |
+| `reload` | load `.mira` again from disk |
+| `plugin add [NAME]` | without NAME, list the default plugins; with NAME, copy one to `.mira/plugins/NAME/` and load it |
+| `plugin remove PLUGIN_ID` | take the plugin out of `workspace.json`; its folder stays. `BUSY` while it has active runs |
+| `remove [--yes]` | remove Mira from this project (see below) |
+| `terminal RUN`, `input RUN --text TEXT \| --key KEY [--expected-screen-revision N]` | a PTY screen and its input. Keys: enter, tab, escape, backspace, delete, up, down, left, right, ctrl-c, ctrl-d, ctrl-z |
+| `notify --title TITLE MESSAGE [--run RUN]` | a desktop notification from a running program; the run defaults to `MIRA_RUN_ID` |
+| `schedule ACTION on\|off` | an interval switch; it runs only in a session |
+| `payload read TOKEN [--offset N] [--max-bytes N]` | read a large result in chunks of at most 16 KiB |
+| `artifacts [RUN]`, `artifacts read ID` | saved run outputs |
+| `storage status [--all]`, `storage gc [--kind K] [--apply]`, `storage clear --plugin ID --kind state` | disk use and cleanup; `gc` only plans without `--apply` |
+| `skills export DIR... [--force]` | copy these skills to a user skills folder, never into a Git work tree |
+| `update [--check\|--rollback]` | install the latest release, only check for one, or go back to the previous binary |
+| `doctor`, `paths`, `schema NAME` | checks, locations, JSON Schemas |
+
+Without a session the host exits when idle, and the next command starts a new one with a new `host_epoch`. Compare `state_revision` values only within one `host_epoch`.
+
+## Remove Mira from a project
+
+Do this only when the user asks. It cannot be undone for files that are not in Git.
+
+1. `mira remove --json` deletes nothing. It returns the `paths` it would delete (`.mira/` and the project's run history, logs, and cache) and the `active_runs` it would stop. Show them to the user.
+2. `mira remove --yes --json` stops the project's work and deletes those paths. `BUSY` means a Mira window is open for the project: ask the user to close it, then run the command again.
+3. Remove the `.mira` lines that setup added to `.gitignore` or `.git/info/exclude`. If `.mira/` was committed, tell the user that the deletion is an uncommitted change.
+
+The `mira` program, the skills, and other projects stay as they are.
 
 ## Updates
 
-`mira update` requires an installer-owned binary beside `.mira-installed`. It verifies
-the SHA-256 checksum and binary version before replacement, keeps `mira.previous`, and
-re-exports skills to recorded targets. If a target is under `~/.config/skillshare/` and
-Skillshare is installed, it runs `skillshare sync -g`. Skill failures are warnings.
-Rollback changes the binary only.
-
-The reply includes release notes and project host PIDs, roots, and stop commands using
-`mira.previous`. Open windows keep the old version until closed; hosts switch once their
-work stops and their sessions end. Open windows or background leases can keep a host alive.
-`mira doctor` reports the running and cached latest versions without a network call.
-
-The TUI checks for a release at startup if its cache is at least 24 hours old. A non-empty
-`MIRA_NO_UPDATE_CHECK` or a set `CI` disables the check and notice. Manual `update --check`
-still works. `update-check.json` is in `~/Library/Caches/Mira/`; `skills-targets.json` is in
-`~/Library/Application Support/Mira/`. With `MIRA_DATA_HOME`, they use its `cache/` and
-`state/` folders instead.
+`mira update` works for a binary that the installer placed. It checks the download, keeps the old binary as `mira.previous`, and exports the skills again; skill failures are warnings. The reply has the release notes and the project hosts that still run the old version, each with a stop command. A host changes version when its work stops; open windows keep the old version until they close. Set `MIRA_NO_UPDATE_CHECK` to stop the daily check in the TUI.
 
 ## Exit codes
 
-0 success · 1 `doctor` found a failing check · 2 invalid argument/schema/frame · 3 not found / not set up · 4 conflict (session, busy, revision, view changed) · 5 plugin or command failed · 6 timeout · 7 IPC/Core error · 8 required storage unavailable · 130 cancelled.
+0 success · 1 `doctor` found a failing check · 2 invalid argument, schema, or frame · 3 not found or not set up · 4 conflict (session, busy, revision, view changed) · 5 the plugin or command failed · 6 timeout · 7 IPC or Core error · 8 storage unavailable · 130 cancelled.
 
 ## Frequent error codes
 
 | Code | Meaning | Do |
 |---|---|---|
-| `SESSION_REQUIRED` | no owner for long-running work | ask whether to `up --background`, or let the human open the TUI |
+| `SESSION_REQUIRED` | long-running work has no owner | ask whether to `up --background`, or let the human open the TUI |
 | `BUSY` | the task already runs | wait for it (`runs RUN`) or stop it |
-| `ALREADY_RUNNING_DIFFERENT_INPUT` | a service runs with other input/definition | `restart` if intended |
-| `REQUEST_KEY_CONFLICT` | same key, different input | use the original input or a new key for new work |
-| `REVISION_CONFLICT` | catalog changed since you read it | re-read catalog, rebase your draft, apply again |
-| `VIEW_CHANGED` | the table you acted on changed | re-read the view and choose again |
-| `PROTOCOL_MISMATCH` | a host from another Mira build still runs for this workspace | run the error's `next_action` (`kill PID`), or `mira down` with that build; the next command starts this build |
-| `OUTCOME_UNKNOWN` | the host stopped before the result was known | inspect state before repeating side effects |
-| `STORAGE_UNAVAILABLE` | a required record could not be saved; nothing new started | report it; `stop`/`down` still work |
-| `INPUT_BUSY` / `SCREEN_CHANGED` | someone else holds the terminal / the screen moved on | re-read `terminal RUN`, then retry |
-| `PAYLOAD_GONE` / `CURSOR_EXPIRED` | the data was cleaned up / the page no longer exists | read the run summary; do not rerun just to recreate history |
+| `ALREADY_RUNNING_DIFFERENT_INPUT` | a service runs with other input or an older definition | `restart` if intended |
+| `REQUEST_KEY_CONFLICT` | same key, different input | use the first input, or a new key for new work |
+| `REVISION_CONFLICT` | the catalog changed since you read it | read the catalog again, merge, apply again |
+| `VIEW_CHANGED` | the table you acted on changed | read the view again and choose again |
+| `PROTOCOL_MISMATCH` | a host from another Mira version runs for this workspace | run the error's `next_action` |
+| `OUTCOME_UNKNOWN` | the host stopped before it knew the result | inspect the state before you repeat side effects |
+| `STORAGE_UNAVAILABLE` | a record could not be saved; nothing started | report it; `stop` and `down` still work |
+| `INPUT_BUSY` / `SCREEN_CHANGED` | another client holds the terminal / the screen moved on | read `terminal RUN` again, then retry |
+| `PAYLOAD_GONE` / `CURSOR_EXPIRED` | the data was cleaned up / the page is gone | read the run summary; do not rerun only to recreate history |
