@@ -183,6 +183,7 @@ The footer shows the keys for what you have selected, most useful first.
 - [Setup for agents](docs/agents.md): the steps an agent follows.
 - [Architecture](docs/architecture.md): processes, protocols, and crates.
 - [Example plugins](examples/plugins/): a command with inputs, a table with a row action, a service, a derived log view, and a routine.
+- [Contributing](CONTRIBUTING.md): how to report a bug, propose a change, and send code.
 
 ## License
 
