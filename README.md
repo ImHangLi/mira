@@ -2,11 +2,7 @@
   <img src=".github/assets/mira-banner.jpg" alt="Mira" width="100%">
 </p>
 
-<h3 align="center">Grow your own terminal.</h3>
-
-<p align="center">
-  The terminal you and your agent share. Every command you run becomes a tool you keep.
-</p>
+<h3 align="center">The future of terminal apps.</h3>
 
 <p align="center">
   <a href="https://github.com/ImHangLi/mira/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/ImHangLi/mira?style=flat-square&color=f26b3a"></a>
