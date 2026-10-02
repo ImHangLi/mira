@@ -75,13 +75,11 @@ Ask the user one question: share `.mira/` with the team, or keep it personal? Re
 
 ## 5. Report
 
-Tell the user what you installed, where, and how to undo each item:
+Tell the user what you installed, where, and how to undo it:
 
 | Item | Where | Undo |
 |---|---|---|
-| Mira | the path the installer printed | the `Uninstall:` line the installer printed |
-| Skills | the folder from step 2 (`mira/`, `mira-extend/`) | delete those two folders (run `skillshare sync` if you used Skillshare) |
-| Global note | `MIRA.md` and the reference line from step 3 | delete the file and the line |
-| Plugins | `.mira/` in the repository | delete `.mira/`, and the line in `.git/info/exclude` if you added it |
+| Mira, the skills, and the global note | the paths from steps 1 to 3 | `mira uninstall` removes all of them, and all Mira data |
+| Plugins | `.mira/` in the repository | `mira remove` in the project, and the line in `.git/info/exclude` if you added it |
 
 Also list the tools you created, what you verified, what you did not verify, and anything that is still running. Tell the user to run `mira` to open the TUI.

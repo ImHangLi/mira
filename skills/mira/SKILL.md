@@ -56,6 +56,6 @@ Never read `state.sqlite3`, `~/Library/Logs/Mira`, or caches directly.
 Read one only when you need it:
 
 - [Setup](references/setup.md): the first setup of a project.
-- [CLI](references/cli.md): every command, exit codes, error codes, updates, and how to remove Mira from a project.
+- [CLI](references/cli.md): every command, exit codes, error codes, updates, and how to remove Mira from a project or uninstall it.
 - [Agent updates](references/updates.md): publish a short progress note for the human.
 - The mira-extend skill: create or change tools.

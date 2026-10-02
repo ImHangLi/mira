@@ -30,6 +30,7 @@ All commands accept `--project PATH`, `--json`, and `--text`. `REF` is `plugin.i
 | `plugin add [NAME]` | without NAME, list the default plugins; with NAME, copy one to `.mira/plugins/NAME/` and load it |
 | `plugin remove PLUGIN_ID` | take the plugin out of `workspace.json`; its folder stays. `BUSY` while it has active runs |
 | `remove [--yes]` | remove Mira from this project (see below) |
+| `uninstall [--yes]` | remove Mira from this machine (see below) |
 | `terminal RUN`, `input RUN --text TEXT \| --key KEY [--expected-screen-revision N]` | a PTY screen and its input. Keys: enter, tab, escape, backspace, delete, up, down, left, right, ctrl-c, ctrl-d, ctrl-z |
 | `notify --title TITLE MESSAGE [--run RUN]` | a desktop notification from a running program; the run defaults to `MIRA_RUN_ID` |
 | `schedule ACTION on\|off` | an interval switch; it runs only in a session |
@@ -51,6 +52,12 @@ Do this only when the user asks. It cannot be undone for files that are not in G
 3. Remove the `.mira` lines that setup added to `.gitignore` or `.git/info/exclude`. If `.mira/` was committed, tell the user that the deletion is an uncommitted change.
 
 The `mira` program, the skills, and other projects stay as they are.
+
+## Uninstall Mira
+
+Do this only when the user asks. Prefer that the user runs `mira uninstall` in a terminal: it shows the plan and asks them to type `yes`.
+
+From an agent, `mira uninstall --json` deletes nothing and returns the plan. Show it to the user, and run `mira uninstall --yes --json` only after they agree. It stops every project host and its runs, then deletes the program, all Mira data, the exported skills, the `MIRA.md` notes with their reference lines, and the installer's PATH line. Project `.mira/` folders stay.
 
 ## Updates
 

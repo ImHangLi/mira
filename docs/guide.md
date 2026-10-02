@@ -131,9 +131,19 @@ In the TUI, select any tool of the plugin and press `x`, then confirm. From a sh
 
 ## Remove Mira from a project
 
-Run `mira remove` in the project. It shows what it stops and deletes: `.mira/` and the project's run history, logs, and cache. Nothing is deleted until you run `mira remove --yes`. Close the project's Mira windows first.
+Run `mira remove` in the project. It shows what it stops and deletes: `.mira/` and the project's run history, logs, and cache. Type `yes` to confirm. Close the project's Mira windows first.
 
 The `mira` program, your agent skills, and your other projects stay as they are.
+
+## Uninstall Mira
+
+Run `mira uninstall`. It shows everything it deletes, and asks you to type `yes`:
+
+- The `mira` program and the PATH line that the installer added.
+- All Mira data: run history, logs, and caches of every project.
+- The agent skills that Mira exported, and the `MIRA.md` notes with their reference lines.
+
+It stops every running project first. The `.mira/` folders in your projects stay; they are project files.
 
 ## Share a plugin
 
@@ -159,4 +169,5 @@ A plugin is plain files. To share it:
 | `mira doctor` | Check the project and the programs it needs |
 | `mira logs --host` | Read Mira's own log when something goes wrong |
 | `mira plugin add NAME` / `mira plugin remove ID` | Add a default plugin, or remove a plugin |
-| `mira remove` | Remove Mira from this project (`--yes` to delete) |
+| `mira remove` | Remove Mira from this project |
+| `mira uninstall` | Remove Mira from this machine |

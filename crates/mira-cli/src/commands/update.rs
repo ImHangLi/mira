@@ -80,7 +80,7 @@ fn run(command: &mut Command, stage: &str) -> Result<Output, String> {
     Ok(output)
 }
 
-fn installed() -> Result<PathBuf, String> {
+pub(super) fn installed() -> Result<PathBuf, String> {
     let exe = std::env::current_exe()
         .and_then(std::fs::canonicalize)
         .map_err(|e| format!("replace: cannot locate this binary: {e}"))?;
