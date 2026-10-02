@@ -7,6 +7,7 @@ pub mod notify;
 pub mod payload;
 pub mod plugin_add;
 pub mod plugin_dir;
+pub mod remove;
 pub mod runref;
 pub mod runtime;
 pub mod save;
