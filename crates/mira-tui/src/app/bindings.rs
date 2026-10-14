@@ -426,6 +426,9 @@ impl App {
                     }
                 }
                 v.push(bind("K", "keep as a view", Cmd::KeepView));
+                if pane.is_some_and(|p| p.error.is_some()) {
+                    v.push(bind("r", "read again", Cmd::Restart));
+                }
                 v.push(bind("Tab", "tools", Cmd::Focus));
             }
         }

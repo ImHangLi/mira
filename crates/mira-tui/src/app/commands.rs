@@ -295,6 +295,14 @@ impl App {
         match (cmd, self.focus) {
             (Cmd::Open, Focus::List) => self.focus = Focus::Logs,
             (Cmd::Escape, Focus::Logs) => self.focus = Focus::List,
+            (Cmd::Restart, _) => {
+                let o = &mut self.oneoffs[i];
+                if let Some(p) = o.view.as_mut().filter(|p| p.error.is_some()) {
+                    p.error = None;
+                    p.loading = true;
+                    let _ = self.io.read.send(Read::RunGet(o.run_id.clone()));
+                }
+            }
             (Cmd::KeepView, _) => {
                 let o = &self.oneoffs[i];
                 let id = o.run_id.to_string();

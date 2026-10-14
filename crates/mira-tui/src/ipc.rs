@@ -115,7 +115,7 @@ pub enum Event {
     Tail(ActionRef, Result<LogChunk, ErrorInfo>),
     RunTail(RunId, Result<LogChunk, ErrorInfo>),
     Older(RunId, Result<LogChunk, ErrorInfo>),
-    Run(Result<Box<RunRecord>, ErrorInfo>),
+    Run(RunId, Result<Box<RunRecord>, ErrorInfo>),
     Recent(Result<RunList, ErrorInfo>),
     History(ActionRef, Result<RunList, ErrorInfo>),
     Catalog(Result<CatalogList, ErrorInfo>),
@@ -431,6 +431,7 @@ pub async fn read_worker(
                 let _ = tx.send(Event::Older(run_id, res.map_err(|f| f.info())));
             }
             Read::RunGet(run_id) => {
+                let id = run_id.clone();
                 let res =
                     call::<_, RunRecord>(&mut client, Method::RunGet, &RunGetParams { run_id })
                         .await
@@ -438,7 +439,7 @@ pub async fn read_worker(
                 if let Err(f) = &res {
                     note(f);
                 }
-                let _ = tx.send(Event::Run(res.map_err(|f| f.info())));
+                let _ = tx.send(Event::Run(id, res.map_err(|f| f.info())));
             }
             Read::Recent => {
                 let params = RunListParams {

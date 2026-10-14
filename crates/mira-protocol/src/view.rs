@@ -314,6 +314,13 @@ fn validate_chart(labels: &[String], series: &[Series], pointer: &str, issues: &
             "a chart has at most 2000 labels",
         ));
     }
+    let mut seen = BTreeSet::new();
+    if labels.iter().any(|l| !seen.insert(l.as_str())) {
+        issues.push(Issue::schema(
+            format!("{pointer}/labels"),
+            "chart labels must be unique",
+        ));
+    }
     if labels.iter().any(|l| l.len() > MAX_NAME_BYTES) {
         issues.push(Issue::schema(
             format!("{pointer}/labels"),

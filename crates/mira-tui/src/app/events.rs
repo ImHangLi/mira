@@ -170,11 +170,23 @@ impl App {
                     }
                 }
             }
-            Event::Run(Ok(rec)) => {
+            Event::Run(_, Ok(rec)) => {
                 self.row_run_ended(&rec);
                 self.record(*rec)
             }
-            Event::Run(Err(_)) => {}
+            Event::Run(id, Err(e)) => {
+                // A shown view waiting for its data says why it has none; r reads it again.
+                if let Some(p) = self
+                    .oneoffs
+                    .iter_mut()
+                    .find(|o| o.run_id == id)
+                    .and_then(|o| o.view.as_mut())
+                    .filter(|p| p.loading)
+                {
+                    p.loading = false;
+                    p.error = Some(format!("{}; press r to read it again", e.message));
+                }
+            }
             Event::Recent(Ok(list)) => {
                 // One-off runs that are still running or started in the last day are listed
                 // too, whoever started them: an agent's run shows up when the TUI opens.

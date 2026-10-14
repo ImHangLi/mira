@@ -56,7 +56,7 @@ mira show --task "Speed up the API" --title "Slowest endpoints" < rows.json
 Input comes on stdin (or `--input FILE`):
 
 - A JSON array of objects: a table with one column per key. It needs at least one object.
-- A chart: `{"kind":"chart","style":"line","labels":["Mon","Tue"],"series":[{"id":"p95","label":"p95 ms","values":[350,null]}]}`. `style` is `line` (default) or `bar`. Use 1-8 series, each with one number or `null` per label, and at most 2000 labels. Bars take no negative values.
+- A chart: `{"kind":"chart","style":"line","labels":["Mon","Tue"],"series":[{"id":"p95","label":"p95 ms","values":[350,null]}]}`. `style` is `line` (default) or `bar`. Use 1-8 series, each with one number or `null` per label, and at most 2000 unique labels. Bars take no negative values.
 - Stats: `{"kind":"stats","stats":[{"id":"p95","label":"Search p95","value":"350 ms","detail":"-58% since Monday","tone":"good"}]}`. Use at most 32 stats. `detail` is optional. `tone` is `neutral` (default), `good`, `warn`, or `bad`.
 - Markdown text, with `--markdown`.
 - Any other view data from the [protocol](../mira-extend/references/protocol.md#view-data).
