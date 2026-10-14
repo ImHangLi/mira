@@ -12,6 +12,9 @@ impl App {
         if self.selected_view().is_some() && self.exec_view(cmd) {
             return;
         }
+        if self.selected_oneoff().is_some_and(|o| o.is_view()) && self.exec_shown(cmd) {
+            return;
+        }
         if self.selected_oneoff().is_some() && self.exec_oneoff(cmd) {
             return;
         }
@@ -79,7 +82,7 @@ impl App {
                     };
                 }
             }
-            Cmd::CopyAll => {}
+            Cmd::CopyAll | Cmd::KeepView => {}
             Cmd::NextTab | Cmd::PrevTab | Cmd::GoTab(_) => {
                 let at = self.shown_tab().index();
                 let to = match cmd {
@@ -284,6 +287,71 @@ impl App {
         true
     }
 
+    /// Commands that act on a view shown with `mira show`. Returns false for global ones.
+    fn exec_shown(&mut self, cmd: Cmd) -> bool {
+        let Some(i) = self.selected_oneoff_index() else {
+            return false;
+        };
+        match (cmd, self.focus) {
+            (Cmd::Open, Focus::List) => self.focus = Focus::Logs,
+            (Cmd::Escape, Focus::Logs) => self.focus = Focus::List,
+            (Cmd::Restart, _) => {
+                let o = &mut self.oneoffs[i];
+                if let Some(p) = o.view.as_mut().filter(|p| p.error.is_some()) {
+                    if self.io.read.send(Read::RunGet(o.run_id.clone())).is_ok() {
+                        p.error = None;
+                        p.loading = true;
+                    } else {
+                        p.error = Some(
+                            "the connection to the host is lost; quit and open mira again".into(),
+                        );
+                    }
+                }
+            }
+            (Cmd::KeepView, _) => {
+                let o = &self.oneoffs[i];
+                let id = o.run_id.to_string();
+                let title = o.title();
+                self.modal = Modal::Confirm {
+                    title: "Keep view".into(),
+                    lines: vec![
+                        format!("Keep `{title}` as a view of this project?"),
+                        String::new(),
+                        "Mira adds it to the Tools plugin in .mira/plugins/tools,".into(),
+                        "with this data. An agent can update it with `mira publish`.".into(),
+                    ],
+                    words: vec!["keep".into(), id],
+                    done: format!("Kept `{title}`. It is under Tools in the list."),
+                };
+            }
+            (
+                Cmd::Up
+                | Cmd::Down
+                | Cmd::PageUp
+                | Cmd::PageDown
+                | Cmd::Top
+                | Cmd::Bottom
+                | Cmd::Left
+                | Cmd::Right
+                | Cmd::Wrap
+                | Cmd::Copy
+                | Cmd::CopyAll,
+                Focus::Logs,
+            ) => {
+                let Some(p) = self.oneoffs[i].view.as_mut() else {
+                    return false;
+                };
+                if let Some((text, what)) = drive(p, cmd) {
+                    let n = text.lines().count().max(1);
+                    self.info(format!("copying the {what}..."));
+                    clip::copy(text, n, self.io.events.clone());
+                }
+            }
+            _ => return false,
+        }
+        true
+    }
+
     /// Commands that act on a selected view. Returns false for global ones.
     fn exec_view(&mut self, cmd: Cmd) -> bool {
         let Some(v) = self.selected_view() else {
@@ -358,6 +426,24 @@ impl App {
         }
         true
     }
+}
+
+/// Moves in a view pane, or returns the text a copy command takes.
+fn drive(p: &mut crate::views::ViewPane, cmd: Cmd) -> Option<(String, String)> {
+    match cmd {
+        Cmd::Up => p.move_by(-1),
+        Cmd::Down => p.move_by(1),
+        Cmd::PageUp => p.page(false),
+        Cmd::PageDown => p.page(true),
+        Cmd::Top => p.home(false),
+        Cmd::Bottom => p.home(true),
+        Cmd::Left | Cmd::Right => p.left_right(cmd == Cmd::Right),
+        Cmd::Wrap => p.toggle_wrap(),
+        Cmd::Copy => return p.copy_value(),
+        Cmd::CopyAll => return p.copy_whole(),
+        _ => {}
+    }
+    None
 }
 
 impl App {

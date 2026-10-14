@@ -11,6 +11,7 @@ use mira_protocol::time::Timestamp;
 use crate::cmdbar;
 use crate::form::Form;
 use crate::logs::LogPane;
+use crate::views::ViewPane;
 
 /// One-off (`mira exec`) runs listed besides the ones still running.
 const ONEOFF_KEEP: usize = 5;
@@ -83,6 +84,8 @@ pub struct OneOff {
     pub stopping: bool,
     /// The log panel, made when the run is first selected.
     pub pane: Option<LogPane>,
+    /// The view of a run that `mira show` made, from its record.
+    pub view: Option<ViewPane>,
 }
 
 impl OneOff {
@@ -99,6 +102,7 @@ impl OneOff {
             requester: None,
             stopping: false,
             pane: None,
+            view: None,
         }
     }
 
@@ -109,7 +113,9 @@ impl OneOff {
             .unwrap_or_else(|| format!("exec {}", &self.run_id.as_str()[..10]))
     }
 
-    pub(super) fn apply(&mut self, rec: &RunRecord) {
+    /// Fills in the record. Returns true when the record is a shown view whose data did not
+    /// come with it (a history page keeps results small): read the run itself for it.
+    pub(super) fn apply(&mut self, rec: &RunRecord) -> bool {
         self.label = Some(rec.label.clone());
         self.lifecycle = rec.lifecycle;
         self.started_at = rec.started_at;
@@ -118,6 +124,40 @@ impl OneOff {
         self.cleanup = Some(rec.cleanup.clone());
         self.source = Some(rec.source);
         self.requester = rec.requester.clone();
+        let waiting = self
+            .view
+            .as_ref()
+            .is_none_or(|p| p.meta.is_none() && p.error.is_none());
+        if let (Some(kind), true) = (rec.view_kind, waiting) {
+            let data = rec
+                .result
+                .as_ref()
+                .and_then(|r| serde_json::from_value(r.data.clone()).ok());
+            let held = rec.result.as_ref().is_some_and(|r| r.payload.is_some());
+            self.view = Some(match data {
+                Some(d) => ViewPane::shown(d, rec.started_at),
+                None if held => {
+                    let mut p = ViewPane::new(kind);
+                    p.loading = true;
+                    self.view = Some(p);
+                    return true;
+                }
+                None => {
+                    let mut p = ViewPane::new(kind);
+                    p.error = Some(format!(
+                        "the view is too large to show here; read it with `mira runs {} --json`",
+                        rec.run_id
+                    ));
+                    p
+                }
+            });
+        }
+        false
+    }
+
+    /// A view shown with `mira show`, not a command.
+    pub fn is_view(&self) -> bool {
+        self.view.is_some()
     }
 
     /// Runs of one agent thread share a group, and so do runs people start (`you`). Runs

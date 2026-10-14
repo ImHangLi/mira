@@ -331,6 +331,7 @@ impl App {
             (KeyCode::Char('x'), _) => Cmd::Remove,
             (KeyCode::Char('+'), _) => Cmd::AddPlugin,
             (KeyCode::Char('R'), _) => Cmd::Refresh,
+            (KeyCode::Char('K'), _) => Cmd::KeepView,
             (KeyCode::Char(']'), _) => Cmd::NextTab,
             (KeyCode::Char('['), _) => Cmd::PrevTab,
             (KeyCode::Char(c @ '1'..='3'), _) => Cmd::GoTab(c as u8 - b'1'),

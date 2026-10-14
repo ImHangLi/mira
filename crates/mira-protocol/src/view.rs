@@ -100,6 +100,74 @@ pub struct TreeNode {
     pub children: Vec<TreeNode>,
 }
 
+/// How a chart draws its series.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ChartStyle {
+    /// One line per series, across the labels.
+    #[default]
+    Line,
+    /// One bar per label and series.
+    Bar,
+}
+
+/// One series of a chart: a value per label, `null` for no value.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct Series {
+    pub id: String,
+    pub label: String,
+    pub values: Vec<Option<f64>>,
+}
+
+/// What a stat's value means for the reader. The TUI shows it as a word mark and a color.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum StatTone {
+    #[default]
+    Neutral,
+    Good,
+    Warn,
+    Bad,
+}
+
+/// The schema of a stat value: text, or a number shown as written.
+#[derive(JsonSchema)]
+#[allow(dead_code)]
+#[serde(untagged)]
+enum TextOrNumber {
+    Text(String),
+    Number(f64),
+}
+
+fn text_or_number<'de, D: serde::Deserializer<'de>>(d: D) -> Result<String, D::Error> {
+    match Value::deserialize(d)? {
+        Value::String(s) => Ok(s),
+        Value::Number(n) => Ok(n.to_string()),
+        other => Err(serde::de::Error::custom(format!(
+            "a stat value is text or a number, not {other}"
+        ))),
+    }
+}
+
+/// One number worth a glance: a label, a formatted value, and an optional detail line.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct Stat {
+    pub id: String,
+    pub label: String,
+    /// The value as the reader should see it, for example `1.2 s` or `98%`. A number is
+    /// shown as written.
+    #[serde(deserialize_with = "text_or_number")]
+    #[schemars(with = "TextOrNumber")]
+    pub value: String,
+    /// A short line under the value, for example `+12% since Monday`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub detail: Option<String>,
+    #[serde(default)]
+    pub tone: StatTone,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum ViewData {
@@ -121,6 +189,18 @@ pub enum ViewData {
     Json {
         value: Value,
     },
+    /// Numbers over labels, for example latency per day.
+    Chart {
+        #[serde(default)]
+        style: ChartStyle,
+        /// The x-axis labels. Every series has one value per label.
+        labels: Vec<String>,
+        series: Vec<Series>,
+    },
+    /// A few numbers worth a glance, as tiles.
+    Stats {
+        stats: Vec<Stat>,
+    },
 }
 
 impl ViewData {
@@ -131,6 +211,8 @@ impl ViewData {
             Self::Log { .. } => ViewKind::Log,
             Self::Tree { .. } => ViewKind::Tree,
             Self::Json { .. } => ViewKind::Json,
+            Self::Chart { .. } => ViewKind::Chart,
+            Self::Stats { .. } => ViewKind::Stats,
         }
     }
 
@@ -188,8 +270,103 @@ impl ViewData {
                     ));
                 }
             }
+            Self::Chart {
+                style,
+                labels,
+                series,
+            } => {
+                validate_chart(labels, series, pointer, &mut issues);
+                if *style == ChartStyle::Bar
+                    && series
+                        .iter()
+                        .any(|s| s.values.iter().flatten().any(|v| *v < 0.0))
+                {
+                    issues.push(Issue::schema(
+                        format!("{pointer}/series"),
+                        "bar charts take values of 0 or more; use a line chart for negative values",
+                    ));
+                }
+            }
+            Self::Stats { stats } => validate_stats(stats, pointer, &mut issues),
         }
         issues
+    }
+}
+
+fn validate_id(id: &str, p: String, what: &str, ids: &mut BTreeSet<String>, issues: &mut Issues) {
+    if id.is_empty() || id.len() > MAX_ROW_ID_BYTES {
+        issues.push(Issue::schema(p, format!("{what} id must be 1-128 bytes")));
+    } else if !ids.insert(id.to_owned()) {
+        issues.push(Issue::schema(p, format!("duplicate {what} id")));
+    }
+}
+
+fn validate_chart(labels: &[String], series: &[Series], pointer: &str, issues: &mut Issues) {
+    if series.is_empty() || series.len() > MAX_CHART_SERIES {
+        issues.push(Issue::schema(
+            format!("{pointer}/series"),
+            "a chart has 1-8 series",
+        ));
+    }
+    if labels.len() > MAX_CHART_POINTS {
+        issues.push(Issue::schema(
+            format!("{pointer}/labels"),
+            "a chart has at most 2000 labels",
+        ));
+    }
+    let mut seen = BTreeSet::new();
+    if labels.iter().any(|l| !seen.insert(l.as_str())) {
+        issues.push(Issue::schema(
+            format!("{pointer}/labels"),
+            "chart labels must be unique",
+        ));
+    }
+    if labels.iter().any(|l| l.len() > MAX_NAME_BYTES) {
+        issues.push(Issue::schema(
+            format!("{pointer}/labels"),
+            "a chart label is at most 128 bytes",
+        ));
+    }
+    let mut ids = BTreeSet::new();
+    for (i, s) in series.iter().enumerate() {
+        let p = format!("{pointer}/series/{i}");
+        validate_id(&s.id, format!("{p}/id"), "series", &mut ids, issues);
+        if s.label.len() > MAX_NAME_BYTES {
+            issues.push(Issue::schema(
+                format!("{p}/label"),
+                "series label is at most 128 bytes",
+            ));
+        }
+        if s.values.len() != labels.len() {
+            issues.push(Issue::schema(
+                format!("{p}/values"),
+                "a series has exactly one value per label (null for none)",
+            ));
+        }
+    }
+}
+
+fn validate_stats(stats: &[Stat], pointer: &str, issues: &mut Issues) {
+    if stats.len() > MAX_STAT_TILES {
+        issues.push(Issue::schema(
+            format!("{pointer}/stats"),
+            "stats view has at most 32 stats",
+        ));
+    }
+    let mut ids = BTreeSet::new();
+    for (i, s) in stats.iter().enumerate() {
+        let p = format!("{pointer}/stats/{i}");
+        validate_id(&s.id, format!("{p}/id"), "stat", &mut ids, issues);
+        let long = [Some(&s.label), Some(&s.value), s.detail.as_ref()]
+            .into_iter()
+            .flatten()
+            .any(|t| t.len() > MAX_NAME_BYTES);
+        if long {
+            issues.push(Issue::schema(
+                p,
+                "stat label, value, and detail are at most 128 bytes each",
+            ));
+        }
     }
 }
 

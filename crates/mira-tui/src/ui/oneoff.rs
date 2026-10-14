@@ -11,15 +11,20 @@ use ratatui::widgets::{Padding, Paragraph};
 use crate::app::{App, Focus, Hit, OneOff};
 use crate::logs::display;
 use crate::theme::{Theme, Tone};
+use crate::views::kind_word;
 
 use super::log_panel::{draw_records, log_bar};
-use super::marks::oneoff_mark;
+use super::marks::{kind_glyph, oneoff_mark};
 use super::text::{ago, cleanup_word, ellipsize, enum_word, fit_spans, short_id};
-use super::widgets::{chip, panel, panel_title, tab_hits, tabs_line};
+use super::view_panel::{draw_body, pane_position};
+use super::widgets::{chip, panel, panel_title, right_info, tab_hits, tabs_line};
 
 /// The main pane of a one-off `mira exec` run: a card like a tool's, then its logs or
 /// the details of the run.
 pub(super) fn draw_oneoff(f: &mut Frame, app: &mut App, t: &Theme, i: usize, area: Rect) {
+    if app.oneoffs[i].is_view() {
+        return draw_shown(f, app, t, i, area);
+    }
     let focus = app.focus == Focus::Logs;
     let block =
         panel(t, panel_title(t, "One-off run", focus), focus).padding(Padding::horizontal(1));
@@ -92,6 +97,82 @@ pub(super) fn draw_oneoff(f: &mut Frame, app: &mut App, t: &Theme, i: usize, are
     let bar = log_bar(p, None);
     f.render_widget(Paragraph::new(tabs_line(t, &labels, 0, &bar, w)), tabs_area);
     draw_records(f, p, t, focus, clock, body);
+}
+
+/// The main pane of a view shown with `mira show`: who showed it and when, then the view.
+fn draw_shown(f: &mut Frame, app: &mut App, t: &Theme, i: usize, area: Rect) {
+    let focus = app.focus == Focus::Logs;
+    let block =
+        panel(t, panel_title(t, "Shown view", focus), focus).padding(Padding::horizontal(1));
+    let inner = block.inner(area);
+    f.render_widget(block, area);
+    let w = inner.width as usize;
+    let o = &app.oneoffs[i];
+    let Some(p) = o.view.as_ref() else {
+        return;
+    };
+    let kind = p.kind;
+    let when = format!(
+        "shown by {} · {} ({})",
+        by(o),
+        ago(o.started_at),
+        app.clock.hm(o.started_at)
+    );
+    let card = vec![
+        Line::from(fit_spans(
+            vec![
+                Span::styled(ellipsize(&display(&o.title()), w / 2), t.bold()),
+                Span::raw("  "),
+                chip(
+                    t,
+                    &format!("{} {} view", kind_glyph(kind), kind_word(kind)),
+                    Tone::Sky,
+                ),
+            ],
+            w,
+        )),
+        Line::from(Span::styled(ellipsize(&when, w), t.muted())),
+        Line::from(Span::styled(
+            ellipsize(
+                "Worth keeping? Press K to keep it as a view of this project.",
+                w,
+            ),
+            t.muted().add_modifier(Modifier::ITALIC),
+        )),
+    ];
+    let bar = pane_position(p);
+    let run = o.run_id.to_string();
+    let rule = inner.height >= 16;
+    let [card_area, _, tabs_area, rule_area, body] = Layout::vertical([
+        Constraint::Length(card.len() as u16),
+        Constraint::Length(u16::from(inner.height >= 14)),
+        Constraint::Length(1),
+        Constraint::Length(u16::from(rule)),
+        Constraint::Min(1),
+    ])
+    .areas(inner);
+    f.render_widget(Paragraph::new(card), card_area);
+    let word = kind_word(kind);
+    let mut tab_name = word.to_owned();
+    if let Some(c) = tab_name.get_mut(0..1) {
+        c.make_ascii_uppercase();
+    }
+    let tab = vec![Span::styled(
+        format!(" {} {tab_name} ", kind_glyph(kind)),
+        t.word(Tone::Accent)
+            .add_modifier(Modifier::BOLD | Modifier::UNDERLINED),
+    )];
+    f.render_widget(Paragraph::new(right_info(tab, &bar, t, w)), tabs_area);
+    if rule {
+        f.render_widget(
+            Paragraph::new(Span::styled("─".repeat(w), t.dim())),
+            rule_area,
+        );
+    }
+    app.hits.push((body, Hit::Pane));
+    if let Some(p) = app.oneoffs[i].view.as_mut() {
+        draw_body(f, p, t, body, focus, &run);
+    }
 }
 
 /// The one-off card's status line: a mark and a word, then details.

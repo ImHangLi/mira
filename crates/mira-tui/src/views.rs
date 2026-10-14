@@ -8,7 +8,8 @@ use mira_protocol::ids::{ActionId, RunId, ViewRevision};
 use mira_protocol::manifest::ViewKind;
 use mira_protocol::time::Timestamp;
 use mira_protocol::view::{
-    Durability, Freshness, LogLevel, SourceKind, TreeNode, ViewBody, ViewData, ViewSnapshot,
+    ChartStyle, Durability, Freshness, LogLevel, SourceKind, TreeNode, ViewBody, ViewData,
+    ViewSnapshot,
 };
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
@@ -105,7 +106,30 @@ pub fn kind_word(k: ViewKind) -> &'static str {
         ViewKind::Log => "log",
         ViewKind::Tree => "tree",
         ViewKind::Json => "json",
+        ViewKind::Chart => "chart",
+        ViewKind::Stats => "stats",
     }
+}
+
+/// A number as a chart shows it: short, without a trailing `.0`.
+pub fn number(v: f64) -> String {
+    let a = v.abs();
+    let s = if a >= 1e9 {
+        format!("{:.1}B", v / 1e9)
+    } else if a >= 1e6 {
+        format!("{:.1}M", v / 1e6)
+    } else if a >= 1e4 {
+        format!("{:.1}k", v / 1e3)
+    } else if a >= 100.0 || v.fract() == 0.0 {
+        format!("{v:.0}")
+    } else if a >= 1.0 {
+        format!("{v:.1}")
+    } else {
+        format!("{v:.2}")
+    };
+    s.replace(".0B", "B")
+        .replace(".0M", "M")
+        .replace(".0k", "k")
 }
 
 fn cell(v: &Value) -> String {
@@ -173,6 +197,28 @@ impl ViewPane {
             width: 40,
             note: None,
         }
+    }
+
+    /// A pane for data shown once with `mira show`: it never changes.
+    pub fn shown(data: ViewData, at: Timestamp) -> Self {
+        let mut p = Self::new(data.kind());
+        p.meta = Some(Meta {
+            revision: ViewRevision::new(1).ok(),
+            recorded_at: Some(at),
+            source_run_id: None,
+            source_kind: None,
+            freshness: Freshness::Historical,
+            freshness_reason: None,
+            durability: Durability::Committed,
+        });
+        p.body = Body::Data(data);
+        if let Some(ViewData::Tree { nodes }) = p.data() {
+            let roots: Vec<String> = nodes.iter().map(|n| n.id.clone()).collect();
+            p.expanded.extend(roots);
+        }
+        p.rebuild();
+        p.sel_id = p.row_id(0);
+        p
     }
 
     pub fn revision(&self) -> Option<ViewRevision> {
@@ -252,11 +298,24 @@ impl ViewPane {
         self.keep_visible();
     }
 
+    /// A bar chart moves by label, not by series.
+    pub fn is_bar_chart(&self) -> bool {
+        matches!(
+            self.data(),
+            Some(ViewData::Chart {
+                style: ChartStyle::Bar,
+                ..
+            })
+        )
+    }
+
     fn unit(&self) -> &'static str {
         match self.kind {
             ViewKind::Table => "row",
             ViewKind::Log => "item",
             ViewKind::Tree => "node",
+            ViewKind::Chart => "series",
+            ViewKind::Stats => "stat",
             _ => "line",
         }
     }
@@ -333,6 +392,77 @@ impl ViewPane {
                 self.col = self.col.min(columns.len().saturating_sub(1));
             }
             ViewData::Log { .. } => {}
+            // A bar chart moves by label; a line chart by series.
+            ViewData::Chart {
+                style: ChartStyle::Bar,
+                labels,
+                series,
+            } => {
+                self.flat = labels
+                    .iter()
+                    .enumerate()
+                    .map(|(i, l)| {
+                        let vals: Vec<String> = series
+                            .iter()
+                            .map(|s| {
+                                let v = s.values.get(i).copied().flatten();
+                                format!("{} {}", s.label, v.map_or("-".into(), number))
+                            })
+                            .collect();
+                        // The label is the identity, so a selection follows it across updates.
+                        Flat {
+                            id: l.clone(),
+                            depth: 0,
+                            text: format!("{l}: {}", vals.join(", ")),
+                            children: false,
+                        }
+                    })
+                    .collect();
+            }
+            ViewData::Chart {
+                style: ChartStyle::Line,
+                series,
+                ..
+            } => {
+                self.flat = series
+                    .iter()
+                    .map(|s| {
+                        let vals: Vec<f64> = s.values.iter().copied().flatten().collect();
+                        let lo = vals.iter().copied().fold(f64::INFINITY, f64::min);
+                        let hi = vals.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+                        let text = match vals.last() {
+                            Some(last) => format!(
+                                "{}: last {}, low {}, high {}",
+                                s.label,
+                                number(*last),
+                                number(lo),
+                                number(hi)
+                            ),
+                            None => format!("{}: no values", s.label),
+                        };
+                        Flat {
+                            id: s.id.clone(),
+                            depth: 0,
+                            text,
+                            children: false,
+                        }
+                    })
+                    .collect();
+            }
+            ViewData::Stats { stats } => {
+                self.flat = stats
+                    .iter()
+                    .map(|x| Flat {
+                        id: x.id.clone(),
+                        depth: 0,
+                        text: match &x.detail {
+                            Some(d) => format!("{}: {} ({d})", x.label, x.value),
+                            None => format!("{}: {}", x.label, x.value),
+                        },
+                        children: false,
+                    })
+                    .collect();
+            }
         }
     }
 
@@ -512,7 +642,10 @@ impl ViewPane {
     }
 
     pub fn can_wrap(&self) -> bool {
-        !matches!(self.kind, ViewKind::Table) && self.data().is_some()
+        !matches!(
+            self.kind,
+            ViewKind::Table | ViewKind::Chart | ViewKind::Stats
+        ) && self.data().is_some()
     }
 
     /// `y`: the full value under the cursor as plain text.
@@ -532,6 +665,7 @@ impl ViewPane {
                 .flat
                 .get(i)
                 .map(|f| (f.text.clone(), "node label".into())),
+            ViewData::Stats { stats } => stats.get(i).map(|x| (x.value.clone(), "value".into())),
             _ => self.flat.get(i).map(|f| (f.text.clone(), "line".into())),
         }
     }
@@ -567,6 +701,10 @@ impl ViewPane {
                 "whole JSON value".into(),
             )),
             ViewData::Text { text, .. } => Some((text.clone(), "whole text".into())),
+            ViewData::Chart { .. } | ViewData::Stats { .. } => Some((
+                serde_json::to_string_pretty(self.data()?).unwrap_or_default(),
+                format!("{} as JSON", kind_word(self.kind)),
+            )),
         }
     }
 

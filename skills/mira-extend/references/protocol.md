@@ -31,6 +31,8 @@ A task must end with exactly one `result`. A success result followed by a non-ze
 | `log` | `{"kind":"log","items":[{"id","text","level"}]}` — reuse an ID only for identical content |
 | `tree` | `{"kind":"tree","nodes":[{"id","label","children":[...]}]}` |
 | `json` | `{"kind":"json","value":…}` |
+| `chart` | `{"kind":"chart","style":"line"\|"bar","labels":["Mon",…],"series":[{"id","label","values":[number\|null,…]}]}` — 1-8 series, one value per label, at most 2000 unique labels; bars take no negative values |
+| `stats` | `{"kind":"stats","stats":[{"id","label","value","detail","tone":"neutral"\|"good"\|"warn"\|"bad"}]}` — at most 32; `value` is text such as `"350 ms"`; `detail` and `tone` are optional |
 
 An invalid update is rejected whole and the previous data stays (marked stale). Timestamps are UTC like `2026-09-26T01:34:00.000Z`. Numbers must be finite; large integers go in strings.
 

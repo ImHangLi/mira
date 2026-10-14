@@ -76,6 +76,7 @@ methods! {
     ViewRead = "view.read", ViewReadParams => ViewSnapshot, stream: false;
     ViewPublish = "view.publish", ViewPublishParams => PublishResult, stream: false;
     ViewAction = "view.action", ViewActionParams => InvokeAccepted, stream: false;
+    ViewShow = "view.show", ViewShowParams => InvokeAccepted, stream: false;
     ConfigApply = "config.apply", ConfigApplyParams => ConfigApplied, stream: false;
     ConfigReload = "config.reload", Empty => ConfigApplied, stream: false;
     ScheduleSet = "schedule.set", ScheduleSetParams => ScheduleData, stream: false;

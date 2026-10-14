@@ -6,6 +6,7 @@
 //! Each submodule draws one part of the screen; [`widgets`], [`text`], and [`marks`]
 //! hold the pieces they share.
 
+mod charts;
 mod footer;
 mod header;
 mod history;

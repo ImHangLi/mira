@@ -20,6 +20,7 @@ flowchart LR
 
 - **MIPC/1** is JSON-RPC 2.0 over a Unix socket in the runtime folder (`mira paths`). A client starts the host when none is running. The host exits when idle, unless a session keeps it: an open TUI, or a background lease from `mira up --background`.
 - **MPP/1** is how a plugin action reports results, health, progress, and view data. A plain command needs no protocol at all.
+- `view.show` records a view an agent shows (`mira show`) as a finished one-off run: no process runs, and the run's result holds the view data. The TUI draws it in the agent's section; `mira keep` turns it into a declared view.
 - Nothing starts unless a person or an agent asks. The host records every child process group on disk, so it can clean up after a crash.
 - A PTY process can opt into `show: "on_select"`. Selecting its page makes the TUI send a normal invoke request with default inputs. The host still owns validation, process reuse, session lifetime, and input locks. The catalog carries `show`, so the TUI draws such a page without run state, time, or a start/stop key. Other actions keep explicit start.
 

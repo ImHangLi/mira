@@ -40,10 +40,30 @@ Your runs appear in one section per agent thread. Pass the same `--task "a few w
 
 - `mira logs RUN_ID_OR_ACTION --json`: the last 100 records of the run, oldest first. Older records: `--after "$(meta.next_cursor)"`. `--follow` streams JSONL until the run ends.
 - `mira runs RUN_ID --json` or `mira runs --action REF --json`: outcome, exit, and cleanup. `definition_current: false` means the success used an older definition.
-- `mira view PLUGIN.VIEW --json`: tables, logs, trees, text, and JSON. `freshness` is `current` while the producing run is live, `historical` after it ended (normal), and `stale` when the definition changed or the source run failed. Read `recorded_at`: an old success does not prove that the current code works.
+- `mira view PLUGIN.VIEW --json`: tables, charts, stats, logs, trees, text, and JSON. `freshness` is `current` while the producing run is live, `historical` after it ended (normal), and `stale` when the definition changed or the source run failed. Read `recorded_at`: an old success does not prove that the current code works.
 - A large value comes back as `meta.payload`. Read it with `mira payload read TOKEN`. On `PAYLOAD_GONE`, do not rerun the action only to recreate the data.
 
 Never read `state.sqlite3`, `~/Library/Logs/Mira`, or caches directly.
+
+## Show the human
+
+Use `mira show` when a result is easier to read as a table, a chart, or a few numbers than as text. Also give a one-line summary in chat. Show one view per result that matters, not every step. Remove secrets and private data first: shown data stays in the run history.
+
+```sh
+mira show --task "Speed up the API" --title "Slowest endpoints" < rows.json
+```
+
+Input comes on stdin (or `--input FILE`):
+
+- A JSON array of objects: a table with one column per key. It needs at least one object.
+- A chart: `{"kind":"chart","style":"line","labels":["Mon","Tue"],"series":[{"id":"p95","label":"p95 ms","values":[350,null]}]}`. `style` is `line` (default) or `bar`. Use 1-8 series, each with one number or `null` per label, and at most 2000 unique labels. Bars take no negative values.
+- Stats: `{"kind":"stats","stats":[{"id":"p95","label":"Search p95","value":"350 ms","detail":"-58% since Monday","tone":"good"}]}`. Use at most 32 stats. `detail` is optional. `tone` is `neutral` (default), `good`, `warn`, or `bad`.
+- Markdown text, with `--markdown`.
+- Any other view data from the [protocol](../mira-extend/references/protocol.md#view-data).
+
+IDs must be unique, and every ID, label, and value is at most 128 bytes. The title is 1-128 bytes, and the whole view is at most 512 KiB. Pass the same `--task` as your `exec` runs, so the view lands in your section.
+
+The reply's `data.run_id` names the view. A shown view never changes: show a new one when the data changes. `mira keep RUN_ID` keeps it as a view in `.mira/plugins/tools`. Do this only when the human asks. If `mira show` is not available (an older Mira), answer in chat.
 
 ## Finish
 

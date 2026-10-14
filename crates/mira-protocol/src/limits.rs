@@ -41,6 +41,11 @@ pub const MAX_TABLE_ROWS: usize = 10_000;
 pub const MAX_ROW_ID_BYTES: usize = 128;
 pub const MAX_TREE_DEPTH: usize = 32;
 pub const MAX_TREE_NODES: usize = 10_000;
+pub const MAX_CHART_SERIES: usize = 8;
+pub const MAX_CHART_POINTS: usize = 2_000;
+pub const MAX_STAT_TILES: usize = 32;
+/// The largest view `mira show` takes, as compact JSON.
+pub const MAX_SHOWN_VIEW_BYTES: usize = 512 * KIB;
 
 pub const MAX_REQUEST_KEY_BYTES: usize = 128;
 pub const MAX_CURSOR_BYTES: usize = 2048;
