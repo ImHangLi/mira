@@ -74,7 +74,14 @@ pub(crate) fn provenance(rec: &RunRecord, set: Option<&ConfigSet>) -> RunProvena
 
 /// Prepares a record for a reply: provenance added, and inline result data above the inline
 /// bound (records written before payload references existed) moved into a session payload.
-pub(crate) fn prepare_run(rec: &mut RunRecord, set: Option<&ConfigSet>, payloads: &Payloads) {
+/// `whole`: a single-record read (`run.get`), which carries a shown view whole. A list keeps
+/// every result small, so a page of history always fits.
+pub(crate) fn prepare_run(
+    rec: &mut RunRecord,
+    set: Option<&ConfigSet>,
+    payloads: &Payloads,
+    whole: bool,
+) {
     rec.provenance = Some(provenance(rec, set));
     if let Some(res) = rec.result.as_mut()
         && res.payload.is_none()
@@ -82,7 +89,7 @@ pub(crate) fn prepare_run(rec: &mut RunRecord, set: Option<&ConfigSet>, payloads
     {
         let bytes = serde_json::to_vec(&res.data).unwrap_or_default();
         // A shown view travels whole, so the TUI can draw it from the record.
-        let limit = if rec.view_kind.is_some() {
+        let limit = if whole && rec.view_kind.is_some() {
             mira_protocol::limits::MAX_SHOWN_VIEW_BYTES
         } else {
             INLINE_RESULT_BYTES

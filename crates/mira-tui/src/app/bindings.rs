@@ -383,10 +383,8 @@ impl App {
     /// Keys for a view shown with `mira show`: move and copy like a view, and keep it.
     fn shown_bindings(&self) -> Vec<Binding> {
         let mut v = Vec::new();
-        let rows = self
-            .selected_oneoff()
-            .and_then(|o| o.view.as_ref())
-            .map_or(0, ViewPane::len);
+        let pane = self.selected_oneoff().and_then(|o| o.view.as_ref());
+        let rows = pane.map_or(0, ViewPane::len);
         match self.focus {
             Focus::List => {
                 if self.visible.len() > 1 {
@@ -408,6 +406,24 @@ impl App {
                     v.push(hidden("G/End", "last", Cmd::Bottom));
                     v.push(bind("y", "copy", Cmd::Copy));
                     v.push(bind("Y", "copy JSON", Cmd::CopyAll));
+                    if let Some(p) = pane {
+                        let lr = match p.kind {
+                            ViewKind::Table => Some("column"),
+                            ViewKind::Tree => Some("fold"),
+                            ViewKind::Chart | ViewKind::Stats => None,
+                            _ => Some("pan"),
+                        };
+                        if let Some(lr) = lr {
+                            v.push(bind("h/l", lr, Cmd::Right));
+                        }
+                        if p.can_wrap() {
+                            v.push(bind(
+                                "w",
+                                if p.wrap { "no wrap" } else { "wrap" },
+                                Cmd::Wrap,
+                            ));
+                        }
+                    }
                 }
                 v.push(bind("K", "keep as a view", Cmd::KeepView));
                 v.push(bind("Tab", "tools", Cmd::Focus));

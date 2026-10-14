@@ -47,17 +47,23 @@ Never read `state.sqlite3`, `~/Library/Logs/Mira`, or caches directly.
 
 ## Show the human
 
-When an answer is a table, a chart, or a few numbers, show it in the TUI instead of pasting it into chat. It appears in your thread's section, and the human can press `K` to keep it.
+Use `mira show` when a result is easier to read as a table, a chart, or a few numbers than as text. Also give a one-line summary in chat. Show one view per result that matters, not every step. Remove secrets and private data first: shown data stays in the run history.
 
-| Input on stdin (or `--input FILE`) | Shows |
-|---|---|
-| A JSON array of objects | A table, one column per key |
-| `{"kind":"chart","style":"line"\|"bar","labels":[…],"series":[{"id","label","values":[…]}]}` | A chart; one value or `null` per label |
-| `{"kind":"stats","stats":[{"id","label","value","detail","tone":"good"\|"warn"\|"bad"}]}` | Numbers worth a glance |
-| Any view data from the [protocol](../mira-extend/references/protocol.md#view-data) | That view |
-| Markdown, with `--markdown` | A text page |
+```sh
+mira show --task "Speed up the API" --title "Slowest endpoints" < rows.json
+```
 
-`mira show --task "thread goal" --title "Slow endpoints" < rows.json` prints the run ID. A shown view never changes. Show a new one when the data changes. `mira keep RUN_ID` keeps it as a view in `.mira/plugins/tools`; do this only when the human asks.
+Input comes on stdin (or `--input FILE`):
+
+- A JSON array of objects: a table with one column per key. It needs at least one object.
+- A chart: `{"kind":"chart","style":"line","labels":["Mon","Tue"],"series":[{"id":"p95","label":"p95 ms","values":[350,null]}]}`. `style` is `line` (default) or `bar`. Use 1-8 series, each with one number or `null` per label, and at most 2000 labels. Bars take no negative values.
+- Stats: `{"kind":"stats","stats":[{"id":"p95","label":"Search p95","value":"350 ms","detail":"-58% since Monday","tone":"good"}]}`. Use at most 32 stats. `detail` is optional. `tone` is `neutral` (default), `good`, `warn`, or `bad`.
+- Markdown text, with `--markdown`.
+- Any other view data from the [protocol](../mira-extend/references/protocol.md#view-data).
+
+IDs must be unique, and every ID, label, and value is at most 128 bytes. The title is 1-128 bytes, and the whole view is at most 512 KiB. Pass the same `--task` as your `exec` runs, so the view lands in your section.
+
+The reply's `data.run_id` names the view. A shown view never changes: show a new one when the data changes. `mira keep RUN_ID` keeps it as a view in `.mira/plugins/tools`. Do this only when the human asks. If `mira show` is not available (an older Mira), answer in chat.
 
 ## Finish
 

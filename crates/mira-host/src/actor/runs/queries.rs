@@ -32,7 +32,7 @@ impl Actor {
         let set = self.accepted().ok();
         let payloads = self.payloads.clone();
         if let Some(mut rec) = self.known_record(&p.run_id) {
-            reads::prepare_run(&mut rec, set.as_deref(), &payloads);
+            reads::prepare_run(&mut rec, set.as_deref(), &payloads, true);
             return r.send(self.ok(rec, ReplyMeta::default()));
         }
         let ctx = self.ctx();
@@ -41,7 +41,7 @@ impl Actor {
             let reply = match storage {
                 Ok(s) => match s.get_run(p.run_id.clone()).await {
                     Ok(Some(mut rec)) => {
-                        reads::prepare_run(&mut rec, set.as_deref(), &payloads);
+                        reads::prepare_run(&mut rec, set.as_deref(), &payloads, true);
                         reply_ok(ctx, rec, ReplyMeta::default())
                     }
                     Ok(None) => reply_fail(ctx, ErrorInfo::run_not_found(&p.run_id)),
@@ -102,7 +102,7 @@ impl Actor {
                         if let Some(l) = live.iter().find(|l| l.run_id == rec.run_id) {
                             *rec = l.clone();
                         }
-                        reads::prepare_run(rec, set.as_deref(), &payloads);
+                        reads::prepare_run(rec, set.as_deref(), &payloads, false);
                     }
                     let more_stored = runs.len() > limit;
                     runs.truncate(limit);

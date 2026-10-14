@@ -409,8 +409,9 @@ impl ViewPane {
                                 format!("{} {}", s.label, v.map_or("-".into(), number))
                             })
                             .collect();
+                        // The label is the identity, so a selection follows it across updates.
                         Flat {
-                            id: format!("#{i}"),
+                            id: l.clone(),
                             depth: 0,
                             text: format!("{l}: {}", vals.join(", ")),
                             children: false,

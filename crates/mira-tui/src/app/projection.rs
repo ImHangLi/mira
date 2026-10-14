@@ -201,7 +201,9 @@ impl App {
     /// that is not listed yet (from the startup history).
     pub(super) fn oneoff_record(&mut self, rec: &RunRecord, listed: bool) {
         if let Some(o) = self.oneoffs.iter_mut().find(|o| o.run_id == rec.run_id) {
-            o.apply(rec);
+            if o.apply(rec) {
+                let _ = self.io.read.send(Read::RunGet(rec.run_id.clone()));
+            }
             if !rec.lifecycle.is_active() {
                 o.stopping = false;
             }
@@ -212,7 +214,9 @@ impl App {
         }
         let keep = self.selected_key();
         let mut o = OneOff::new(rec.run_id.clone(), rec.lifecycle, rec.started_at);
-        o.apply(rec);
+        if o.apply(rec) {
+            let _ = self.io.read.send(Read::RunGet(rec.run_id.clone()));
+        }
         self.oneoffs.push(o);
         self.keep_oneoffs();
         self.relist(keep);

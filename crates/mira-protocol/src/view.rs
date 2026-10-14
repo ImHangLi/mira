@@ -131,6 +131,15 @@ pub enum StatTone {
     Bad,
 }
 
+/// The schema of a stat value: text, or a number shown as written.
+#[derive(JsonSchema)]
+#[allow(dead_code)]
+#[serde(untagged)]
+enum TextOrNumber {
+    Text(String),
+    Number(f64),
+}
+
 fn text_or_number<'de, D: serde::Deserializer<'de>>(d: D) -> Result<String, D::Error> {
     match Value::deserialize(d)? {
         Value::String(s) => Ok(s),
@@ -150,6 +159,7 @@ pub struct Stat {
     /// The value as the reader should see it, for example `1.2 s` or `98%`. A number is
     /// shown as written.
     #[serde(deserialize_with = "text_or_number")]
+    #[schemars(with = "TextOrNumber")]
     pub value: String,
     /// A short line under the value, for example `+12% since Monday`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -260,8 +270,22 @@ impl ViewData {
                     ));
                 }
             }
-            Self::Chart { labels, series, .. } => {
+            Self::Chart {
+                style,
+                labels,
+                series,
+            } => {
                 validate_chart(labels, series, pointer, &mut issues);
+                if *style == ChartStyle::Bar
+                    && series
+                        .iter()
+                        .any(|s| s.values.iter().flatten().any(|v| *v < 0.0))
+                {
+                    issues.push(Issue::schema(
+                        format!("{pointer}/series"),
+                        "bar charts take values of 0 or more; use a line chart for negative values",
+                    ));
+                }
             }
             Self::Stats { stats } => validate_stats(stats, pointer, &mut issues),
         }

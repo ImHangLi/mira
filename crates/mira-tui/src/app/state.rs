@@ -113,7 +113,9 @@ impl OneOff {
             .unwrap_or_else(|| format!("exec {}", &self.run_id.as_str()[..10]))
     }
 
-    pub(super) fn apply(&mut self, rec: &RunRecord) {
+    /// Fills in the record. Returns true when the record is a shown view whose data did not
+    /// come with it (a history page keeps results small): read the run itself for it.
+    pub(super) fn apply(&mut self, rec: &RunRecord) -> bool {
         self.label = Some(rec.label.clone());
         self.lifecycle = rec.lifecycle;
         self.started_at = rec.started_at;
@@ -122,13 +124,24 @@ impl OneOff {
         self.cleanup = Some(rec.cleanup.clone());
         self.source = Some(rec.source);
         self.requester = rec.requester.clone();
-        if let (Some(kind), None) = (rec.view_kind, &self.view) {
+        let waiting = self
+            .view
+            .as_ref()
+            .is_none_or(|p| p.meta.is_none() && p.error.is_none());
+        if let (Some(kind), true) = (rec.view_kind, waiting) {
             let data = rec
                 .result
                 .as_ref()
                 .and_then(|r| serde_json::from_value(r.data.clone()).ok());
+            let held = rec.result.as_ref().is_some_and(|r| r.payload.is_some());
             self.view = Some(match data {
                 Some(d) => ViewPane::shown(d, rec.started_at),
+                None if held => {
+                    let mut p = ViewPane::new(kind);
+                    p.loading = true;
+                    self.view = Some(p);
+                    return true;
+                }
                 None => {
                     let mut p = ViewPane::new(kind);
                     p.error = Some(format!(
@@ -139,6 +152,7 @@ impl OneOff {
                 }
             });
         }
+        false
     }
 
     /// A view shown with `mira show`, not a command.

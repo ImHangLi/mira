@@ -225,8 +225,8 @@
           "default": "neutral"
         },
         "value": {
-          "description": "The value as the reader should see it, for example `1.2 s` or `98%`. A number is\nshown as written.",
-          "type": "string"
+          "$ref": "#/$defs/TextOrNumber",
+          "description": "The value as the reader should see it, for example `1.2 s` or `98%`. A number is\nshown as written."
         }
       },
       "required": [
@@ -252,6 +252,18 @@
         "markdown"
       ],
       "type": "string"
+    },
+    "TextOrNumber": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "format": "double",
+          "type": "number"
+        }
+      ],
+      "description": "The schema of a stat value: text, or a number shown as written."
     },
     "Timestamp": {
       "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$",

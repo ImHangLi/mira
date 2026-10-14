@@ -270,12 +270,17 @@ fn plot(
     }
     // The x-axis: the first and last labels, and the middle one when it fits.
     let pad = " ".repeat(yw + 2);
-    let first = labels.first().map(|l| display(l)).unwrap_or_default();
-    let last = labels.last().map(|l| display(l)).unwrap_or_default();
-    let mid = labels.get(n / 2).map(|l| display(l)).unwrap_or_default();
+    // Each axis label gets at most a third of the plot width.
+    let clip = |l: &String| slice_cells(&display(l), 0, (pw / 3).max(1));
+    let first = labels.first().map(clip).unwrap_or_default();
+    let last = labels.last().map(clip).unwrap_or_default();
+    let mid = labels.get(n / 2).map(clip).unwrap_or_default();
     let mut axis = first.clone();
     let mid_at = pw / 2 - cells(&mid).min(pw / 2) / 2;
-    if n > 2 && mid_at > cells(&axis) + 1 && mid_at + cells(&mid) + 1 < pw - cells(&last) {
+    if n > 2
+        && mid_at > cells(&axis) + 1
+        && mid_at + cells(&mid) + 1 < pw.saturating_sub(cells(&last))
+    {
         axis.push_str(&" ".repeat(mid_at - cells(&axis)));
         axis.push_str(&mid);
     }

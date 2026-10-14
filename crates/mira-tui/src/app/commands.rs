@@ -318,6 +318,9 @@ impl App {
                 | Cmd::PageDown
                 | Cmd::Top
                 | Cmd::Bottom
+                | Cmd::Left
+                | Cmd::Right
+                | Cmd::Wrap
                 | Cmd::Copy
                 | Cmd::CopyAll,
                 Focus::Logs,
@@ -421,6 +424,8 @@ fn drive(p: &mut crate::views::ViewPane, cmd: Cmd) -> Option<(String, String)> {
         Cmd::PageDown => p.page(true),
         Cmd::Top => p.home(false),
         Cmd::Bottom => p.home(true),
+        Cmd::Left | Cmd::Right => p.left_right(cmd == Cmd::Right),
+        Cmd::Wrap => p.toggle_wrap(),
         Cmd::Copy => return p.copy_value(),
         Cmd::CopyAll => return p.copy_whole(),
         _ => {}
