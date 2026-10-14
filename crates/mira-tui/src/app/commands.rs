@@ -298,9 +298,14 @@ impl App {
             (Cmd::Restart, _) => {
                 let o = &mut self.oneoffs[i];
                 if let Some(p) = o.view.as_mut().filter(|p| p.error.is_some()) {
-                    p.error = None;
-                    p.loading = true;
-                    let _ = self.io.read.send(Read::RunGet(o.run_id.clone()));
+                    if self.io.read.send(Read::RunGet(o.run_id.clone())).is_ok() {
+                        p.error = None;
+                        p.loading = true;
+                    } else {
+                        p.error = Some(
+                            "the connection to the host is lost; quit and open mira again".into(),
+                        );
+                    }
                 }
             }
             (Cmd::KeepView, _) => {
