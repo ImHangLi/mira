@@ -2,7 +2,7 @@
   <img src=".github/assets/mira-banner.jpg" alt="Mira" width="100%">
 </p>
 
-<h3 align="center">The future of terminal apps.</h3>
+<h3 align="center">An intelligent TUI for everything you run.</h3>
 
 <p align="center">
   <a href="https://github.com/ImHangLi/mira/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/ImHangLi/mira?style=flat-square&color=f26b3a"></a>
@@ -49,7 +49,7 @@ Update with `mira update`. Restore the previous binary with `mira update --rollb
 
 **The problem.** A normal day is spread over terminal tabs: the dev server in one, tests in another, a Docker log you grep by hand, a command you look up again every week. Coding agents make it worse. They run migrations and tests in terminals nobody watches, and you learn what happened from their summary. Each new session, they work out the same commands again.
 
-**Mira's answer.** Everything you run lives in one view, and your agent sees that same view.
+**Mira's answer.** One intelligent TUI for everything you run. Your agent sees the same view, and builds new tools into it.
 
 | | Without Mira | With Mira |
 |---|---|---|
