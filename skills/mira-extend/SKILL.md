@@ -33,7 +33,7 @@ Write `plugin.json` yourself only for inputs, schedules, views, or structured ou
 |---|---|
 | An existing command; the output is logs | `"run": {"kind": "command", "argv": [...]}`; no script |
 | An interactive or full-screen program | a command with `"terminal": "pty"` |
-| Tables, trees, grouped logs, row actions | `"run": {"kind": "plugin"}` and a plugin `entry` that writes MPP/1 to stdout |
+| Tables, charts, stats, trees, grouped logs, row actions | `"run": {"kind": "plugin"}` and a plugin `entry` that writes MPP/1 to stdout |
 | Messages from agents or hooks; nothing runs | a plugin with only views, and `mira publish` |
 | A part of another tool's log, such as its errors | a derived log view: `"source": {"logs": "PLUGIN.ACTION", "grep": "error"}`; no process |
 
@@ -67,7 +67,7 @@ Details: [manifest](references/manifest.md) for every field, and [MPP/1 and view
 - Long-running or polling work is a `process`, or a `schedule` that the user turns on. The host never starts it on its own.
 - Use `"show": "on_select"` only for a PTY app page that is safe to open with default inputs, such as a timer or a game. Keep servers and shells on explicit start.
 - Give anything that creates external resources (containers, tunnels) a `cleanup` that removes only what it created.
-- Prefer a standard view (table with row actions, log, tree), so the human uses the same tool in the TUI.
+- Prefer a standard view (table with row actions, chart, stats, log, tree), so the human uses the same tool in the TUI.
 
 ## 6. Prove it
 

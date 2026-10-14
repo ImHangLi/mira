@@ -69,6 +69,10 @@ pub(super) fn kind_glyph(k: ViewKind) -> &'static str {
         (ViewKind::Text, false) => "¶",
         (ViewKind::Text, true) => "Aa",
         (ViewKind::Json, _) => "{}",
+        (ViewKind::Chart, false) => "∿",
+        (ViewKind::Chart, true) => "/\\",
+        (ViewKind::Stats, false) => "◫",
+        (ViewKind::Stats, true) => "%",
     }
 }
 

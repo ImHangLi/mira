@@ -10,6 +10,21 @@
       ],
       "type": "string"
     },
+    "ChartStyle": {
+      "description": "How a chart draws its series.",
+      "oneOf": [
+        {
+          "const": "line",
+          "description": "One line per series, across the labels.",
+          "type": "string"
+        },
+        {
+          "const": "bar",
+          "description": "One bar per label and series.",
+          "type": "string"
+        }
+      ]
+    },
     "Column": {
       "additionalProperties": false,
       "properties": {
@@ -160,6 +175,77 @@
       ],
       "type": "object"
     },
+    "Series": {
+      "additionalProperties": false,
+      "description": "One series of a chart: a value per label, `null` for no value.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "values": {
+          "items": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "values"
+      ],
+      "type": "object"
+    },
+    "Stat": {
+      "additionalProperties": false,
+      "description": "One number worth a glance: a label, a formatted value, and an optional detail line.",
+      "properties": {
+        "detail": {
+          "description": "A short line under the value, for example `+12% since Monday`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "tone": {
+          "$ref": "#/$defs/StatTone",
+          "default": "neutral"
+        },
+        "value": {
+          "description": "The value as the reader should see it, for example `1.2 s` or `98%`. A number is\nshown as written.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "value"
+      ],
+      "type": "object"
+    },
+    "StatTone": {
+      "description": "What a stat's value means for the reader. The TUI shows it as a word mark and a color.",
+      "enum": [
+        "neutral",
+        "good",
+        "warn",
+        "bad"
+      ],
+      "type": "string"
+    },
     "TextFormat": {
       "enum": [
         "plain",
@@ -295,6 +381,60 @@
           "required": [
             "kind",
             "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Numbers over labels, for example latency per day.",
+          "properties": {
+            "kind": {
+              "const": "chart",
+              "type": "string"
+            },
+            "labels": {
+              "description": "The x-axis labels. Every series has one value per label.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "series": {
+              "items": {
+                "$ref": "#/$defs/Series"
+              },
+              "type": "array"
+            },
+            "style": {
+              "$ref": "#/$defs/ChartStyle",
+              "default": "line"
+            }
+          },
+          "required": [
+            "kind",
+            "labels",
+            "series"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "A few numbers worth a glance, as tiles.",
+          "properties": {
+            "kind": {
+              "const": "stats",
+              "type": "string"
+            },
+            "stats": {
+              "items": {
+                "$ref": "#/$defs/Stat"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "kind",
+            "stats"
           ],
           "type": "object"
         }

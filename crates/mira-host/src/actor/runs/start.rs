@@ -175,6 +175,7 @@ impl Actor {
             note: None,
             requester: prep.requester.clone(),
             provenance: None,
+            view_kind: None,
         };
         let cap = self
             .accepted()

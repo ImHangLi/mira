@@ -89,6 +89,38 @@ fn data_text(d: &ViewData) -> String {
         ViewData::Json { value } => {
             serde_json::to_string_pretty(value).unwrap_or_else(|_| value.to_string())
         }
+        ViewData::Chart { labels, series, .. } => {
+            let mut lines = vec![format!(
+                "label\t{}",
+                series
+                    .iter()
+                    .map(|s| s.label.as_str())
+                    .collect::<Vec<_>>()
+                    .join("\t")
+            )];
+            for (i, l) in labels.iter().enumerate() {
+                let vals: Vec<String> = series
+                    .iter()
+                    .map(|s| {
+                        s.values
+                            .get(i)
+                            .copied()
+                            .flatten()
+                            .map_or(String::new(), |v| v.to_string())
+                    })
+                    .collect();
+                lines.push(format!("{l}\t{}", vals.join("\t")));
+            }
+            lines.join("\n")
+        }
+        ViewData::Stats { stats } => stats
+            .iter()
+            .map(|s| match &s.detail {
+                Some(d) => format!("{}: {} ({d})", s.label, s.value),
+                None => format!("{}: {}", s.label, s.value),
+            })
+            .collect::<Vec<_>>()
+            .join("\n"),
     }
 }
 

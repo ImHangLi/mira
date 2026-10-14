@@ -108,7 +108,7 @@ Each kind is one small change to `plugin.json`. The [example plugins](../example
 | Only the errors of a log, live | A view with `"source": {"logs": "dev.web", "grep": "error"}`. No code. | `errors` |
 | A form for inputs | An `input_schema`, and `{input.NAME}` in `argv` | `find` |
 | A CLI inside Mira (top, a REPL, a TUI app) | `"terminal": "pty"` on the action. Its running screen shows when selected; Enter starts it or gives it the keys. For a safe app page, add `"show": "on_select"`. | `shell` |
-| A table, a text panel, or a tree | A script that prints view frames as JSON lines (`"run": {"kind": "plugin"}`) | `todos`, `disk` |
+| A table, a chart, numbers, a text panel, or a tree | A script that prints view frames as JSON lines (`"run": {"kind": "plugin"}`) | `todos`, `disk` |
 | Something that runs on a timer | `"schedule": {"every_ms": 600000}`. Turn it on with `t` in the TUI or `mira schedule REF on`. | `daily`, `disk` |
 | A view that stays after a restart | `"persistence": "last"` on the view | `disk` |
 | A setting people can change | `config` and `config_schema`. A person overrides it in `.mira/local.json`. | |
@@ -124,6 +124,16 @@ mira exec --label "migrate the local database" -- npm run db:migrate
 ```
 
 It shows under ONE-OFF RUNS in the TUI. If you run it often, make it a tool.
+
+## Let your agent show you things
+
+Ask your agent for a table, a chart, or a few numbers, and it can show them in Mira instead of in the chat:
+
+```sh
+gh pr list --json number,title,author | mira show --title "Open PRs"
+```
+
+The view appears in the agent's section. Press `K` to keep it under Tools, or `mira keep RUN_ID` from a shell.
 
 ## Remove a plugin
 
@@ -166,6 +176,7 @@ A plugin is plain files. To share it:
 | `mira status` | Show what is running |
 | `mira down` | Stop everything in this project |
 | `mira save TITLE -- COMMAND` | Save a command as a tool (`--service` for a server) |
+| `mira show --title TITLE` | Show a table, chart, or numbers from stdin in the TUI |
 | `mira doctor` | Check the project and the programs it needs |
 | `mira logs --host` | Read Mira's own log when something goes wrong |
 | `mira plugin add NAME` / `mira plugin remove ID` | Add a default plugin, or remove a plugin |

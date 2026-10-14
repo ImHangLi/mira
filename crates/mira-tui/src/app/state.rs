@@ -11,6 +11,7 @@ use mira_protocol::time::Timestamp;
 use crate::cmdbar;
 use crate::form::Form;
 use crate::logs::LogPane;
+use crate::views::ViewPane;
 
 /// One-off (`mira exec`) runs listed besides the ones still running.
 const ONEOFF_KEEP: usize = 5;
@@ -83,6 +84,8 @@ pub struct OneOff {
     pub stopping: bool,
     /// The log panel, made when the run is first selected.
     pub pane: Option<LogPane>,
+    /// The view of a run that `mira show` made, from its record.
+    pub view: Option<ViewPane>,
 }
 
 impl OneOff {
@@ -99,6 +102,7 @@ impl OneOff {
             requester: None,
             stopping: false,
             pane: None,
+            view: None,
         }
     }
 
@@ -118,6 +122,28 @@ impl OneOff {
         self.cleanup = Some(rec.cleanup.clone());
         self.source = Some(rec.source);
         self.requester = rec.requester.clone();
+        if let (Some(kind), None) = (rec.view_kind, &self.view) {
+            let data = rec
+                .result
+                .as_ref()
+                .and_then(|r| serde_json::from_value(r.data.clone()).ok());
+            self.view = Some(match data {
+                Some(d) => ViewPane::shown(d, rec.started_at),
+                None => {
+                    let mut p = ViewPane::new(kind);
+                    p.error = Some(format!(
+                        "the view is too large to show here; read it with `mira runs {} --json`",
+                        rec.run_id
+                    ));
+                    p
+                }
+            });
+        }
+    }
+
+    /// A view shown with `mira show`, not a command.
+    pub fn is_view(&self) -> bool {
+        self.view.is_some()
     }
 
     /// Runs of one agent thread share a group, and so do runs people start (`you`). Runs

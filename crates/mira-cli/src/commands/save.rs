@@ -3,11 +3,12 @@
 //! applies it through the same path as `mira apply PLUGIN_DIR`. The plugin stays ordinary
 //! files; only the new action is added, and the rest of an existing `plugin.json` is kept.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use mira_protocol::config::{PLUGIN_FILE, WORKSPACE_FILE};
 use mira_protocol::ids::{ActionId, ActionRef, PluginId};
+use mira_protocol::paths::WorkspacePaths;
 use mira_protocol::reply::ReplyContext;
 use mira_protocol::{ErrorCode, ErrorInfo};
 use serde::Serialize;
@@ -118,7 +119,7 @@ impl serde_json::ser::Formatter for Spaced {
     }
 }
 
-fn spaced(v: &impl Serialize) -> Result<String, ErrorInfo> {
+pub(super) fn spaced(v: &impl Serialize) -> Result<String, ErrorInfo> {
     let mut out = Vec::new();
     let mut ser = serde_json::Serializer::with_formatter(&mut out, Spaced);
     v.serialize(&mut ser)
@@ -141,17 +142,24 @@ fn io(what: &Path, e: std::io::Error) -> ErrorInfo {
     ErrorInfo::new(ErrorCode::INTERNAL, format!("{}: {e}", what.display()))
 }
 
-/// Adds `action` (one JSON object) at the end of the top-level `actions` array of `text`,
-/// keeping the rest of the file as it is.
-fn add_action(text: &str, action: &str) -> Option<String> {
-    let (o, c) = plugin_dir::top_level_array(text, "actions")?;
+/// Adds `entry` (one JSON object) at the end of the top-level `key` array of `text`, keeping
+/// the rest of the file as it is. Without that array, it adds the array as the last field.
+fn add_entry(text: &str, key: &str, entry: &str) -> Option<String> {
+    let Some((o, c)) = plugin_dir::top_level_array(text, key) else {
+        let end = text.trim_end().strip_suffix('}')?.trim_end().len();
+        let k = serde_json::to_string(key).ok()?;
+        return Some(format!(
+            "{},\n  {k}: [\n    {entry}\n  ]\n}}\n",
+            &text[..end]
+        ));
+    };
     let inner = &text[o + 1..c];
     let out = if inner.trim().is_empty() {
-        format!("{}\n    {action}\n  {}", &text[..=o], &text[c..])
+        format!("{}\n    {entry}\n  {}", &text[..=o], &text[c..])
     } else {
         let end = o + 1 + inner.trim_end().len();
         let sep = if inner.contains('\n') {
-            // One action per line, indented like the first one.
+            // One entry per line, indented like the first one.
             let indent: String = inner
                 .trim_start_matches(['\r', '\n'])
                 .chars()
@@ -161,9 +169,133 @@ fn add_action(text: &str, action: &str) -> Option<String> {
         } else {
             ", ".to_owned()
         };
-        format!("{}{sep}{action}{}", &text[..end], &text[end..])
+        format!("{}{sep}{entry}{}", &text[..end], &text[end..])
     };
     Some(out)
+}
+
+/// The plugin draft made by [`draft_with`]: the scratch folder to apply and the plugin's
+/// folder in `.mira`.
+pub(super) struct Draft {
+    pub dir: PathBuf,
+    pub own: String,
+}
+
+impl Draft {
+    /// Applies the draft like `mira apply`, then removes the scratch copy. Errors name the
+    /// plugin file in `.mira`.
+    pub async fn apply(
+        &self,
+        ctx: &Ctx,
+    ) -> Result<
+        mira_protocol::reply::PublicReply<mira_protocol::ipc::ConfigApplied>,
+        (ReplyContext, ErrorInfo),
+    > {
+        let result = config::apply_plugin_call(ctx, &self.dir, None, None).await;
+        if let Some(tmp) = self.dir.parent() {
+            let _ = std::fs::remove_dir_all(tmp);
+        }
+        result
+            .map(|(reply, _)| reply)
+            .map_err(|(c, e)| (c, in_mira(e, &self.dir, &self.own)))
+    }
+}
+
+/// A scratch copy of `plugin` (made when the project does not have it yet) with `entry`
+/// added to its top-level `key` list (`actions` or `views`). Fails when `id` is taken.
+pub(super) fn draft_with(
+    paths: &WorkspacePaths,
+    plugin: &PluginId,
+    key: &str,
+    id: &str,
+    entry: &str,
+) -> Result<Draft, ErrorInfo> {
+    if !paths.mira_dir.join(WORKSPACE_FILE).is_file() {
+        create_workspace(&paths.mira_dir, paths.root.as_str())?;
+    }
+    // Find the plugin, or start a new one in plugins/<id>.
+    let ws_file = paths.mira_dir.join(WORKSPACE_FILE);
+    let ws_text = std::fs::read_to_string(&ws_file).map_err(|e| io(&ws_file, e))?;
+    let ws: Value = serde_json::from_str(&ws_text)
+        .map_err(|e| ErrorInfo::new(ErrorCode::SCHEMA_INVALID, format!("{WORKSPACE_FILE}: {e}")))?;
+    let entries = plugin_dir::entries(&ws);
+    let existing = plugin_dir::find_entry(&paths.mira_dir, &entries, plugin.as_str());
+    let own = format!("plugins/{plugin}");
+    if let Some(e) = &existing
+        && *e != own
+    {
+        return Err(invalid_argument(format!(
+            "plugin `{plugin}` lives in .mira/{e}; add it there by hand, or use another plugin with --plugin"
+        )));
+    }
+    let draft = plugin_dir::make_temp_dir()?.join(plugin.as_str());
+    let text = match &existing {
+        Some(entry_dir) => {
+            let src = paths.mira_dir.join(entry_dir);
+            plugin_dir::copy_tree(&src, &draft)?;
+            let file = draft.join(PLUGIN_FILE);
+            let text = std::fs::read_to_string(&file).map_err(|e| io(&file, e))?;
+            let v: Value = serde_json::from_str(&text).map_err(|e| {
+                ErrorInfo::new(ErrorCode::SCHEMA_INVALID, format!("{PLUGIN_FILE}: {e}"))
+            })?;
+            // Actions and views share one namespace in a plugin.
+            let taken = ["actions", "views"].iter().any(|k| {
+                v.get(k).and_then(Value::as_array).is_some_and(|l| {
+                    l.iter()
+                        .any(|x| x.get("id").and_then(Value::as_str) == Some(id))
+                })
+            });
+            if taken {
+                return Err(ErrorInfo::new(
+                    ErrorCode::INVALID_ARGUMENT,
+                    format!("`{plugin}.{id}` already exists; pass --id with another ID"),
+                )
+                .with_next_action(
+                    &["mira", "describe", &format!("{plugin}.{id}")],
+                    "See the tool that has this ID.",
+                ));
+            }
+            let out = add_entry(&text, key, entry).ok_or_else(|| {
+                invalid_argument(format!(
+                    "cannot add to {PLUGIN_FILE} of `{plugin}`; use another plugin with --plugin"
+                ))
+            })?;
+            // The edit must add exactly this entry and change nothing else.
+            let after: Value = serde_json::from_str(&out).map_err(|e| {
+                ErrorInfo::new(ErrorCode::INTERNAL, format!("edited {PLUGIN_FILE}: {e}"))
+            })?;
+            let last = after
+                .get(key)
+                .and_then(Value::as_array)
+                .and_then(|l| l.last())
+                .and_then(|x| x.get("id"))
+                .and_then(Value::as_str);
+            if last != Some(id) {
+                return Err(ErrorInfo::new(
+                    ErrorCode::INTERNAL,
+                    format!("could not add `{id}` to {PLUGIN_FILE} of `{plugin}`"),
+                ));
+            }
+            out
+        }
+        None => {
+            std::fs::create_dir_all(&draft).map_err(|e| io(&draft, e))?;
+            let name = if plugin.as_str() == "tools" {
+                "Tools".to_owned()
+            } else {
+                plugin.to_string()
+            };
+            format!(
+                "{{\n  \"api\": 1,\n  \"id\": {},\n  \"name\": {},\n  \"description\": \"Tools saved with `mira save` and `mira keep`.\",\n  {}: [\n    {entry}\n  ]\n}}\n",
+                serde_json::to_string(plugin.as_str()).unwrap_or_default(),
+                serde_json::to_string(&name).unwrap_or_default(),
+                serde_json::to_string(key).unwrap_or_default(),
+            )
+        }
+    };
+    let file = draft.join(PLUGIN_FILE);
+    std::fs::write(&file, text).map_err(|e| io(&file, e))?;
+    Ok(Draft { dir: draft, own })
 }
 
 pub fn save(ctx: &Ctx, a: SaveArgs) -> ExitCode {
@@ -178,22 +310,8 @@ pub fn save(ctx: &Ctx, a: SaveArgs) -> ExitCode {
                 .plugin
                 .parse::<PluginId>()
                 .map_err(|e| invalid_argument(format!("--plugin: {e}")))?;
-            let id = match &a.id {
-                Some(id) => id
-                    .parse::<ActionId>()
-                    .map_err(|e| invalid_argument(format!("--id: {e}")))?
-                    .to_string(),
-                None => slug(&a.title).ok_or_else(|| {
-                    invalid_argument(format!(
-                        "cannot make an ID from the title `{}`; pass --id, for example --id unit-tests",
-                        a.title
-                    ))
-                })?,
-            };
+            let id = entry_id(a.id.as_deref(), &a.title)?;
             let paths = ctx.paths()?;
-            if !paths.mira_dir.join(WORKSPACE_FILE).is_file() {
-                create_workspace(&paths.mira_dir, paths.root.as_str())?;
-            }
             // The command runs where it was saved: a subfolder of the project stays its cwd.
             let here = std::env::current_dir()
                 .and_then(std::fs::canonicalize)
@@ -205,23 +323,6 @@ pub fn save(ctx: &Ctx, a: SaveArgs) -> ExitCode {
                 .ok()
                 .map(|r| r.to_string_lossy().into_owned())
                 .filter(|r| !r.is_empty());
-
-            // Find the plugin, or start a new one in plugins/<id>.
-            let ws_file = paths.mira_dir.join(WORKSPACE_FILE);
-            let ws_text = std::fs::read_to_string(&ws_file).map_err(|e| io(&ws_file, e))?;
-            let ws: Value = serde_json::from_str(&ws_text).map_err(|e| {
-                ErrorInfo::new(ErrorCode::SCHEMA_INVALID, format!("{WORKSPACE_FILE}: {e}"))
-            })?;
-            let entries = plugin_dir::entries(&ws);
-            let existing = plugin_dir::find_entry(&paths.mira_dir, &entries, plugin.as_str());
-            let own = format!("plugins/{plugin}");
-            if let Some(e) = &existing
-                && *e != own
-            {
-                return Err(invalid_argument(format!(
-                    "plugin `{plugin}` lives in .mira/{e}; add the action there by hand, or save to another plugin with --plugin"
-                )));
-            }
             let description = a
                 .description
                 .clone()
@@ -238,92 +339,22 @@ pub fn save(ctx: &Ctx, a: SaveArgs) -> ExitCode {
                     argv: &a.argv,
                 },
             })?;
-
-            let draft = plugin_dir::make_temp_dir()?.join(plugin.as_str());
-            let text = match &existing {
-                Some(entry) => {
-                    let src = paths.mira_dir.join(entry);
-                    plugin_dir::copy_tree(&src, &draft)?;
-                    let file = draft.join(PLUGIN_FILE);
-                    let text = std::fs::read_to_string(&file).map_err(|e| io(&file, e))?;
-                    let v: Value = serde_json::from_str(&text).map_err(|e| {
-                        ErrorInfo::new(ErrorCode::SCHEMA_INVALID, format!("{PLUGIN_FILE}: {e}"))
-                    })?;
-                    // Actions and views share one namespace in a plugin.
-                    let taken = ["actions", "views"].iter().any(|k| {
-                        v.get(k).and_then(Value::as_array).is_some_and(|l| {
-                            l.iter()
-                                .any(|x| x.get("id").and_then(Value::as_str) == Some(&id))
-                        })
-                    });
-                    if taken {
-                        return Err(ErrorInfo::new(
-                            ErrorCode::INVALID_ARGUMENT,
-                            format!("`{plugin}.{id}` already exists; pass --id with another ID"),
-                        )
-                        .with_next_action(
-                            &["mira", "describe", &format!("{plugin}.{id}")],
-                            "See the tool that has this ID.",
-                        ));
-                    }
-                    let out = add_action(&text, &action).ok_or_else(|| {
-                        invalid_argument(format!(
-                            "{PLUGIN_FILE} of `{plugin}` has no top-level `actions` list; save to another plugin with --plugin"
-                        ))
-                    })?;
-                    // The edit must add exactly this action and change nothing else.
-                    let after: Value = serde_json::from_str(&out).map_err(|e| {
-                        ErrorInfo::new(ErrorCode::INTERNAL, format!("edited {PLUGIN_FILE}: {e}"))
-                    })?;
-                    let last = after
-                        .get("actions")
-                        .and_then(Value::as_array)
-                        .and_then(|l| l.last())
-                        .and_then(|x| x.get("id"))
-                        .and_then(Value::as_str);
-                    if last != Some(id.as_str()) {
-                        return Err(ErrorInfo::new(
-                            ErrorCode::INTERNAL,
-                            format!("could not add the action to {PLUGIN_FILE} of `{plugin}`"),
-                        ));
-                    }
-                    out
-                }
-                None => {
-                    std::fs::create_dir_all(&draft).map_err(|e| io(&draft, e))?;
-                    let name = if plugin.as_str() == "tools" {
-                        "Tools".to_owned()
-                    } else {
-                        plugin.to_string()
-                    };
-                    format!(
-                        "{{\n  \"api\": 1,\n  \"id\": {},\n  \"name\": {},\n  \"description\": \"Commands saved with `mira save`.\",\n  \"actions\": [\n    {action}\n  ]\n}}\n",
-                        serde_json::to_string(plugin.as_str()).unwrap_or_default(),
-                        serde_json::to_string(&name).unwrap_or_default(),
-                    )
-                }
-            };
-            let file = draft.join(PLUGIN_FILE);
-            std::fs::write(&file, text).map_err(|e| io(&file, e))?;
+            let draft = draft_with(&paths, &plugin, "actions", &id, &action)?;
             let action_ref: ActionRef = format!("{plugin}.{id}")
                 .parse()
                 .map_err(|e| ErrorInfo::new(ErrorCode::INTERNAL, format!("{e}")))?;
-            Ok::<_, ErrorInfo>((draft, action_ref, mode, own))
+            Ok::<_, ErrorInfo>((draft, action_ref, mode))
         })();
-        let (draft, action_ref, mode, own) = match prepared {
+        let (draft, action_ref, mode) = match prepared {
             Ok(v) => v,
             Err(e) => return ctx.fail(ReplyContext::default(), e),
         };
-        let result = config::apply_plugin_call(ctx, &draft, None, None).await;
-        if let Some(tmp) = draft.parent() {
-            let _ = std::fs::remove_dir_all(tmp);
-        }
-        match result {
-            Ok((reply, _)) => {
+        match draft.apply(ctx).await {
+            Ok(reply) => {
                 let reply = reply.map(|applied| Saved {
                     action_ref,
                     mode,
-                    plugin_file: format!(".mira/{own}/{PLUGIN_FILE}"),
+                    plugin_file: format!(".mira/{}/{PLUGIN_FILE}", draft.own),
                     catalog_revision: applied.catalog_revision,
                 });
                 ctx.emit(&reply, |s| {
@@ -338,7 +369,22 @@ pub fn save(ctx: &Ctx, a: SaveArgs) -> ExitCode {
                     )
                 })
             }
-            Err((c, e)) => ctx.fail(c, in_mira(e, &draft, &own)),
+            Err((c, e)) => ctx.fail(c, e),
         }
     })
+}
+
+/// The ID of a new action or view: `--id`, or one made from the title.
+pub(super) fn entry_id(id: Option<&str>, title: &str) -> Result<String, ErrorInfo> {
+    match id {
+        Some(id) => Ok(id
+            .parse::<ActionId>()
+            .map_err(|e| invalid_argument(format!("--id: {e}")))?
+            .to_string()),
+        None => slug(title).ok_or_else(|| {
+            invalid_argument(format!(
+                "cannot make an ID from the title `{title}`; pass --id, for example --id unit-tests"
+            ))
+        }),
+    }
 }

@@ -160,6 +160,39 @@ enum Command {
         #[arg(last = true, value_name = "COMMAND")]
         argv: Vec<String>,
     },
+    /// Show a view in the TUI without a plugin: a table, chart, stats, text, tree, or JSON.
+    ///
+    /// Input is view data (`{"kind": "table", …}`), a JSON array of objects (shown as a
+    /// table), or Markdown text with --markdown. It appears in your section of `mira`.
+    Show {
+        /// What the view shows, in a few words.
+        #[arg(long)]
+        title: String,
+        /// The input file, or `-` for stdin.
+        #[arg(long, value_name = "FILE", default_value = "-")]
+        input: String,
+        /// Read the input as Markdown text.
+        #[arg(long)]
+        markdown: bool,
+        /// What your thread works on, in a few words; names your section in the TUI.
+        #[arg(long, value_name = "TEXT")]
+        task: Option<String>,
+    },
+    /// Keep a view shown with `mira show` as a view of a project plugin.
+    Keep {
+        /// The run ID that `mira show` printed.
+        #[arg(value_name = "RUN")]
+        run: String,
+        /// The view ID (default: made from the title).
+        #[arg(long)]
+        id: Option<String>,
+        /// The view title (default: the shown title).
+        #[arg(long)]
+        title: Option<String>,
+        /// The plugin to add the view to.
+        #[arg(long, default_value = "tools")]
+        plugin: String,
+    },
     /// Run a one-off command (not saved as a plugin).
     Exec {
         #[arg(long)]
@@ -655,6 +688,34 @@ fn main() -> ExitCode {
             request_key,
             argv,
         }) => commands::runtime::exec(&ctx, label, argv, request_key, task),
+        Some(Command::Show {
+            title,
+            input,
+            markdown,
+            task,
+        }) => commands::show::show(
+            &ctx,
+            commands::show::ShowArgs {
+                title,
+                input,
+                markdown,
+                task,
+            },
+        ),
+        Some(Command::Keep {
+            run,
+            id,
+            title,
+            plugin,
+        }) => commands::show::keep(
+            &ctx,
+            commands::show::KeepArgs {
+                run,
+                id,
+                title,
+                plugin,
+            },
+        ),
         Some(Command::Up { background, ttl }) => commands::runtime::up(&ctx, background, &ttl),
         Some(Command::Down { wait }) => commands::runtime::down(&ctx, wait),
         Some(Command::Remove { yes }) => commands::remove::remove(&ctx, yes),

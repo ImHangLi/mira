@@ -61,6 +61,8 @@ pub enum Cmd {
     AddPlugin,
     /// Load `.mira` again from disk and refresh the tools, runs, and views (`R`).
     Refresh,
+    /// Keep a view shown with `mira show` as a view of the project (`K`).
+    KeepView,
 }
 
 pub struct Binding {
@@ -213,6 +215,9 @@ impl App {
     pub fn normal_bindings(&self) -> Vec<Binding> {
         if self.selected_view().is_some() {
             return self.view_bindings();
+        }
+        if self.selected_oneoff().is_some_and(|o| o.is_view()) {
+            return self.shown_bindings();
         }
         if self.selected_oneoff().is_some() {
             return self.oneoff_bindings();
@@ -375,6 +380,44 @@ impl App {
         }
     }
 
+    /// Keys for a view shown with `mira show`: move and copy like a view, and keep it.
+    fn shown_bindings(&self) -> Vec<Binding> {
+        let mut v = Vec::new();
+        let rows = self
+            .selected_oneoff()
+            .and_then(|o| o.view.as_ref())
+            .map_or(0, ViewPane::len);
+        match self.focus {
+            Focus::List => {
+                if self.visible.len() > 1 {
+                    v.push(bind("j/k", "move", Cmd::Down));
+                    v.push(hidden("PgUp/PgDn", "page", Cmd::PageUp));
+                    v.push(hidden("g/Home", "first", Cmd::Top));
+                    v.push(hidden("G/End", "last", Cmd::Bottom));
+                }
+                v.push(bind("Enter", "open view", Cmd::Open));
+                v.push(bind("K", "keep as a view", Cmd::KeepView));
+                v.push(bind("Tab", "view", Cmd::Focus));
+            }
+            Focus::Logs => {
+                v.push(bind("Esc", "back", Cmd::Escape));
+                if rows > 0 {
+                    v.push(bind("j/k", "move", Cmd::Down));
+                    v.push(hidden("PgUp/PgDn", "page", Cmd::PageUp));
+                    v.push(hidden("g/Home", "first", Cmd::Top));
+                    v.push(hidden("G/End", "last", Cmd::Bottom));
+                    v.push(bind("y", "copy", Cmd::Copy));
+                    v.push(bind("Y", "copy JSON", Cmd::CopyAll));
+                }
+                v.push(bind("K", "keep as a view", Cmd::KeepView));
+                v.push(bind("Tab", "tools", Cmd::Focus));
+            }
+        }
+        self.list_keys(&mut v);
+        self.global_bindings(&mut v);
+        v
+    }
+
     /// Keys for a selected one-off run. A one-off run is never run again from here:
     /// its record does not keep the command line.
     fn oneoff_bindings(&self) -> Vec<Binding> {
@@ -517,6 +560,8 @@ impl App {
                             ViewKind::Tree => ("copy label", "copy subtree JSON"),
                             ViewKind::Json => ("copy line", "copy all JSON"),
                             ViewKind::Text => ("copy line", "copy all text"),
+                            ViewKind::Chart => ("copy values", "copy chart JSON"),
+                            ViewKind::Stats => ("copy value", "copy stats JSON"),
                         };
                         v.push(bind("y", y, Cmd::Copy));
                         v.push(bind("Y", big, Cmd::CopyAll));
@@ -525,7 +570,8 @@ impl App {
                             ViewKind::Tree => "fold",
                             _ => "pan",
                         };
-                        if p.kind != ViewKind::Table || p.data().is_some() {
+                        let pans = !matches!(p.kind, ViewKind::Chart | ViewKind::Stats);
+                        if pans && (p.kind != ViewKind::Table || p.data().is_some()) {
                             v.push(bind("h/l", lr, Cmd::Right));
                         }
                     }

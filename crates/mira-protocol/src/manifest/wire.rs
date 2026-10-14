@@ -155,6 +155,8 @@ pub enum ViewKind {
     Log,
     Tree,
     Json,
+    Chart,
+    Stats,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]

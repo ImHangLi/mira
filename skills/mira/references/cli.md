@@ -15,6 +15,8 @@ All commands accept `--project PATH`, `--json`, and `--text`. `REF` is `plugin.i
 | `stop RUN_OR_ACTION [--wait]` | TERM (or INT), then KILL after the grace period; cleanup runs once |
 | `restart ACTION [--input FILE\|-]` | stop, wait, then start with the current definition |
 | `exec --task TEXT --label TEXT -- ARGV...` | a one-off command; not added to the catalog |
+| `show --title TEXT [--task TEXT] [--input FILE\|-] [--markdown]` | show view data, an array of objects (as a table), or Markdown in your section of the TUI; no plugin and no session needed |
+| `keep RUN [--id ID] [--title TEXT] [--plugin ID]` | keep a shown view as a view of the `tools` plugin, with its data |
 | `save TITLE [--service] [--id ID] [--plugin ID] [--description TEXT] -- ARGV...` | save a command as a tool in the `tools` plugin, validated and loaded. From a subfolder, that folder is the tool's `cwd` |
 | `up --background [--ttl 30m\|2h\|none]` | keep work running without the TUI (default 2 h); run it again to set a new limit from now |
 | `down [--wait]` | stop the session and its runs; deletes no data |

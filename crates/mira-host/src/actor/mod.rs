@@ -556,6 +556,7 @@ impl Actor {
             Method::ViewRead => self.view_read(parse!(p), r),
             Method::ViewPublish => self.view_publish(parse!(p), r),
             Method::ViewAction => self.view_action(client, parse!(p), r),
+            Method::ViewShow => self.view_show(client, parse!(p), r),
             Method::ArtifactList => self.artifact_list(parse!(p), r),
             Method::ArtifactRead => self.artifact_read(parse!(p), r),
             Method::StorageStatus => self.storage_status(parse!(p), r),

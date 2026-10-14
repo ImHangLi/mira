@@ -229,6 +229,10 @@ pub struct RunRecord {
     /// The agent that asked for a one-off run, when known.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub requester: Option<Requester>,
+    /// Set for a view shown with `mira show`: no process ran, and `result.data` holds the
+    /// view data of this kind.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub view_kind: Option<crate::manifest::ViewKind>,
 }
 
 /// Read-time provenance of a run: a success only proves that one execution, and a

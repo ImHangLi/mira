@@ -12,6 +12,7 @@ pub mod runref;
 pub mod runtime;
 pub mod save;
 pub mod schedule;
+pub mod show;
 pub mod skills;
 pub mod storage;
 pub mod terminal;

@@ -5,6 +5,7 @@ mod launch;
 mod lifecycle;
 mod prepare;
 mod queries;
+mod show;
 mod start;
 
 use std::collections::BTreeMap;

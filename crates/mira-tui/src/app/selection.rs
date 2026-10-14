@@ -213,7 +213,7 @@ impl App {
         }
         if let Some(i) = self.selected_oneoff_index() {
             let o = &mut self.oneoffs[i];
-            if o.pane.is_none() {
+            if o.pane.is_none() && !o.is_view() {
                 let mut p = LogPane::new();
                 p.run_id = Some(o.run_id.clone());
                 p.loading = true;

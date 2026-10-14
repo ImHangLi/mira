@@ -81,7 +81,13 @@ pub(crate) fn prepare_run(rec: &mut RunRecord, set: Option<&ConfigSet>, payloads
         && !res.data.is_null()
     {
         let bytes = serde_json::to_vec(&res.data).unwrap_or_default();
-        if bytes.len() > INLINE_RESULT_BYTES {
+        // A shown view travels whole, so the TUI can draw it from the record.
+        let limit = if rec.view_kind.is_some() {
+            mira_protocol::limits::MAX_SHOWN_VIEW_BYTES
+        } else {
+            INLINE_RESULT_BYTES
+        };
+        if bytes.len() > limit {
             let key = format!("run-result:{}", rec.run_id);
             res.payload = Some(payloads.hold(Some(key), bytes));
             res.data = Value::Null;

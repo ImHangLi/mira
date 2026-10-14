@@ -201,6 +201,18 @@ pub struct ActionInvokeParams {
     pub foreground: bool,
 }
 
+/// A view shown once in the TUI (`mira show`), without a plugin. It is recorded as a
+/// finished one-off run whose result holds the data; never a catalog entry.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ViewShowParams {
+    pub title: String,
+    pub data: crate::view::ViewData,
+    /// The agent that asks, when the CLI recognized one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub requester: Option<crate::run::Requester>,
+}
+
 /// Ad-hoc command through the same command/task path; never a catalog entry.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]

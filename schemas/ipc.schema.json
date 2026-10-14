@@ -421,6 +421,21 @@
       "minimum": 0,
       "type": "integer"
     },
+    "ChartStyle": {
+      "description": "How a chart draws its series.",
+      "oneOf": [
+        {
+          "const": "line",
+          "description": "One line per series, across the labels.",
+          "type": "string"
+        },
+        {
+          "const": "bar",
+          "description": "One bar per label and series.",
+          "type": "string"
+        }
+      ]
+    },
     "ChunkData": {
       "additionalProperties": false,
       "description": "A bounded UTF-8 chunk of an artifact or payload. For payloads, `sha256` is the\ndigest of the whole selected value (after `pointer`), so reassembled chunks can be checked.",
@@ -2126,6 +2141,17 @@
             }
           ]
         },
+        "view_kind": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ViewKind"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Set for a view shown with `mira show`: no process ran, and `result.data` holds the\nview data of this kind."
+        },
         "workspace_id": {
           "$ref": "#/$defs/WorkspaceId"
         }
@@ -2358,6 +2384,34 @@
       "minimum": 0,
       "type": "integer"
     },
+    "Series": {
+      "additionalProperties": false,
+      "description": "One series of a chart: a value per label, `null` for no value.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "values": {
+          "items": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "values"
+      ],
+      "type": "object"
+    },
     "SessionAttachParams": {
       "additionalProperties": false,
       "properties": {
@@ -2541,6 +2595,49 @@
       "enum": [
         "stdout",
         "stderr"
+      ],
+      "type": "string"
+    },
+    "Stat": {
+      "additionalProperties": false,
+      "description": "One number worth a glance: a label, a formatted value, and an optional detail line.",
+      "properties": {
+        "detail": {
+          "description": "A short line under the value, for example `+12% since Monday`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "tone": {
+          "$ref": "#/$defs/StatTone",
+          "default": "neutral"
+        },
+        "value": {
+          "description": "The value as the reader should see it, for example `1.2 s` or `98%`. A number is\nshown as written.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "value"
+      ],
+      "type": "object"
+    },
+    "StatTone": {
+      "description": "What a stat's value means for the reader. The TUI shows it as a word mark and a color.",
+      "enum": [
+        "neutral",
+        "good",
+        "warn",
+        "bad"
       ],
       "type": "string"
     },
@@ -3834,6 +3931,60 @@
             "value"
           ],
           "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Numbers over labels, for example latency per day.",
+          "properties": {
+            "kind": {
+              "const": "chart",
+              "type": "string"
+            },
+            "labels": {
+              "description": "The x-axis labels. Every series has one value per label.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "series": {
+              "items": {
+                "$ref": "#/$defs/Series"
+              },
+              "type": "array"
+            },
+            "style": {
+              "$ref": "#/$defs/ChartStyle",
+              "default": "line"
+            }
+          },
+          "required": [
+            "kind",
+            "labels",
+            "series"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "A few numbers worth a glance, as tiles.",
+          "properties": {
+            "kind": {
+              "const": "stats",
+              "type": "string"
+            },
+            "stats": {
+              "items": {
+                "$ref": "#/$defs/Stat"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "kind",
+            "stats"
+          ],
+          "type": "object"
         }
       ]
     },
@@ -3870,7 +4021,9 @@
         "table",
         "log",
         "tree",
-        "json"
+        "json",
+        "chart",
+        "stats"
       ],
       "type": "string"
     },
@@ -3935,6 +4088,34 @@
       "maximum": 9007199254740991,
       "minimum": 0,
       "type": "integer"
+    },
+    "ViewShowParams": {
+      "additionalProperties": false,
+      "description": "A view shown once in the TUI (`mira show`), without a plugin. It is recorded as a\nfinished one-off run whose result holds the data; never a catalog entry.",
+      "properties": {
+        "data": {
+          "$ref": "#/$defs/ViewData"
+        },
+        "requester": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Requester"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The agent that asks, when the CLI recognized one."
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "data"
+      ],
+      "type": "object"
     },
     "ViewSnapshot": {
       "additionalProperties": false,
@@ -4356,6 +4537,14 @@
       },
       "result": {
         "$ref": "#/$defs/ViewSnapshot"
+      }
+    },
+    "view.show": {
+      "params": {
+        "$ref": "#/$defs/ViewShowParams"
+      },
+      "result": {
+        "$ref": "#/$defs/InvokeAccepted"
       }
     },
     "workspace.status": {

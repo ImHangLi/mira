@@ -61,7 +61,7 @@ For optional flags, lists, or computed values, use a wrapper script that reads `
 
 ## View
 
-`{"id","title","kind"}` with kind `text|table|log|tree|json`; `persistence` `last` (kept, bounded by retention) or `session`; tables may add `row_actions: [{"action": "show", "bindings": {"path": "path"}}]` mapping input names to column IDs.
+`{"id","title","kind"}` with kind `text|table|log|tree|json|chart|stats`; `persistence` `last` (kept, bounded by retention) or `session`; tables may add `row_actions: [{"action": "show", "bindings": {"path": "path"}}]` mapping input names to column IDs.
 
 ### Derived log view
 

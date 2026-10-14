@@ -40,10 +40,24 @@ Your runs appear in one section per agent thread. Pass the same `--task "a few w
 
 - `mira logs RUN_ID_OR_ACTION --json`: the last 100 records of the run, oldest first. Older records: `--after "$(meta.next_cursor)"`. `--follow` streams JSONL until the run ends.
 - `mira runs RUN_ID --json` or `mira runs --action REF --json`: outcome, exit, and cleanup. `definition_current: false` means the success used an older definition.
-- `mira view PLUGIN.VIEW --json`: tables, logs, trees, text, and JSON. `freshness` is `current` while the producing run is live, `historical` after it ended (normal), and `stale` when the definition changed or the source run failed. Read `recorded_at`: an old success does not prove that the current code works.
+- `mira view PLUGIN.VIEW --json`: tables, charts, stats, logs, trees, text, and JSON. `freshness` is `current` while the producing run is live, `historical` after it ended (normal), and `stale` when the definition changed or the source run failed. Read `recorded_at`: an old success does not prove that the current code works.
 - A large value comes back as `meta.payload`. Read it with `mira payload read TOKEN`. On `PAYLOAD_GONE`, do not rerun the action only to recreate the data.
 
 Never read `state.sqlite3`, `~/Library/Logs/Mira`, or caches directly.
+
+## Show the human
+
+When an answer is a table, a chart, or a few numbers, show it in the TUI instead of pasting it into chat. It appears in your thread's section, and the human can press `K` to keep it.
+
+| Input on stdin (or `--input FILE`) | Shows |
+|---|---|
+| A JSON array of objects | A table, one column per key |
+| `{"kind":"chart","style":"line"\|"bar","labels":[…],"series":[{"id","label","values":[…]}]}` | A chart; one value or `null` per label |
+| `{"kind":"stats","stats":[{"id","label","value","detail","tone":"good"\|"warn"\|"bad"}]}` | Numbers worth a glance |
+| Any view data from the [protocol](../mira-extend/references/protocol.md#view-data) | That view |
+| Markdown, with `--markdown` | A text page |
+
+`mira show --task "thread goal" --title "Slow endpoints" < rows.json` prints the run ID. A shown view never changes. Show a new one when the data changes. `mira keep RUN_ID` keeps it as a view in `.mira/plugins/tools`; do this only when the human asks.
 
 ## Finish
 

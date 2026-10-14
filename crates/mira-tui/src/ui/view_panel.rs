@@ -12,7 +12,7 @@ use ratatui::widgets::{Padding, Paragraph};
 use crate::app::{App, Focus};
 use crate::logs::display;
 use crate::theme::{Theme, Tone};
-use crate::views::{freshness_word, kind_word};
+use crate::views::{ViewPane, freshness_word, kind_word};
 
 use super::marks::{kind_glyph, view_tone};
 use super::text::{ago, ellipsize, fit_spans};
@@ -33,7 +33,6 @@ pub(super) fn draw_view(f: &mut Frame, app: &mut App, t: &Theme, area: Rect) {
     f.render_widget(block, area);
     let w = inner.width as usize;
     let hm = |ts: Timestamp| app.clock.hm(ts);
-    let sel = t.selected();
     let Some(p) = app.view_panes.get_mut(&r) else {
         f.render_widget(Paragraph::new(Span::styled("loading…", t.muted())), inner);
         return;
@@ -148,7 +147,7 @@ pub(super) fn draw_view(f: &mut Frame, app: &mut App, t: &Theme, area: Rect) {
         )));
     }
     card.push(Line::from(fit_spans(status, w)));
-    let mut bar = vec![position_word(p.kind, p.cursor, p.len())];
+    let mut bar = vec![pane_position(p)];
     if let (Some(s), Some(cur)) = (p.sel_rev, p.revision())
         && s != cur
     {
@@ -197,8 +196,21 @@ pub(super) fn draw_view(f: &mut Frame, app: &mut App, t: &Theme, area: Rect) {
         );
     }
     app.hits.push((body, crate::app::Hit::Pane));
+    draw_body(f, p, t, body, focus, &r.to_string());
+}
+
+/// The content of a view pane: its data, or why there is none.
+pub(super) fn draw_body(
+    f: &mut Frame,
+    p: &mut ViewPane,
+    t: &Theme,
+    body: Rect,
+    focus: bool,
+    name: &str,
+) {
+    let sel = t.selected();
     p.height = body.height as usize;
-    p.width = w;
+    p.width = body.width as usize;
     let dim_msg = |s: String| Paragraph::new(Span::styled(s, t.muted()));
     if let Some(e) = &p.error {
         f.render_widget(
@@ -213,7 +225,7 @@ pub(super) fn draw_view(f: &mut Frame, app: &mut App, t: &Theme, area: Rect) {
         crate::views::Body::Reference(summary) => {
             f.render_widget(
                 Paragraph::new(format!(
-                    "{summary}\nUse `: view {r} --max-bytes 262144` for the full value."
+                    "{summary}\nUse `: view {name} --max-bytes 262144` for the full value."
                 ))
                 .wrap(ratatui::widgets::Wrap { trim: true }),
                 body,
@@ -236,8 +248,24 @@ pub(super) fn draw_view(f: &mut Frame, app: &mut App, t: &Theme, area: Rect) {
         f.render_widget(dim_msg("(the view is empty)".into()), body);
         return;
     }
-    let lines = p.lines(focus, sel, t.muted());
+    let lines = if matches!(p.kind, ViewKind::Chart | ViewKind::Stats) {
+        super::charts::lines(p, t, focus)
+    } else {
+        p.lines(focus, sel, t.muted())
+    };
     f.render_widget(Paragraph::new(lines), body);
+}
+
+/// Where the cursor is in a view pane; a bar chart counts labels.
+pub(super) fn pane_position(p: &ViewPane) -> String {
+    if p.is_bar_chart() {
+        let n = p.len();
+        return match n {
+            0 => "no labels".into(),
+            _ => format!("label {} of {n}", p.cursor.min(n - 1) + 1),
+        };
+    }
+    position_word(p.kind, p.cursor, p.len())
 }
 
 /// Where the cursor is in a view: `row 1 of 4`; `no rows` when empty.
@@ -246,6 +274,8 @@ fn position_word(kind: ViewKind, cursor: usize, len: usize) -> String {
         ViewKind::Table => ("row", "rows"),
         ViewKind::Log => ("item", "items"),
         ViewKind::Tree => ("node", "nodes"),
+        ViewKind::Chart => ("series", "series"),
+        ViewKind::Stats => ("stat", "stats"),
         _ => ("line", "lines"),
     };
     if len == 0 {

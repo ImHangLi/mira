@@ -115,11 +115,16 @@ pub(super) fn draw_sidebar(f: &mut Frame, app: &mut App, t: &Theme, area: Rect) 
             Entry::OneOff(i) => {
                 let o = &app.oneoffs[i];
                 let m = oneoff_mark(o);
+                // A shown view is marked by its kind, like a plugin's view.
+                let (glyph, st) = match &o.view {
+                    Some(p) => (kind_glyph(p.kind), t.fg(Tone::Sky)),
+                    None => (m.glyph, m.style(t)),
+                };
                 (
                     agents.get(o.group()).cloned().unwrap_or_default(),
                     Cow::Owned(o.title()),
-                    m.glyph,
-                    m.style(t),
+                    glyph,
+                    st,
                     None,
                 )
             }
